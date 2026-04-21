@@ -1,0 +1,75 @@
+import Dexie, { type Table } from 'dexie';
+
+export interface Luggage {
+  id: string;
+  name: string;
+  type: '托运' | '手提' | '随身' | '特殊';
+  season: '冬季' | '夏季' | '混合' | '通用';
+  length: number;
+  width: number;
+  height: number;
+  weightHistory: { date: string; weight: number; flightId?: string }[];
+  createdAt: number;
+}
+
+export interface Item {
+  id: string;
+  luggageId: string;
+  name: string;
+  category: '衣物' | '器材' | '保养品' | '其他';
+  subCategory?: '上衣' | '下装' | '连身裙' | '鞋子' | '配饰' | '外套' | '内搭' | '袜子' | '内衣' | '内裤';
+  season: '冬季' | '夏季' | '通用';
+  expirationDate?: string;
+  condition: '新' | '旧' | '快用完';
+  isDiscardable: boolean;
+  notes?: string;
+  createdAt: number;
+  image?: string;
+}
+
+export interface OutfitMatch {
+  id: string;
+  topItemId: string;
+  bottomItemId: string;
+  createdAt: number;
+}
+
+export interface UserConfig {
+  id: string;
+  geminiApiKey: string;
+  useLocalAi: boolean;
+  adPreferences: string;
+  gmailToken?: string;
+}
+
+export interface Flight {
+  id: string;
+  departureDate: string;
+  destination: string;
+  airline: string;
+  checkedAllowance: number;
+  carryOnAllowance: number;
+  personalAllowance: number;
+  rawEmailId?: string;
+}
+
+export class NomadicDB extends Dexie {
+  luggages!: Table<Luggage, string>;
+  items!: Table<Item, string>;
+  outfit_matches!: Table<OutfitMatch, string>;
+  user_configs!: Table<UserConfig, string>;
+  flights!: Table<Flight, string>;
+
+  constructor() {
+    super('NomadicLuggageDB');
+    this.version(1).stores({
+      luggages: 'id, type, season',
+      items: 'id, luggageId, category, subCategory, season, expirationDate',
+      outfit_matches: 'id, topItemId, bottomItemId',
+      user_configs: 'id',
+      flights: 'id, departureDate',
+    });
+  }
+}
+
+export const db = new NomadicDB();
