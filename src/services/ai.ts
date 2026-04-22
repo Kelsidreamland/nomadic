@@ -118,9 +118,13 @@ export const analyzeTicketWithAI = async (base64Image: string) => {
   } catch (err) {
     console.error('AI Ticket parsing failed:', err);
     throw err;
+  }
+};
+
 export const analyzeItemWithAI = async (name: string, base64Image?: string) => {
   const prompt = `作为一个行李收纳助手，请根据用户提供的物品名称${base64Image ? '或图片' : ''} "${name}"，自动推断出其分类和建议。
 请严格返回以下格式的JSON：
+{
   "name": "修正后的物品名称，比如根据图片补充颜色款式",
   "category": "衣物 | 器材 | 保养品 | 其他",
   "subCategory": "上衣 | 下装 | 连身裙 | 鞋子 | 配饰 | 外套 | 内搭 | 袜子 | 内衣 | 内裤",
