@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { db } from '../db';
+import { AIRLINE_RULES } from '../data/airlines';
 
 export const checkLocalAIAvailability = () => {
   return 'ai' in window && typeof (window as any).ai !== 'undefined';
@@ -79,15 +80,21 @@ ${JSON.stringify(items, null, 2)}
 };
 
 export const analyzeTicketWithAI = async (base64Image: string) => {
+  // Pass the airline rules to AI as a reference context
+  const airlinesContext = AIRLINE_RULES.map(r => `- ${r.name}: 默认托运 ${r.defaultCheckedAllowance}kg, 手提 ${r.defaultCarryOnAllowance}kg`).join('\n');
+
   const prompt = `作为一个智能航班助手，请解析用户提供的电子机票或行程单截图。
+请比对截图中的行李额度和以下我们原生资料库的各航司基础行李规范：
+${airlinesContext}
+
 提取以下信息，并严格返回JSON格式：
 {
   "destination": "目的地城市名称，例如：东京, 伦敦",
   "airline": "航空公司名称",
   "departureDate": "出发日期，必须是 YYYY-MM-DD 格式",
-  "checkedAllowance": "托运行李重量限额(kg)，如果没有提到请填0",
-  "carryOnAllowance": "手提行李重量限额(kg)，通常是7kg或10kg",
-  "personalAllowance": "随身物品重量限额(kg)，如果没有提到请填0"
+  "checkedAllowance": "托运行李重量限额(kg)。优先使用截图里用户购买的套餐额度，如果没有提到请参考上面的基础规范，否则填0",
+  "carryOnAllowance": "手提行李重量限额(kg)。优先使用截图，没提到就参考基础规范，否则通常是7",
+  "personalAllowance": "随身物品重量限额(kg)。优先使用截图，没提到就参考基础规范，否则填0"
 }
 只返回纯JSON字符串，不要任何Markdown格式。`;
 

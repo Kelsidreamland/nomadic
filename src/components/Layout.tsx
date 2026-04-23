@@ -63,13 +63,13 @@ export const Layout = ({ children }: LayoutProps) => {
           </nav>
           
           <a 
-            href="https://www.buymeacoffee.com" 
+            href="https://api.payuni.com.tw/api/uop/receive_info/2/3/NPPA226028039/mgYrU0DqoPbb6vatwL86Z" 
             target="_blank" 
             rel="noreferrer"
             className="hidden md:flex items-center space-x-2 bg-[#FFDD00] text-yellow-900 px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
           >
             <Coffee size={16} />
-            <span>Buy me a coffee</span>
+            <span>Sponsor / VIP</span>
           </a>
         </div>
       </header>
