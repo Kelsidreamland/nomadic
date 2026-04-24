@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Briefcase, Shirt, Settings as SettingsIcon, Sparkles, Globe, Coffee } from 'lucide-react';
+import { Briefcase, Shirt, Sparkles, Globe, Coffee, PlaneTakeoff } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
@@ -23,11 +23,10 @@ export const Layout = ({ children }: LayoutProps) => {
   };
 
   const navItems = [
-    { name: t('app.dashboard'), path: '/', icon: Home },
     { name: t('app.luggages'), path: '/luggages', icon: Briefcase },
     { name: t('app.items'), path: '/items', icon: Shirt },
     { name: t('app.outfits'), path: '/outfits', icon: Sparkles },
-    { name: t('app.settings'), path: '/settings', icon: SettingsIcon },
+    { name: t('app.dashboard'), path: '/', icon: PlaneTakeoff },
   ];
 
   return (

@@ -1,9 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, type Item, type OutfitMatch } from '../db';
+import { db, type Item } from '../db';
 import { v4 as uuidv4 } from 'uuid';
-import Xarrow from 'react-xarrows';
-import { Sparkles, Trash2, Bot, Info, Image as ImageIcon } from 'lucide-react';
+import { Sparkles, Bot, Info } from 'lucide-react';
 import { clsx } from 'clsx';
 import { generateOutfitAdvice, generatePackingDecision } from '../services/ai';
 import { useTranslation } from 'react-i18next';
@@ -13,14 +12,16 @@ export const Outfits = () => {
   const items = useLiveQuery(() => db.items.toArray()) || [];
   const matches = useLiveQuery(() => db.outfit_matches.toArray()) || [];
   
-  const tops = items.filter(i => i.category === '衣物' && (i.subCategory === '上衣' || i.subCategory === '内搭'));
-  const bottoms = items.filter(i => i.category === '衣物' && (i.subCategory === '下装' || i.subCategory === '连身裙'));
-  const outerwears = items.filter(i => i.category === '衣物' && i.subCategory === '外套');
+  const tops = items.filter(i => i.category === '衣物' && ['上衣', '内搭', '外套', '连身裙'].includes(i.subCategory || ''));
+  const bottoms = items.filter(i => i.category === '衣物' && ['下装', '鞋子', '配饰'].includes(i.subCategory || ''));
 
   const [selectedTopId, setSelectedTopId] = useState<string | null>(null);
   const [aiAdvice, setAiAdvice] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+
+  const getMatchCount = (itemId: string, isTop: boolean) => {
+    return matches.filter(m => isTop ? m.topItemId === itemId : m.bottomItemId === itemId).length;
+  };
 
   const handleTopClick = (id: string) => {
     if (selectedTopId === id) setSelectedTopId(null);
@@ -30,7 +31,6 @@ export const Outfits = () => {
   const handleBottomClick = async (bottomId: string) => {
     if (!selectedTopId) return;
 
-    // Check if match already exists
     const exists = matches.find(m => m.topItemId === selectedTopId && m.bottomItemId === bottomId);
     
     if (exists) {
@@ -43,18 +43,17 @@ export const Outfits = () => {
         createdAt: Date.now()
       });
 
-      // Get AI Advice
+      // Get AI Advice asynchronously without blocking UI
       const top = tops.find(t => t.id === selectedTopId);
       const bottom = bottoms.find(b => b.id === bottomId);
       if (top && bottom) {
         setIsThinking(true);
-        const advice = await generateOutfitAdvice(top.name, bottom.name, '目的地');
-        setAiAdvice(advice);
-        setIsThinking(false);
+        generateOutfitAdvice(top.name, bottom.name, '目的地').then(advice => {
+          setAiAdvice(advice);
+          setIsThinking(false);
+        });
       }
     }
-    
-    setSelectedTopId(null); // deselect
   };
 
   const getMatchDecision = async () => {
@@ -64,50 +63,69 @@ export const Outfits = () => {
     setIsThinking(false);
   };
 
+  const renderVersatilityBadge = (count: number) => {
+    if (count === 0) return <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[10px] font-bold">0 搭配 (建議捨棄)</span>;
+    if (count >= 3) return <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold">{count} 搭配 (高百搭)</span>;
+    return <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold">{count} 搭配</span>;
+  };
+
   const renderItemCard = (item: Item, isTop: boolean = false) => {
     const isSelected = selectedTopId === item.id;
+    const matchCount = getMatchCount(item.id, isTop);
+    
+    let cardStyle = "border-gray-100 bg-white hover:border-gray-300 hover:shadow-sm";
+    
+    if (isTop) {
+      if (isSelected) {
+        cardStyle = "border-[#2C3E50] bg-blue-50/50 shadow-md ring-2 ring-[#2C3E50] ring-offset-2";
+      } else if (selectedTopId) {
+        cardStyle = "border-gray-100 bg-white opacity-50 grayscale-[50%]"; // Dim other tops when one is selected
+      }
+    } else {
+      if (selectedTopId) {
+        const isMatched = matches.some(m => m.topItemId === selectedTopId && m.bottomItemId === item.id);
+        if (isMatched) {
+          cardStyle = "border-blue-400 bg-blue-50 shadow-md ring-2 ring-blue-400 ring-offset-1";
+        } else {
+          cardStyle = "border-gray-100 bg-gray-50 opacity-60 hover:opacity-100 hover:border-blue-300 border-dashed border-2";
+        }
+      }
+    }
+
     return (
       <div 
         key={item.id}
-        id={`item-${item.id}`}
         onClick={() => isTop ? handleTopClick(item.id) : handleBottomClick(item.id)}
         className={clsx(
-          "p-4 rounded-2xl border-2 transition-all cursor-pointer text-center relative overflow-hidden",
-          isSelected 
-            ? "border-[#2C3E50] bg-blue-50/50 shadow-md scale-105 z-20" 
-            : selectedTopId && !isTop
-              ? "border-blue-200 hover:border-[#2C3E50] hover:bg-blue-50/50 hover:shadow-md animate-pulse"
-              : "border-gray-100 bg-white hover:border-gray-300 hover:shadow-sm"
+          "p-4 rounded-2xl border-2 transition-all cursor-pointer text-center relative flex flex-col items-center",
+          cardStyle
         )}
       >
+        <div className="absolute top-2 right-2 z-10">
+          {renderVersatilityBadge(matchCount)}
+        </div>
+
         {item.image && (
-          <div className="w-full aspect-square mb-3 flex items-center justify-center">
+          <div className="w-20 h-20 mb-3 flex items-center justify-center">
             <img 
               src={item.image} 
               alt={item.name} 
-              className="max-w-full max-h-full object-contain drop-shadow-md"
-              style={{ filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.2))' }}
+              className="max-w-full max-h-full object-contain drop-shadow-sm rounded-lg"
             />
           </div>
         )}
-        <div className="font-bold text-[#2C3E50] truncate">{item.name}</div>
-        <div className="text-xs text-gray-400 mt-1">{item.season}</div>
-        {isSelected && isTop && (
-          <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-[#2C3E50] rounded-full border-4 border-white" />
-        )}
-        {selectedTopId && !isTop && (
-          <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-blue-300 rounded-full border-4 border-white" />
-        )}
+        <div className="font-bold text-[#2C3E50] text-sm truncate w-full mt-auto">{item.name}</div>
+        <div className="text-[10px] text-gray-400 mt-1">{item.subCategory} • {item.wrinkleProne || '適中'}</div>
       </div>
     );
   };
 
   return (
-    <div className="space-y-6 animate-fade-in" ref={containerRef}>
+    <div className="space-y-6 animate-fade-in pb-20">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-black text-[#2C3E50] tracking-wider">{t('outfits.title')}</h2>
-          <p className="text-sm text-gray-500 font-medium mt-1">{t('outfits.subtitle')}</p>
+          <p className="text-sm text-gray-500 font-medium mt-1">點擊上衣，再點擊下裝即可建立搭配</p>
         </div>
         <div className="bg-white px-4 py-2 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-2">
           <Sparkles size={18} className="text-yellow-500" />
@@ -138,73 +156,49 @@ export const Outfits = () => {
         </div>
       )}
 
-      {tops.length === 0 || bottoms.length === 0 ? (
+      {tops.length === 0 && bottoms.length === 0 ? (
         <div className="text-center py-20 text-gray-400 bg-white rounded-3xl border border-dashed border-gray-200">
           <Info size={48} className="mx-auto mb-4 opacity-50" />
           <p>{t('outfits.empty')}</p>
         </div>
       ) : (
-        <div className="relative bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-10 min-h-[500px] overflow-x-auto">
-          <div className="flex justify-between relative z-10 min-w-[600px] space-x-4">
-            {/* Tops Column */}
-            <div className="flex-1 space-y-6">
-              <h3 className="text-center font-bold text-gray-400 text-sm tracking-widest mb-6">{t('outfits.tops')}</h3>
+        <div className="space-y-8">
+          {/* Tops Section */}
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-gray-800 tracking-widest">上半身 (Tops & Outerwear)</h3>
+              {selectedTopId && (
+                <button 
+                  onClick={() => setSelectedTopId(null)}
+                  className="text-xs font-bold text-blue-500 bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100"
+                >
+                  取消選取
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {tops.map(top => renderItemCard(top, true))}
             </div>
-
-            {/* Bottoms Column */}
-            <div className="flex-1 space-y-6">
-              <h3 className="text-center font-bold text-gray-400 text-sm tracking-widest mb-6">{t('outfits.bottoms')}</h3>
-              {bottoms.map(bottom => renderItemCard(bottom, false))}
-            </div>
-
-            {/* Outerwear Column (Only render if there are outerwears) */}
-            {outerwears.length > 0 && (
-              <div className="flex-1 space-y-6">
-                <h3 className="text-center font-bold text-gray-400 text-sm tracking-widest mb-6">{t('outfits.outerwear')}</h3>
-                {outerwears.map(outer => (
-                  <div 
-                    key={outer.id}
-                    className="p-4 rounded-2xl border-2 border-gray-100 bg-white text-center relative opacity-80"
-                  >
-                    {outer.image && (
-                      <div className="w-full aspect-square mb-3 flex items-center justify-center">
-                        <img 
-                          src={outer.image} 
-                          alt={outer.name} 
-                          className="max-w-full max-h-full object-contain drop-shadow-md"
-                          style={{ filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.2))' }}
-                        />
-                      </div>
-                    )}
-                    <div className="font-bold text-gray-600 truncate">{outer.name}</div>
-                    <div className="text-xs text-gray-400 mt-1">{t('outfits.universal')}</div>
-                  </div>
-                ))}
-              </div>
-            )}
+            {tops.length === 0 && <p className="text-sm text-gray-400 py-4">尚無上衣資料</p>}
           </div>
 
-          {/* Render Xarrows */}
-          {matches.map(match => {
-            const hasTop = document.getElementById(`item-${match.topItemId}`);
-            const hasBottom = document.getElementById(`item-${match.bottomItemId}`);
-            if (!hasTop || !hasBottom) return null;
+          {/* Bottoms Section */}
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 relative">
+            {!selectedTopId && (
+              <div className="absolute inset-0 z-20 bg-white/60 backdrop-blur-[1px] rounded-3xl flex items-center justify-center">
+                <div className="bg-gray-800 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg flex items-center space-x-2">
+                  <span className="animate-pulse">👆</span>
+                  <span>請先從上方選擇一件上衣</span>
+                </div>
+              </div>
+            )}
             
-            return (
-              <Xarrow
-                key={match.id}
-                start={`item-${match.topItemId}`}
-                end={`item-${match.bottomItemId}`}
-                color="#2C3E50"
-                strokeWidth={2}
-                path="smooth"
-                curveness={0.5}
-                showHead={false}
-                dashness={{ strokeLen: 10, nonStrokeLen: 5, animation: -1 }}
-              />
-            );
-          })}
+            <h3 className="font-bold text-gray-800 tracking-widest mb-4">下半身與配件 (Bottoms & Accessories)</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {bottoms.map(bottom => renderItemCard(bottom, false))}
+            </div>
+            {bottoms.length === 0 && <p className="text-sm text-gray-400 py-4">尚無下裝資料</p>}
+          </div>
         </div>
       )}
 

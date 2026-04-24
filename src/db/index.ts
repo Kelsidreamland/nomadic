@@ -25,6 +25,12 @@ export interface Item {
   notes?: string;
   createdAt: number;
   image?: string;
+  
+  // Pack AI Refactor - New Metadata
+  color?: string;
+  occasion?: '商務' | '休閒' | '運動' | '正式' | '其他';
+  wrinkleProne?: '易皺' | '適中' | '抗皺';
+  tempRange?: string;
 }
 
 export interface OutfitMatch {
@@ -68,6 +74,9 @@ export class NomadicDB extends Dexie {
       outfit_matches: 'id, topItemId, bottomItemId',
       user_configs: 'id',
       flights: 'id, departureDate',
+    });
+    this.version(2).stores({
+      items: 'id, luggageId, category, subCategory, season, expirationDate, occasion, wrinkleProne',
     });
   }
 }

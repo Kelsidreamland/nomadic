@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { db } from '../db';
 import { AIRLINE_RULES } from '../data/airlines';
 
@@ -6,160 +5,202 @@ export const checkLocalAIAvailability = () => {
   return 'ai' in window && typeof (window as any).ai !== 'undefined';
 };
 
-const getGeminiClient = async () => {
-  const configs = await db.user_configs.toArray();
-  const config = configs[0];
-  if (!config || !config.geminiApiKey) {
-    throw new Error('未配置 Gemini API Key');
-  }
-  return new GoogleGenerativeAI(config.geminiApiKey);
-};
-
 export const generateSmartInsights = async (contextData: any) => {
-  const configs = await db.user_configs.toArray();
-  const config = configs[0];
-  
-  const prompt = `你是一个专门为数字游牧民设计的贴身行李管家AI。
-请基于以下用户的行李数据、航班和定位信息，生成一份简短的洞察。
-包含三个部分：1. 超重警告或旧物丢弃建议 2. 保养品补给建议 3. 推荐的Dropshipping商品或分润链接。
-请返回JSON格式：{ "warnings": [], "restock": [], "ads": [{ "name": "商品名", "reason": "推荐理由", "link": "模拟的购买链接" }] }
-
-上下文数据：
-${JSON.stringify(contextData, null, 2)}`;
-
   try {
-    const genAI = await getGeminiClient();
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    
-    // 尝试解析 JSON
-    const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[1] || jsonMatch[0]);
-    }
-    return JSON.parse(responseText);
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        action: 'agent_pipeline',
+        payload: {
+          flightInfo: {
+            destination: contextData.upcomingFlight?.destination || '未知',
+            checked_kg: contextData.upcomingFlight?.checkedAllowance || 0,
+            carry_on_kg: contextData.upcomingFlight?.carryOnAllowance || 7,
+            days: 5 // Default for now
+          },
+          weatherInfo: {
+            location: contextData.location || '全球',
+            forecast: '目前缺乏詳細天氣 API，請根據地點猜測概略天氣'
+          },
+          wardrobeItems: contextData.items || [],
+          userNotes: "請幫我做減法，盡量精簡行李"
+        }
+      })
+    });
+
+    if (!response.ok) throw new Error('Network response was not ok');
+    const data = await response.json();
+    return data.result; // This now contains context, outfits, usage, and optimization
   } catch (e) {
-    console.error('Failed to parse Gemini response', e);
-    return { warnings: ['无法连接AI，请检查API Key设置。'], restock: [], ads: [] };
+    console.error('Failed to execute Agent Pipeline', e);
+    return null;
   }
 };
 
 export const generateOutfitAdvice = async (topName: string, bottomName: string, destination: string) => {
-  const prompt = `用户正在为前往 ${destination} 打包行李。用户将上衣 "${topName}" 和下装 "${bottomName}" 搭配在了一起。
-请给出一句简短的（20字以内）且有时尚感的点评，说明这套搭配是否适合当地气候，或者还缺点什么配饰。`;
+  const prompt = `使用者正在為前往 ${destination} 打包行李。使用者將上衣 "${topName}" 和下裝 "${bottomName}" 搭配在了一起。
+請給出一句簡短的（20字以內）且有時尚感的點評，說明這套搭配是否適合當地氣候，或者還缺點什麼配飾。`;
   
   try {
-    const genAI = await getGeminiClient();
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const result = await model.generateContent(prompt);
-    return result.response.text();
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    if (!response.ok) throw new Error('Network error');
+    const data = await response.json();
+    return data.result;
   } catch (err) {
-    return '搭配很棒，记得带上墨镜！';
+    return '搭配很棒，記得帶上墨鏡！';
   }
 };
 
 export const generatePackingDecision = async (items: any[], destination: string, days: number) => {
-  const prompt = `用户有选择困难症。Ta即将前往 ${destination} 待 ${days} 天。
-以下是Ta的衣柜（包含多件上衣、下装等）。
-请挑选出最少的衣物（胶囊衣橱概念），使得它们能组合出至少 ${days} 套搭配。
-告诉用户具体应该带哪些衣服，抛弃哪些衣服。
-衣柜清单：
+  const prompt = `使用者有選擇困難症。Ta即將前往 ${destination} 待 ${days} 天。
+以下是Ta的衣櫃（包含多件上衣、下裝等）。
+請挑選出最少的衣物（膠囊衣櫥概念），使得它們能組合出至少 ${days} 套搭配。
+告訴使用者具體應該帶哪些衣服，拋棄哪些衣服。
+衣櫃清單：
 ${JSON.stringify(items, null, 2)}
 
-请直接用一小段温暖、时尚的语言告诉用户最终决定。`;
+請直接用一小段溫暖、時尚的語言告訴使用者最終決定。`;
 
   try {
-    const genAI = await getGeminiClient();
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const result = await model.generateContent(prompt);
-    return result.response.text();
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    if (!response.ok) throw new Error('Network error');
+    const data = await response.json();
+    return data.result;
   } catch (err) {
-    return '你的衣服都很好看，建议带上最百搭的3件上衣和2件下装，足够穿一周啦！';
+    return '你的衣服都很好看，建議帶上最百搭的3件上衣和2件下裝，足夠穿一周啦！';
   }
 };
 
 export const analyzeTicketWithAI = async (base64Image: string) => {
-  // Pass the airline rules to AI as a reference context
-  const airlinesContext = AIRLINE_RULES.map(r => `- ${r.name}: 默认托运 ${r.defaultCheckedAllowance}kg, 手提 ${r.defaultCarryOnAllowance}kg`).join('\n');
+  const airlinesContext = AIRLINE_RULES.map(r => `- ${r.name}: 預設託運 ${r.defaultCheckedAllowance}kg, 手提 ${r.defaultCarryOnAllowance}kg`).join('\n');
 
-  const prompt = `作为一个智能航班助手，请解析用户提供的电子机票或行程单截图。
-请比对截图中的行李额度和以下我们原生资料库的各航司基础行李规范：
+  const prompt = `作為一個智能航班助手，請解析使用者提供的電子機票或行程單截圖。
+請比對截圖中的行李額度和以下我們原生資料庫的各航司基礎行李規範：
 ${airlinesContext}
 
-提取以下信息，并严格返回JSON格式：
+提取以下資訊，並嚴格返回JSON格式：
 {
-  "destination": "目的地城市名称，例如：东京, 伦敦",
-  "airline": "航空公司名称",
-  "departureDate": "出发日期，必须是 YYYY-MM-DD 格式",
-  "checkedAllowance": "托运行李重量限额(kg)。优先使用截图里用户购买的套餐额度，如果没有提到请参考上面的基础规范，否则填0",
-  "carryOnAllowance": "手提行李重量限额(kg)。优先使用截图，没提到就参考基础规范，否则通常是7",
-  "personalAllowance": "随身物品重量限额(kg)。优先使用截图，没提到就参考基础规范，否则填0"
+  "destination": "目的地城市名稱，例如：東京, 倫敦",
+  "airline": "航空公司名稱",
+  "departureDate": "出發日期，必須是 YYYY-MM-DD 格式",
+  "checkedAllowance": "託運行李重量限額(kg)。優先使用截圖裡使用者購買的套餐額度，如果沒有提到請參考上面的基礎規範，否則填0",
+  "carryOnAllowance": "手提行李重量限額(kg)。優先使用截圖，沒提到就參考基礎規範，否則通常是7",
+  "personalAllowance": "隨身物品重量限額(kg)。優先使用截圖，沒提到就參考基礎規範，否則填0"
 }
-只返回纯JSON字符串，不要任何Markdown格式。`;
+只返回純JSON字串，不要任何Markdown格式。`;
 
   try {
-    const genAI = await getGeminiClient();
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    
-    const base64Data = base64Image.split(',')[1];
-    const mimeType = base64Image.split(';')[0].split(':')[1];
-    
-    const parts: any[] = [
-      { text: prompt },
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: mimeType
-        }
-      }
-    ];
-    
-    const result = await model.generateContent(parts);
-    const responseText = result.response.text();
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+    // 改為呼叫我們的 Netlify Function (後端代理)
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64Image, prompt })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to analyze ticket');
     }
-    return JSON.parse(responseText);
-  } catch (err) {
-    console.error('AI Ticket parsing failed:', err);
-    throw err;
+
+    const data = await response.json();
+    const text = data.result.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('AI Analysis failed:', error);
+    throw error;
+  }
+};
+
+// 新增處理 Gmail / Calendar 純文字分析的 AI 功能
+export const analyzeTextWithAI = async (text: string) => {
+  const airlinesContext = AIRLINE_RULES.map(r => `- ${r.name}: 預設託運 ${r.defaultCheckedAllowance}kg, 手提 ${r.defaultCarryOnAllowance}kg`).join('\n');
+
+  const prompt = `作為一個智能航班助手，請解析使用者提供的 Gmail 或 Calendar 行程資料（可能是多封信件或日曆事件的合併文本）。
+找出其中【最接近未來的單趟行程或來回機票】，並比對以下我們原生資料庫的各航司基礎行李規範：
+${airlinesContext}
+
+提取以下資訊，並嚴格返回JSON格式：
+{
+  "destination": "目的地城市名稱，例如：東京, 倫敦",
+  "airline": "航空公司名稱",
+  "departureDate": "出發日期，必須是 YYYY-MM-DD 格式",
+  "checkedAllowance": "託運行李重量限額(kg)。優先使用文本裡使用者購買的套餐額度，如果沒有提到請參考上面的基礎規範，否則填0",
+  "carryOnAllowance": "手提行李重量限額(kg)。優先使用文本，沒提到就參考基礎規範，否則通常是7",
+  "personalAllowance": "隨身物品重量限額(kg)。優先使用文本，沒提到就參考基礎規範，否則填0"
+}
+只返回純JSON字串，不要任何Markdown格式。如果文本中找不到機票資訊，請在 JSON 中拋出 error 屬性如 {"error": "找不到航班資訊"}。`;
+
+  try {
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, prompt })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to analyze text');
+    }
+
+    const data = await response.json();
+    const resultText = data.result.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(resultText);
+    
+    if (parsed.error) {
+      throw new Error(parsed.error);
+    }
+    
+    return parsed;
+  } catch (error) {
+    console.error('AI Text Analysis failed:', error);
+    throw error;
   }
 };
 
 export const analyzeItemWithAI = async (name: string, base64Image?: string) => {
-  const prompt = `作为一个行李收纳助手，请根据用户提供的物品名称${base64Image ? '或图片' : ''} "${name}"，自动推断出其分类和建议。
-请严格返回以下格式的JSON：
+  const prompt = `作為一個行李收納助手，請根據使用者提供的物品名稱${base64Image ? '或圖片' : ''} "${name}"，自動推斷出其分類和建議。
+請嚴格返回以下格式的JSON：
 {
-  "name": "修正后的物品名称，比如根据图片补充颜色款式",
-  "category": "衣物 | 器材 | 保养品 | 其他",
-  "subCategory": "上衣 | 下装 | 连身裙 | 鞋子 | 配饰 | 外套 | 内搭 | 袜子 | 内衣 | 内裤",
+  "name": "修正後的物品名稱，比如根據圖片補充顏色款式",
+  "category": "衣物 | 器材 | 保養品 | 其他",
+  "subCategory": "上衣 | 下裝 | 連身裙 | 鞋子 | 配飾 | 外套 | 內搭 | 襪子 | 內衣 | 內褲",
   "season": "冬季 | 夏季 | 通用",
-  "notes": "这件物品平常会在哪里出现、喜欢怎么穿搭，或者应该放进哪个行李箱的建议"
+  "color": "主要顏色 (如: 黑色, 藏青色)",
+  "occasion": "商務 | 休閒 | 運動 | 正式 | 其他",
+  "wrinkleProne": "易皺 | 適中 | 抗皺",
+  "tempRange": "適合的溫度區間 (如: 15-25°C)",
+  "notes": "這件物品平常會在哪裡出現、喜歡怎麼穿搭的建議"
 }
-如果没有图片，请根据名称猜测；如果图片能看出颜色和款式，请在name里加上描述，并详细填写notes。
-只返回纯JSON字符串，不要任何Markdown格式。`;
+如果沒有圖片，請根據名稱猜測；如果圖片能看出顏色和款式，請在name裡加上描述，並詳細填寫notes。
+只返回純JSON字串，不要任何Markdown格式。`;
 
   try {
-    const genAI = await getGeminiClient();
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    
-    const parts: any[] = [{ text: prompt }];
-    if (base64Image) {
-      // base64Image format: data:image/jpeg;base64,...
-      const base64Data = base64Image.split(',')[1];
-      const mimeType = base64Image.split(';')[0].split(':')[1];
-      parts.push({
-        inlineData: {
-          data: base64Data,
-          mimeType: mimeType
-        }
-      });
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        prompt,
+        imageBase64: base64Image 
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to analyze item');
     }
+
+    const data = await response.json();
+    const responseText = data.result;
     
-    const result = await model.generateContent(parts);
-    const responseText = result.response.text();
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);

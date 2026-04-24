@@ -5,7 +5,7 @@ const resources = {
   'zh-TW': {
     translation: {
       app: {
-        dashboard: '控制面板',
+        dashboard: '準備出發',
         luggages: '行李空間',
         items: '物品庫',
         outfits: '智能穿搭',
@@ -15,11 +15,12 @@ const resources = {
       dashboard: {
         greeting: '您好，旅居者！當前位置：',
         noFlights: '暫無即將到來的航班',
-        noFlightsSub: '前往“設置”同步您的 Gmail 獲取機票信息',
+        noFlightsSub: '您可以使用上方按鈕同步 Gmail，或直接開始建立行李箱',
         nextFlight: '下一次啟程',
         allowance: '限額',
         days: 'Days',
         weights: '行李重量與航司限額',
+        limit: '限額',
         checked: '托運行李',
         carryOn: '手提行李',
         personal: '隨身物品',
@@ -28,7 +29,7 @@ const resources = {
         warnings: '減重與丟棄建議',
         restock: '行前補給建議',
         ads: '好物分潤推薦 (專屬你的旅居神器)',
-        noAiConfig: '配置 Gemini API Key 並添加一些行李後，管家會在這裡給您建議。'
+        noAiConfig: '添加一些行李後，管家會在這裡給您建議。'
       },
       luggages: {
         title: '行李空間',
@@ -88,6 +89,7 @@ const resources = {
         empty: '物品庫空空如也，快添加你的行囊吧！',
         expiringWarning: '⚠️ 建議：即將過期，請盡快用完或丟棄',
         uploadImage: '上傳圖片',
+        takePhoto: '現場拍照',
         uploadImageAi: '上傳圖片並使用 AI 智能辨識',
         analyzing: 'AI 正在辨識...'
       },
@@ -139,7 +141,7 @@ const resources = {
   en: {
     translation: {
       app: {
-        dashboard: 'Dashboard',
+        dashboard: 'Next Trip',
         luggages: 'Luggages',
         items: 'Inventory',
         outfits: 'Outfits',
@@ -149,7 +151,7 @@ const resources = {
       dashboard: {
         greeting: 'Hello, Nomad! Current location:',
         noFlights: 'No upcoming flights',
-        noFlightsSub: 'Go to Settings to sync Gmail for flight info',
+        noFlightsSub: 'Sync your Gmail above or start creating luggages right away',
         nextFlight: 'Next Departure',
         allowance: 'Allowance',
         days: 'Days',
@@ -162,7 +164,7 @@ const resources = {
         warnings: 'Weight Reduction & Discard Advice',
         restock: 'Pre-flight Restock Advice',
         ads: 'Recommended Nomad Gear',
-        noAiConfig: 'Configure Gemini API Key and add some luggages to get smart advice here.'
+        noAiConfig: 'Add some luggages to get smart advice here.'
       },
       luggages: {
         title: 'Luggages',
@@ -222,6 +224,7 @@ const resources = {
         empty: 'Inventory is empty. Add some items!',
         expiringWarning: '⚠️ Advice: Expiring soon, use it up or discard',
         uploadImage: 'Upload Image',
+        takePhoto: 'Take Photo',
         uploadImageAi: 'Upload & AI Identify',
         analyzing: 'AI is identifying...'
       },

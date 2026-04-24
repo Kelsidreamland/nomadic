@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, type Item, type Luggage } from '../db';
+import { db, type Item } from '../db';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Trash2, PackageSearch, Camera, Sparkles, Image as ImageIcon, Edit2, X } from 'lucide-react';
+import { Plus, Trash2, PackageSearch, Camera, Sparkles, Image as ImageIcon, Edit2, X, ChevronDown } from 'lucide-react';
 import { analyzeItemWithAI } from '../services/ai';
 import { useTranslation } from 'react-i18next';
 
@@ -11,10 +11,14 @@ export const Items = () => {
   const items = useLiveQuery(() => db.items.toArray()) || [];
   const luggages = useLiveQuery(() => db.luggages.toArray()) || [];
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [now] = useState(() => Date.now());
+  const expiringCutoff = now + 30 * 24 * 60 * 60 * 1000;
   
   const defaultNewItem: Partial<Item> = {
     name: '', category: '衣物', subCategory: '上衣', season: '通用', condition: '新', isDiscardable: false, luggageId: '', notes: '', image: ''
@@ -85,10 +89,16 @@ export const Items = () => {
         category: result.category || prev.category,
         subCategory: result.subCategory || prev.subCategory,
         season: result.season || prev.season,
+        color: result.color || prev.color,
+        occasion: result.occasion || prev.occasion,
+        wrinkleProne: result.wrinkleProne || prev.wrinkleProne,
+        tempRange: result.tempRange || prev.tempRange,
         notes: result.notes || prev.notes
       }));
+      // Auto-expand advanced options if AI filled them
+      setShowAdvanced(true);
     } catch (error) {
-      alert('AI 分析失敗，請檢查 API Key 是否設置正確。');
+      alert('AI 分析失敗，請檢查 API Key 是否設定正確。');
     }
     setIsAiThinking(false);
   };
@@ -121,23 +131,36 @@ export const Items = () => {
             {isEditing ? t('items.edit') : t('items.add')}
           </h3>
           
-          <div className="flex items-center space-x-4">
-            <div 
-              className="w-20 h-20 bg-gray-50 rounded-2xl flex-shrink-0 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors overflow-hidden"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {newItem.image ? (
-                <img src={newItem.image} alt="Preview" className="w-full h-full object-cover" />
-              ) : (
-                <>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <div className="flex space-x-2">
+              <div 
+                className="w-20 h-20 bg-gray-50 rounded-2xl flex-shrink-0 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors overflow-hidden"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {newItem.image ? (
+                  <img src={newItem.image} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <>
+                    <ImageIcon size={20} className="text-gray-400 mb-1" />
+                    <span className="text-[10px] text-gray-400 font-bold">{t('items.uploadImage')}</span>
+                  </>
+                )}
+                <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+              </div>
+
+              {!newItem.image && (
+                <div 
+                  className="w-20 h-20 bg-gray-50 rounded-2xl flex-shrink-0 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors overflow-hidden"
+                  onClick={() => cameraInputRef.current?.click()}
+                >
                   <Camera size={20} className="text-gray-400 mb-1" />
-                  <span className="text-[10px] text-gray-400 font-bold">{t('items.uploadImage')}</span>
-                </>
+                  <span className="text-[10px] text-gray-400 font-bold">{t('items.takePhoto', '現場拍照')}</span>
+                  <input type="file" accept="image/*" capture="environment" className="hidden" ref={cameraInputRef} onChange={handleImageUpload} />
+                </div>
               )}
-              <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
             </div>
 
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 w-full space-y-2">
               <div className="flex space-x-2">
                 <input 
                   type="text" 
@@ -165,10 +188,10 @@ export const Items = () => {
               onChange={e => setNewItem({...newItem, category: e.target.value as any})}
               className="px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
             >
-              <option value="衣物">{t('items.categoryClothes')}</option>
-              <option value="器材">{t('items.categoryGear')}</option>
-              <option value="保养品">{t('items.categorySkincare')}</option>
-              <option value="其他">{t('items.categoryOther')}</option>
+              <option value="衣物">{t('items.categoryClothes', '衣物')}</option>
+              <option value="器材">{t('items.categoryGear', '器材')}</option>
+              <option value="保養品">{t('items.categorySkincare', '保養品')}</option>
+              <option value="其他">{t('items.categoryOther', '其他')}</option>
             </select>
 
             {newItem.category === '衣物' && (
@@ -177,16 +200,16 @@ export const Items = () => {
                 onChange={e => setNewItem({...newItem, subCategory: e.target.value as any})}
                 className="px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
               >
-                <option value="上衣">{t('items.subTop')}</option>
-                <option value="下装">{t('items.subBottom')}</option>
-                <option value="外套">{t('items.subOuterwear')}</option>
-                <option value="内搭">{t('items.subInnerwear')}</option>
-                <option value="连身裙">{t('items.subDress')}</option>
-                <option value="鞋子">{t('items.subShoes')}</option>
-                <option value="配饰">{t('items.subAccessory')}</option>
-                <option value="袜子">{t('items.subSocks')}</option>
-                <option value="内衣">{t('items.subBra')}</option>
-                <option value="内裤">{t('items.subUnderpants')}</option>
+                <option value="上衣">{t('items.subTop', '上衣')}</option>
+                <option value="下裝">{t('items.subBottom', '下裝')}</option>
+                <option value="外套">{t('items.subOuterwear', '外套')}</option>
+                <option value="內搭">{t('items.subInnerwear', '內搭')}</option>
+                <option value="連身裙">{t('items.subDress', '連身裙')}</option>
+                <option value="鞋子">{t('items.subShoes', '鞋子')}</option>
+                <option value="配飾">{t('items.subAccessory', '配飾')}</option>
+                <option value="襪子">{t('items.subSocks', '襪子')}</option>
+                <option value="內衣">{t('items.subBra', '內衣')}</option>
+                <option value="內褲">{t('items.subUnderpants', '內褲')}</option>
               </select>
             )}
           </div>
@@ -203,54 +226,118 @@ export const Items = () => {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <select 
-              value={newItem.condition} 
-              onChange={e => setNewItem({...newItem, condition: e.target.value as any})}
-              className="px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
-            >
-              <option value="新">{t('items.condNew')}</option>
-              <option value="旧">{t('items.condOld')}</option>
-              <option value="快用完">{t('items.condEmptying')}</option>
-            </select>
+          <button 
+            onClick={() => setShowAdvanced(!showAdvanced)} 
+            className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-xl text-gray-500 font-bold text-sm hover:bg-gray-100 transition-colors"
+          >
+            <span>✨ AI 進階屬性與備註 (選填)</span>
+            <ChevronDown size={16} className={`transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+          </button>
 
-            <select 
-              value={newItem.luggageId} 
-              onChange={e => setNewItem({...newItem, luggageId: e.target.value})}
-              className="px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
-            >
-              <option value="">{t('items.unassigned')}</option>
-              {luggages.map(l => (
-                <option key={l.id} value={l.id}>{l.name} ({l.type})</option>
-              ))}
-            </select>
-          </div>
+          {showAdvanced && (
+            <div className="space-y-4 animate-fade-in">
+              {/* Pack AI Refactor: New Metadata Fields */}
+              {newItem.category === '衣物' && (
+                <div className="grid grid-cols-2 gap-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">主要顏色</label>
+                    <input 
+                      type="text" 
+                      placeholder="例如: 黑色, 藏青色" 
+                      value={newItem.color || ''} 
+                      onChange={e => setNewItem({...newItem, color: e.target.value})}
+                      className="w-full px-4 py-3 bg-white rounded-xl outline-none focus:ring-2 focus:ring-blue-400 text-sm border border-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">適合溫度</label>
+                    <input 
+                      type="text" 
+                      placeholder="例如: 15-25°C" 
+                      value={newItem.tempRange || ''} 
+                      onChange={e => setNewItem({...newItem, tempRange: e.target.value})}
+                      className="w-full px-4 py-3 bg-white rounded-xl outline-none focus:ring-2 focus:ring-blue-400 text-sm border border-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">適用場景</label>
+                    <select 
+                      value={newItem.occasion || '其他'} 
+                      onChange={e => setNewItem({...newItem, occasion: e.target.value as any})}
+                      className="w-full px-4 py-3 bg-white rounded-xl outline-none focus:ring-2 focus:ring-blue-400 text-sm border border-gray-100"
+                    >
+                      <option value="商務">商務 (Business)</option>
+                      <option value="休閒">休閒 (Casual)</option>
+                      <option value="運動">運動 (Sport)</option>
+                      <option value="正式">正式 (Formal)</option>
+                      <option value="其他">其他 (Other)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">易皺程度</label>
+                    <select 
+                      value={newItem.wrinkleProne || '適中'} 
+                      onChange={e => setNewItem({...newItem, wrinkleProne: e.target.value as any})}
+                      className="w-full px-4 py-3 bg-white rounded-xl outline-none focus:ring-2 focus:ring-blue-400 text-sm border border-gray-100"
+                    >
+                      <option value="易皺">易皺 (Wrinkle-prone)</option>
+                      <option value="適中">適中 (Normal)</option>
+                      <option value="抗皺">抗皺 (Wrinkle-free)</option>
+                    </select>
+                  </div>
+                </div>
+              )}
 
-          {newItem.category === '保养品' && (
-            <input 
-              type="date" 
-              value={newItem.expirationDate || ''} 
-              onChange={e => setNewItem({...newItem, expirationDate: e.target.value})}
-              className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50] text-gray-500"
-            />
+              <div className="grid grid-cols-2 gap-4">
+                <select 
+                  value={newItem.condition} 
+                  onChange={e => setNewItem({...newItem, condition: e.target.value as any})}
+                  className="px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+                >
+                  <option value="新">{t('items.condNew', '新')}</option>
+                  <option value="舊">{t('items.condOld', '舊')}</option>
+                  <option value="快用完">{t('items.condEmptying', '快用完')}</option>
+                </select>
+
+                <select 
+                  value={newItem.luggageId} 
+                  onChange={e => setNewItem({...newItem, luggageId: e.target.value})}
+                  className="px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+                >
+                  <option value="">{t('items.unassigned')}</option>
+                  {luggages.map(l => (
+                    <option key={l.id} value={l.id}>{l.name} ({l.type})</option>
+                  ))}
+                </select>
+              </div>
+
+              {newItem.category === '保養品' && (
+                <input 
+                  type="date" 
+                  value={newItem.expirationDate || ''} 
+                  onChange={e => setNewItem({...newItem, expirationDate: e.target.value})}
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50] text-gray-500"
+                />
+              )}
+
+              <textarea
+                placeholder={t('items.notesPlaceholder')}
+                value={newItem.notes || ''}
+                onChange={e => setNewItem({...newItem, notes: e.target.value})}
+                className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50] h-20 resize-none text-sm"
+              />
+
+              <label className="flex items-center space-x-2 p-2">
+                <input 
+                  type="checkbox" 
+                  checked={newItem.isDiscardable} 
+                  onChange={e => setNewItem({...newItem, isDiscardable: e.target.checked})}
+                  className="w-5 h-5 text-[#2C3E50] rounded focus:ring-[#2C3E50]"
+                />
+                <span className="text-sm font-medium text-gray-700">{t('items.discardable')}</span>
+              </label>
+            </div>
           )}
-
-          <textarea
-            placeholder={t('items.notesPlaceholder')}
-            value={newItem.notes || ''}
-            onChange={e => setNewItem({...newItem, notes: e.target.value})}
-            className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50] h-20 resize-none text-sm"
-          />
-
-          <label className="flex items-center space-x-2 p-2">
-            <input 
-              type="checkbox" 
-              checked={newItem.isDiscardable} 
-              onChange={e => setNewItem({...newItem, isDiscardable: e.target.checked})}
-              className="w-5 h-5 text-[#2C3E50] rounded focus:ring-[#2C3E50]"
-            />
-            <span className="text-sm font-medium text-gray-700">{t('items.discardable')}</span>
-          </label>
 
           <button 
             onClick={handleSave}
@@ -269,7 +356,7 @@ export const Items = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {items.map(item => {
-            const isExpiring = item.category === '保养品' && item.expirationDate && new Date(item.expirationDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+            const isExpiring = item.category === '保養品' && item.expirationDate && new Date(item.expirationDate) < new Date(expiringCutoff);
             
             return (
               <div key={item.id} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex justify-between items-start group hover:border-gray-200 transition-colors">
