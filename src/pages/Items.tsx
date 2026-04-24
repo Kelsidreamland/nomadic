@@ -97,8 +97,9 @@ export const Items = () => {
       }));
       // Auto-expand advanced options if AI filled them
       setShowAdvanced(true);
-    } catch (error) {
-      alert('AI 分析失敗，請檢查 API Key 是否設定正確。');
+    } catch (error: any) {
+      console.error("Auto-fill failed", error);
+      alert(error.message || '自動填寫失敗');
     }
     setIsAiThinking(false);
   };

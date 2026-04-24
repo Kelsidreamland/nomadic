@@ -21,12 +21,12 @@ export const handler: Handler = async (event, context) => {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     // 處理多層次 Agent 工作流
     if (action === 'agent_pipeline') {
       const jsonModel = genAI.getGenerativeModel({ 
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash',
         generationConfig: { responseMimeType: "application/json" }
       });
 

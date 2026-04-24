@@ -48,19 +48,29 @@ export const Outfits = () => {
       const bottom = bottoms.find(b => b.id === bottomId);
       if (top && bottom) {
         setIsThinking(true);
-        generateOutfitAdvice(top.name, bottom.name, '目的地').then(advice => {
-          setAiAdvice(advice);
-          setIsThinking(false);
-        });
+        generateOutfitAdvice(top.name, bottom.name, '目的地')
+          .then(advice => {
+            setAiAdvice(advice);
+            setIsThinking(false);
+          })
+          .catch(err => {
+            setAiAdvice(err.message || 'AI 生成失敗');
+            setIsThinking(false);
+          });
       }
     }
   };
 
   const getMatchDecision = async () => {
     setIsThinking(true);
-    const decision = await generatePackingDecision(items.filter(i => i.category === '衣物'), '未知目的地', matches.length);
-    setAiAdvice(decision);
-    setIsThinking(false);
+    try {
+      const decision = await generatePackingDecision(items.filter(i => i.category === '衣物'), '未知目的地', matches.length);
+      setAiAdvice(decision);
+    } catch (err: any) {
+      setAiAdvice(err.message || 'AI 決策失敗');
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   const renderVersatilityBadge = (count: number) => {

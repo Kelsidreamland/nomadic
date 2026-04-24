@@ -44,9 +44,13 @@ export const Dashboard = () => {
       }
     },
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly',
-    onError: () => {
-      console.error('Login Failed');
-      alert("Google Login Failed");
+    onError: (errorResponse: any) => {
+      console.error('Login Failed', errorResponse);
+      if (errorResponse?.error === 'redirect_uri_mismatch') {
+        alert("Google 登入失敗：重定向 URI 不匹配 (redirect_uri_mismatch)。\n\n這通常是因為您目前在預覽沙盒網域執行。請將目前的 URL 加入 Google Cloud Console 的「已授權的 JavaScript 來源」與「已授權的重新導向 URI」，或在本地端 (localhost:5173) 進行測試。");
+      } else {
+        alert("Google 登入失敗");
+      }
     }
   });
 
@@ -104,15 +108,21 @@ export const Dashboard = () => {
   const startAiPlan = async () => {
     setPlannerStep('ai-plan');
     setIsThinking(true);
-    const contextData = {
-      upcomingFlight,
-      items,
-      location,
-      luggages
-    };
-    const result = await generateSmartInsights(contextData);
-    setInsights(result);
-    setIsThinking(false);
+    try {
+      const contextData = {
+        upcomingFlight,
+        items,
+        location,
+        luggages
+      };
+      const result = await generateSmartInsights(contextData);
+      setInsights(result);
+    } catch (error: any) {
+      alert(error.message || 'AI 規劃失敗');
+      setPlannerStep('context'); // Revert step on error
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   const startChecklist = () => {
