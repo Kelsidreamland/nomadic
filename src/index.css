@@ -11,9 +11,9 @@
   --color-brand-cream: #FCFBF9;
   --color-brand-stone: #E8E2D6;
 
-  /* Typography */
-  --font-sans: 'Poppins', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-serif: 'Lora', 'Noto Serif TC', Georgia, Cambria, 'Times New Roman', Times, serif;
+  /* Typography for Editorial & Elegant Style */
+  --font-sans: 'DM Sans', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Playfair Display', 'Noto Serif TC', Georgia, Cambria, 'Times New Roman', Times, serif;
 
   --animate-fade-in: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }

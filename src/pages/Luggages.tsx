@@ -62,7 +62,7 @@ export const Luggages = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black text-[var(--color-brand-espresso)] tracking-wider">{t('luggages.title')}</h2>
+        <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)] tracking-wider">{t('luggages.title')}</h2>
         <button 
           onClick={() => setIsAdding(!isAdding)}
           className="flex items-center space-x-1 bg-[var(--color-brand-espresso)] text-white px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-[var(--color-brand-espresso)] transition-colors"

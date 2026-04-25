@@ -205,8 +205,8 @@ export const Dashboard = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h2 className="text-3xl font-black text-[var(--color-brand-espresso)] tracking-wider">{t('app.dashboard')}</h2>
-          <p className="text-[var(--color-brand-espresso)]/60 font-medium mt-1">{t('dashboard.greeting')} {location}</p>
+          <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)] tracking-wider">{t('app.dashboard')}</h2>
+          <p className="text-[var(--color-brand-espresso)]/60 font-sans font-medium mt-1">{t('dashboard.greeting')} {location}</p>
         </div>
       </div>
 

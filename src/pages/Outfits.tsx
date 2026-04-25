@@ -134,7 +134,7 @@ export const Outfits = () => {
     <div className="space-y-6 animate-fade-in pb-20">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-black text-[var(--color-brand-espresso)] tracking-wider">{t('outfits.title')}</h2>
+          <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)] tracking-wider">{t('outfits.title')}</h2>
           <p className="text-sm text-[var(--color-brand-espresso)]/60 font-medium mt-1">點擊上衣，再點擊下裝即可建立搭配</p>
         </div>
         <div className="bg-[var(--color-brand-cream)] px-4 py-2 rounded-2xl shadow-sm border border-[var(--color-brand-stone)] flex items-center space-x-2">

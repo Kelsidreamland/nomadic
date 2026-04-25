@@ -53,7 +53,7 @@ export const Settings = () => {
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black text-[var(--color-brand-espresso)] tracking-wider">{t('app.settings')}</h2>
+        <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)] tracking-wider">{t('app.settings')}</h2>
         <button 
           onClick={handleSave}
           className="flex items-center space-x-2 bg-[var(--color-brand-espresso)] text-white px-6 py-2 rounded-full font-bold shadow-md hover:bg-[var(--color-brand-espresso)] transition-all"

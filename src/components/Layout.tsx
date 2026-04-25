@@ -48,7 +48,7 @@ export const Layout = ({ children }: LayoutProps) => {
         <div className="flex items-center space-x-4 md:space-x-6">
           <button 
             onClick={toggleLanguage}
-            className="text-xs font-bold px-3 py-1.5 rounded-full border border-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/80 hover:bg-[var(--color-brand-sand)] transition-colors"
+            className="text-xs font-bold px-3 py-1.5 rounded-full border border-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/80 hover:bg-[var(--color-brand-sand)] transition-colors font-sans"
           >
             {language === 'zh-TW' ? 'EN' : '繁中'}
           </button>
@@ -58,7 +58,7 @@ export const Layout = ({ children }: LayoutProps) => {
                 key={item.path}
                 to={item.path}
                 className={clsx(
-                  'flex items-center space-x-2 text-sm font-semibold tracking-wider transition-colors',
+                  'flex items-center space-x-2 text-sm font-semibold tracking-wider transition-colors font-sans',
                   location.pathname === item.path ? 'text-[var(--color-brand-espresso)] border-b-2 border-[var(--color-brand-espresso)]' : 'text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)]/80'
                 )}
               >
@@ -72,7 +72,7 @@ export const Layout = ({ children }: LayoutProps) => {
             href="https://api.payuni.com.tw/api/uop/receive_info/2/3/NPPA226028039/mgYrU0DqoPbb6vatwL86Z" 
             target="_blank" 
             rel="noreferrer"
-            className="hidden md:flex items-center space-x-2 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+            className="hidden md:flex items-center space-x-2 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 font-sans"
           >
             <Coffee size={16} />
             <span>Sponsor / VIP</span>
@@ -94,14 +94,14 @@ export const Layout = ({ children }: LayoutProps) => {
               key={item.path}
               to={item.path}
               className={clsx(
-                'flex flex-col items-center justify-center w-full h-full space-y-1 transition-all duration-300 ease-in-out',
+                'flex flex-col items-center justify-center w-full h-full space-y-1 transition-all duration-300 ease-in-out font-sans',
                 location.pathname === item.path ? 'text-[var(--color-brand-espresso)] -translate-y-1' : 'text-[var(--color-brand-espresso)]/40'
               )}
             >
-              <div className={clsx("p-2 rounded-xl", location.pathname === item.path ? 'bg-gray-100/80 shadow-inner' : '')}>
+              <div className={clsx("p-2 rounded-xl", location.pathname === item.path ? 'bg-[var(--color-brand-sand)]/80 shadow-inner border border-[var(--color-brand-stone)]/50' : '')}>
                 <item.icon size={22} strokeWidth={location.pathname === item.path ? 2.5 : 2} />
               </div>
-              <span className="text-[10px] font-bold tracking-wider">{item.name}</span>
+              <span className="text-[10px] font-bold tracking-widest uppercase">{item.name}</span>
             </Link>
           ))}
         </div>
