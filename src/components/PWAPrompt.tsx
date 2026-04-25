@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { Download, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export function PWAPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const { t } = useTranslation();
 
   const {
     offlineReady: [offlineReady, setOfflineReady],
@@ -64,14 +66,14 @@ export function PWAPrompt() {
       <div className="flex items-start justify-between">
         <div className="flex-1 pr-4">
           <h3 className="font-bold text-[var(--color-brand-espresso)] mb-1">
-            {needRefresh ? 'Update Available' : offlineReady ? 'Ready for Offline Use' : 'Install Nomadic : my luggage'}
+            {needRefresh ? t('pwa.updateAvailable') : offlineReady ? t('pwa.readyOffline') : t('pwa.installTitle')}
           </h3>
           <p className="text-sm text-[var(--color-brand-espresso)]/60 mb-3">
             {needRefresh 
-              ? 'A new version is available. Click to update.' 
+              ? t('pwa.updateDesc') 
               : offlineReady
-              ? 'The app is cached and ready to be used offline.'
-              : 'Add Nomadic to your home screen for a seamless, full-screen experience and offline packing.'}
+              ? t('pwa.offlineDesc')
+              : t('pwa.installDesc')}
           </p>
           
           <div className="flex space-x-2">
@@ -80,7 +82,7 @@ export function PWAPrompt() {
                 onClick={() => updateServiceWorker(true)}
                 className="bg-[var(--color-brand-espresso)] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-[var(--color-brand-espresso)] transition-colors"
               >
-                立即更新
+                {t('pwa.btnUpdate')}
               </button>
             ) : showPrompt ? (
               <button 
@@ -88,7 +90,7 @@ export function PWAPrompt() {
                 className="flex items-center space-x-1 bg-[var(--color-brand-terracotta)] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-[var(--color-brand-terracotta-hover)] transition-colors"
               >
                 <Download size={16} />
-                <span>安裝到桌面</span>
+                <span>{t('pwa.btnInstall')}</span>
               </button>
             ) : null}
             
@@ -96,7 +98,7 @@ export function PWAPrompt() {
               onClick={close}
               className="bg-[var(--color-brand-stone)] text-[var(--color-brand-espresso)] px-4 py-2 rounded-xl text-sm font-bold hover:opacity-80 transition-colors"
             >
-              關閉
+              {t('pwa.btnClose')}
             </button>
           </div>
         </div>
