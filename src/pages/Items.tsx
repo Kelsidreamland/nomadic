@@ -359,6 +359,15 @@ export const Items = () => {
           {items.map(item => {
             const isExpiring = item.category === '保養品' && item.expirationDate && new Date(item.expirationDate) < new Date(expiringCutoff);
             
+            // 根據類別映射翻譯 Key
+            let i18nCategory = item.category;
+            switch (item.category) {
+              case '衣物': i18nCategory = t('items.categoryClothes', '衣物'); break;
+              case '器材': i18nCategory = t('items.categoryGear', '器材'); break;
+              case '保養品': i18nCategory = t('items.categorySkincare', '保養品'); break;
+              case '其他': i18nCategory = t('items.categoryOther', '其他'); break;
+            }
+
             return (
               <div key={item.id} className="bg-[var(--color-brand-cream)] p-5 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex justify-between items-start group hover:border-[var(--color-brand-stone)] transition-colors">
                 <div className="flex space-x-4">
@@ -372,23 +381,23 @@ export const Items = () => {
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
                       <h3 className="font-bold text-[var(--color-brand-espresso)] text-lg">{item.name}</h3>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-[var(--color-brand-espresso)]/80 font-bold">{item.category}</span>
-                      {item.isDiscardable && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-bold">可丟棄</span>}
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-[var(--color-brand-espresso)]/80 font-bold">{i18nCategory}</span>
+                      {item.isDiscardable && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-bold">{t('items.discardableBadge', '可丟棄')}</span>}
                     </div>
-                    <div className="text-xs font-medium text-[var(--color-brand-espresso)]/40 flex items-center space-x-2">
-                      <span>{item.season}</span>
+                    <div className="text-xs font-medium text-[var(--color-brand-espresso)]/40 flex items-center space-x-2 flex-wrap gap-y-1">
+                      <span>{item.season === '通用' ? t('items.seasonGeneral') : item.season === '冬季' ? t('items.seasonWinter') : t('items.seasonSummer')}</span>
                       <span>•</span>
-                      <span>{item.condition}</span>
+                      <span>{item.condition === '新' ? t('items.condNew') : item.condition === '舊' ? t('items.condOld') : t('items.condEmptying')}</span>
                       {item.subCategory && (
                         <>
                           <span>•</span>
-                          <span>{item.subCategory}</span>
+                          <span>{t(`items.sub${item.subCategory === '上衣' ? 'Top' : item.subCategory === '下裝' ? 'Bottom' : item.subCategory === '外套' ? 'Outerwear' : item.subCategory === '內搭' ? 'Innerwear' : item.subCategory === '連身裙' ? 'Dress' : item.subCategory === '鞋子' ? 'Shoes' : item.subCategory === '配飾' ? 'Accessory' : item.subCategory === '襪子' ? 'Socks' : item.subCategory === '內衣' ? 'Bra' : 'Underpants'}`, item.subCategory)}</span>
                         </>
                       )}
                       {item.luggageId && (
                         <>
                           <span>•</span>
-                          <span className="text-[var(--color-brand-terracotta)]">{luggages.find(l => l.id === item.luggageId)?.name || '未知行李'}</span>
+                          <span className="text-[var(--color-brand-terracotta)]">{luggages.find(l => l.id === item.luggageId)?.name || t('items.unknownLuggage', '未知行李')}</span>
                         </>
                       )}
                     </div>

@@ -94,6 +94,10 @@ export const Dashboard = () => {
   };
 
   // Calculate weights by luggage type
+  const totalWeight = items.reduce((sum, item) => {
+    if (removedItemIds.includes(item.id)) return sum;
+    return sum + (item.weight || 0); // Placeholder, wait for actual weight logic if present
+  }, 0);
   const checkedWeight = luggages.filter(l => l.type === '托运').reduce((sum, l) => {
     return sum + (l.weightHistory?.length > 0 ? l.weightHistory[l.weightHistory.length - 1].weight : 0);
   }, 0);
@@ -168,7 +172,14 @@ export const Dashboard = () => {
     setNewItemName('');
   };
 
-  const smartSuggestions = ['SIM卡/網卡', '萬國充', '護照', '行動電源', '常備藥', '牙刷/牙膏'];
+  const smartSuggestions = [
+    t('dashboard.suggestions.sim', 'SIM卡/網卡'), 
+    t('dashboard.suggestions.adapter', '萬國充'), 
+    t('dashboard.suggestions.passport', '護照'), 
+    t('dashboard.suggestions.powerbank', '行動電源'), 
+    t('dashboard.suggestions.medicine', '常備藥'), 
+    t('dashboard.suggestions.toothbrush', '牙刷/牙膏')
+  ];
 
   const daysToFlight = upcomingFlight 
     ? Math.ceil((new Date(upcomingFlight.departureDate).getTime() - now) / (1000 * 60 * 60 * 24))
@@ -202,41 +213,41 @@ export const Dashboard = () => {
       {showFlightForm && (
         <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="font-bold text-lg text-[var(--color-brand-espresso)]">航班資訊</h3>
+            <h3 className="font-bold text-lg text-[var(--color-brand-espresso)]">{t('dashboard.flightInfo', '航班資訊')}</h3>
             <button onClick={() => setShowFlightForm(false)} className="text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)]/80">
               <X size={20} />
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">目的地</label>
-              <input type="text" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.destination} onChange={e => setFlightData({...flightData, destination: e.target.value})} placeholder="例如：東京" />
+              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">{t('dashboard.dest', '目的地')}</label>
+              <input type="text" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.destination} onChange={e => setFlightData({...flightData, destination: e.target.value})} placeholder={t('dashboard.destPlaceholder', '例如：東京')} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">航空公司</label>
-              <input type="text" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.airline} onChange={e => setFlightData({...flightData, airline: e.target.value})} placeholder="例如：長榮航空" />
+              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">{t('dashboard.airline', '航空公司')}</label>
+              <input type="text" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.airline} onChange={e => setFlightData({...flightData, airline: e.target.value})} placeholder={t('dashboard.airlinePlaceholder', '例如：長榮航空')} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">出發日期</label>
+              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">{t('dashboard.date', '出發日期')}</label>
               <input type="date" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.departureDate} onChange={e => setFlightData({...flightData, departureDate: e.target.value})} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">托運限額 (kg)</label>
+              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">{t('dashboard.checkedAllowance', '托運限額 (kg)')}</label>
               <input type="number" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.checkedAllowance} onChange={e => setFlightData({...flightData, checkedAllowance: Number(e.target.value)})} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">手提限額 (kg)</label>
+              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">{t('dashboard.carryOnAllowance', '手提限額 (kg)')}</label>
               <input type="number" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.carryOnAllowance} onChange={e => setFlightData({...flightData, carryOnAllowance: Number(e.target.value)})} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">隨身限額 (kg)</label>
+              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">{t('dashboard.personalAllowance', '隨身限額 (kg)')}</label>
               <input type="number" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.personalAllowance} onChange={e => setFlightData({...flightData, personalAllowance: Number(e.target.value)})} />
             </div>
           </div>
           <div className="flex justify-end pt-2">
             <button onClick={handleSaveFlight} className="flex items-center space-x-2 bg-[var(--color-brand-espresso)] text-white px-6 py-2 rounded-xl font-bold shadow-md hover:bg-black transition-colors">
               <Save size={16} />
-              <span>儲存航班</span>
+              <span>{t('dashboard.saveFlight', '儲存航班')}</span>
             </button>
           </div>
         </div>
@@ -247,26 +258,29 @@ export const Dashboard = () => {
         <div className="space-y-6">
           {/* Flight Card (Existing Code) */}
           {upcomingFlight ? (
-            <div className="bg-[var(--color-brand-espresso)] text-white p-6 rounded-3xl shadow-lg relative overflow-hidden">
-              <div className="absolute -right-6 -bottom-10 opacity-10">
+            <div className="bg-[var(--color-brand-cream)] p-6 md:p-8 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden group">
+              <div className="absolute -right-12 -top-12 text-[var(--color-brand-espresso)]/5 group-hover:text-[var(--color-brand-olive)]/10 transition-colors duration-500">
                 <Plane size={160} />
               </div>
-              <div className="relative z-10 flex justify-between items-center">
-                <div>
-                  <div className="flex items-center space-x-3 mb-2">
-                    <p className="text-sm font-bold text-blue-200 tracking-widest uppercase">{t('dashboard.nextFlight')}</p>
-                    <button onClick={handleManualAdd} className="text-blue-200 hover:text-white transition-colors bg-[var(--color-brand-cream)]/10 px-2 py-1 rounded text-xs">
-                      {t('settings.editFlight', '編輯')}
-                    </button>
-                  </div>
-                  <h3 className="text-2xl font-black">{upcomingFlight.destination}</h3>
-                  <p className="text-[var(--color-brand-stone)] mt-2">{upcomingFlight.airline} • {t('dashboard.allowance')} {upcomingFlight.checkedAllowance}kg</p>
+              <div className="flex items-center space-x-6 z-10 w-full md:w-auto">
+                <div className="w-20 h-20 bg-[var(--color-brand-sand)] text-[var(--color-brand-espresso)] rounded-3xl flex flex-col items-center justify-center font-bold border border-[var(--color-brand-stone)] shadow-sm">
+                  <span className="text-sm text-[var(--color-brand-espresso)]/60 mb-1">{t('dashboard.days', '天')}</span>
+                  <span className="text-3xl font-serif text-[var(--color-brand-terracotta)]">{daysToFlight}</span>
                 </div>
-                <div className="text-center bg-[var(--color-brand-cream)]/10 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/20">
-                  <div className="text-4xl font-black">{daysToFlight}</div>
-                  <div className="text-xs font-bold uppercase tracking-widest mt-1">{t('dashboard.days')}</div>
+                <div>
+                  <h3 className="text-3xl font-black text-[var(--color-brand-espresso)] tracking-tight mb-2">{upcomingFlight.destination}</h3>
+                  <div className="flex items-center space-x-4 text-sm font-medium text-[var(--color-brand-espresso)]/60">
+                    <span className="flex items-center bg-[var(--color-brand-sand)] px-3 py-1 rounded-lg border border-[var(--color-brand-stone)]"><Plane size={14} className="mr-2 text-[var(--color-brand-olive)]" /> {upcomingFlight.airline}</span>
+                    <span className="flex items-center bg-[var(--color-brand-sand)] px-3 py-1 rounded-lg border border-[var(--color-brand-stone)]">{upcomingFlight.departureDate}</span>
+                  </div>
                 </div>
               </div>
+              <button 
+                onClick={handleManualAdd}
+                className="w-full md:w-auto bg-[var(--color-brand-espresso)] text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-md hover:bg-black transition-all z-10 hover:-translate-y-0.5"
+              >
+                {t('dashboard.editFlight', '編輯航班')}
+              </button>
             </div>
           ) : (
             <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex flex-col md:flex-row items-center justify-between gap-4">
@@ -284,16 +298,17 @@ export const Dashboard = () => {
                   onClick={() => login()} 
                   disabled={isSyncing}
                   className="flex items-center justify-center space-x-2 bg-[var(--color-brand-terracotta)] hover:bg-[var(--color-brand-terracotta-hover)] text-white px-4 py-2 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 text-sm"
+                  title={t('dashboard.syncGmail', '同步 Gmail 航班')}
                 >
                   <Mail size={16} />
-                  <span>{isSyncing ? 'Syncing...' : 'Sync Flights'}</span>
+                  <span>{isSyncing ? t('dashboard.syncing', 'Syncing...') : t('dashboard.syncFlights', 'Sync Flights')}</span>
                 </button>
                 <button 
                   onClick={handleManualAdd}
                   className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-[var(--color-brand-espresso)]/80 px-4 py-2 rounded-xl font-bold transition-all shadow-sm text-sm"
                 >
                   <Plus size={16} />
-                  <span>Add Manual</span>
+                  <span>{t('dashboard.addManual', 'Add Manual')}</span>
                 </button>
               </div>
             </div>
@@ -306,14 +321,14 @@ export const Dashboard = () => {
               className="w-full py-5 bg-[var(--color-brand-espresso)] hover:bg-[var(--color-brand-espresso)] text-white rounded-3xl font-bold tracking-widest shadow-lg shadow-[var(--color-brand-espresso)]/20 transition-all transform hover:scale-[1.02] flex justify-center items-center space-x-2"
             >
               <Bot size={20} className="text-[var(--color-brand-olive)]" />
-              <span>讓 AI 幫我做減法 (膠囊衣櫥推薦)</span>
+              <span>{t('dashboard.btnAiPlan', '讓 AI 幫我做減法 (膠囊衣櫥推薦)')}</span>
             </button>
             <button 
               onClick={startChecklist}
               className="w-full py-5 bg-[var(--color-brand-cream)] border-2 border-[var(--color-brand-stone)] hover:border-[var(--color-brand-terracotta)] text-[var(--color-brand-espresso)] rounded-3xl font-bold tracking-widest shadow-sm transition-all flex justify-center items-center space-x-2"
             >
               <CheckCircle2 size={20} className="text-[var(--color-brand-espresso)]/40" />
-              <span>我自己手動打包 (Checklist)</span>
+              <span>{t('dashboard.btnManual', '我自己手動打包 (Checklist)')}</span>
             </button>
           </div>
         </div>
@@ -369,7 +384,7 @@ export const Dashboard = () => {
             <button onClick={() => setPlannerStep('context')} className="text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)]/80">
               <X size={24} />
             </button>
-            <h2 className="text-2xl font-black text-[var(--color-brand-espresso)]">AI 智能打包建議</h2>
+            <h2 className="text-2xl font-black text-[var(--color-brand-espresso)]">{t('dashboard.aiPlanTitle', 'AI 智能打包建議')}</h2>
           </div>
 
           {isThinking ? (
@@ -380,8 +395,8 @@ export const Dashboard = () => {
                 <div className="w-3 h-3 bg-[var(--color-brand-olive)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
               <p className="font-bold text-[var(--color-brand-espresso)]/60 text-center">
-                正在分析行程、天氣與您的衣櫥庫存...<br/>
-                <span className="text-xs font-normal text-[var(--color-brand-espresso)]/40 mt-2 block">這可能需要幾秒鐘的時間</span>
+                {t('dashboard.analyzingMsg', '正在分析行程、天氣與您的衣櫥庫存...')}<br/>
+                <span className="text-xs font-normal text-[var(--color-brand-espresso)]/40 mt-2 block">{t('dashboard.analyzingWait', '這可能需要幾秒鐘的時間')}</span>
               </p>
             </div>
           ) : insights ? (
@@ -396,7 +411,7 @@ export const Dashboard = () => {
                 )}>
                   <div className="flex items-center space-x-2 font-bold mb-2">
                     {insights.optimization.weight_status === 'Safe' ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}
-                    <span>行李重量狀態：{insights.optimization.weight_status}</span>
+                    <span>{t('dashboard.weightStatus', '行李重量狀態：')}{insights.optimization.weight_status}</span>
                   </div>
                   <p className="text-sm font-medium">{insights.optimization.luggage_analysis}</p>
                 </div>
@@ -407,7 +422,7 @@ export const Dashboard = () => {
                 {insights.optimization?.remove_suggestions && insights.optimization.remove_suggestions.length > 0 && (
                   <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl border border-[var(--color-brand-stone)] shadow-sm">
                     <h3 className="font-bold text-[var(--color-brand-espresso)] mb-4 flex items-center text-red-500">
-                      <X size={18} className="mr-2" /> 建議捨棄 (減輕負重)
+                      <X size={18} className="mr-2" /> {t('dashboard.discardAdvice', '建議捨棄 (減輕負重)')}
                     </h3>
                     <ul className="space-y-4">
                       {insights.optimization.remove_suggestions.map((item: any, i: number) => {
@@ -430,7 +445,7 @@ export const Dashboard = () => {
                 {insights.optimization?.packing_advice && insights.optimization.packing_advice.length > 0 && (
                   <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl border border-[var(--color-brand-stone)] shadow-sm">
                     <h3 className="font-bold text-[var(--color-brand-espresso)] mb-4 flex items-center text-[var(--color-brand-terracotta)]">
-                      <ShoppingBag size={18} className="mr-2" /> 打包與備品建議
+                      <ShoppingBag size={18} className="mr-2" /> {t('dashboard.packingAdvice', '打包與備品建議')}
                     </h3>
                     <ul className="space-y-3">
                       {insights.optimization.packing_advice.map((advice: string, i: number) => (
@@ -448,13 +463,13 @@ export const Dashboard = () => {
                 onClick={startChecklist}
                 className="w-full py-4 bg-[var(--color-brand-terracotta)] hover:bg-[var(--color-brand-terracotta-hover)] text-white rounded-2xl font-bold tracking-widest shadow-md transition-colors flex justify-center items-center space-x-2"
               >
-                <span>確認並進入打包清單</span>
+                <span>{t('dashboard.btnConfirm', '確認並進入打包清單')}</span>
                 <ArrowRight size={20} />
               </button>
             </div>
           ) : (
             <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] text-center text-red-400 text-sm">
-              AI 分析失敗，請確認 API Key 設定或稍後再試。
+              {t('dashboard.aiError', 'AI 分析失敗，請確認 API Key 設定或稍後再試。')}
             </div>
           )}
         </div>
@@ -463,29 +478,29 @@ export const Dashboard = () => {
       {/* Planner Step 3: Checklist */}
       {plannerStep === 'checklist' && (
         <div className="space-y-6 animate-fade-in pb-20">
-          <div className="flex items-center justify-between mb-6 sticky top-0 bg-[var(--color-brand-sand)]/90 backdrop-blur-md py-4 z-10">
-            <div className="flex items-center space-x-3">
-              <button onClick={() => setPlannerStep('context')} className="text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)]/80">
-                <X size={24} />
-              </button>
-              <h2 className="text-2xl font-black text-[var(--color-brand-espresso)]">打包清單</h2>
+            <div className="flex justify-between items-center bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] mb-6">
+              <div>
+                <button onClick={() => setPlannerStep('context')} className="mb-2 text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)] transition-colors">
+                  <X size={24} />
+                </button>
+                <h2 className="text-2xl font-black text-[var(--color-brand-espresso)]">{t('dashboard.checklistTitle', '打包清單')}</h2>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-black text-[var(--color-brand-terracotta)]">{Math.round(totalWeight)}<span className="text-sm text-[var(--color-brand-espresso)]/60">kg</span></div>
+                <div className="text-xs font-bold text-[var(--color-brand-espresso)]/40 uppercase tracking-widest">{t('dashboard.currentWeight', '目前總重')}</div>
+              </div>
             </div>
-            <div className="text-right">
-              <span className="text-2xl font-black text-[var(--color-brand-espresso)]">{packedItemIds.length}</span>
-              <span className="text-sm font-bold text-[var(--color-brand-espresso)]/40"> / {items.length - removedItemIds.length}</span>
-            </div>
-          </div>
 
           {/* Checkout/Discard Banner for removed items */}
           {removedItemIds.length > 0 && (
             <div className="bg-red-50 p-4 rounded-2xl border border-red-100 flex items-center justify-between">
               <div className="flex items-center space-x-2 text-red-600">
                 <Trash2 size={18} />
-                <span className="font-bold text-sm">已捨棄 {removedItemIds.length} 件物品</span>
+                <span className="font-bold text-sm">{t('dashboard.discardedCount', '已捨棄 {{count}} 件物品', { count: removedItemIds.length })}</span>
               </div>
               <button 
                 onClick={async () => {
-                  if (confirm(`確定要將這 ${removedItemIds.length} 件物品從物品庫中永久刪除嗎？`)) {
+                  if (confirm(t('dashboard.confirmDelete', '確定要將這 {{count}} 件物品從物品庫中永久刪除嗎？', { count: removedItemIds.length }))) {
                     for (const id of removedItemIds) {
                       await db.items.delete(id);
                       // 也要刪除相關的穿搭紀錄
@@ -499,7 +514,7 @@ export const Dashboard = () => {
                 }}
                 className="text-xs font-bold bg-red-600 text-white px-3 py-1.5 rounded-full hover:bg-red-700 transition-colors"
               >
-                永久刪除
+                {t('dashboard.permanentlyDelete', '永久刪除')}
               </button>
             </div>
           )}
@@ -513,7 +528,7 @@ export const Dashboard = () => {
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddTodoItem(newItemName)}
-                  placeholder="新增待辦物品..."
+                  placeholder={t('dashboard.addTodoPlaceholder', '新增待辦物品...')}
                   className="flex-1 bg-[var(--color-brand-cream)] border border-[var(--color-brand-stone)] rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm"
                 />
                 <button 
@@ -521,7 +536,7 @@ export const Dashboard = () => {
                   disabled={!newItemName.trim()}
                   className="bg-[var(--color-brand-espresso)] text-white px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-black transition-colors"
                 >
-                  新增
+                  {t('dashboard.addBtn', '新增')}
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -537,8 +552,18 @@ export const Dashboard = () => {
                 ))}
               </div>
             </div>
-            {items.filter(item => !removedItemIds.includes(item.id)).map(item => {
+            {items.filter((item) => !removedItemIds.includes(item.id)).map((item) => {
               const isPacked = packedItemIds.includes(item.id);
+              
+              // 根據類別映射翻譯 Key
+              let i18nCategory = item.category;
+              switch (item.category) {
+                case '衣物': i18nCategory = t('items.categoryClothes', '衣物'); break;
+                case '盥洗': i18nCategory = t('items.categoryGear', '盥洗'); break;
+                case '電子': i18nCategory = t('items.categoryGear', '電子'); break;
+                case '其他': i18nCategory = t('items.categoryOther', '其他'); break;
+              }
+
               return (
                 <div 
                   key={item.id} 
@@ -559,7 +584,7 @@ export const Dashboard = () => {
                     </div>
                     <div>
                       <h4 className={clsx("font-bold", isPacked ? "line-through text-[var(--color-brand-espresso)]/40" : "text-[var(--color-brand-espresso)]")}>{item.name}</h4>
-                      <p className="text-xs text-[var(--color-brand-espresso)]/40">{item.category} • {item.subCategory}</p>
+                      <p className="text-xs text-[var(--color-brand-espresso)]/40">{i18nCategory} • {item.subCategory}</p>
                     </div>
                   </div>
                   
@@ -574,7 +599,7 @@ export const Dashboard = () => {
                           toggleItemRemoved(item.id);
                         }}
                         className="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors"
-                        title="捨棄此物品"
+                        title={t('dashboard.discardItem', '捨棄此物品')}
                       >
                         <Trash2 size={18} />
                       </button>
