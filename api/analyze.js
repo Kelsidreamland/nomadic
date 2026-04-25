@@ -1,23 +1,25 @@
-import { Handler } from '@netlify/functions';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-export const handler: Handler = async (event, context) => {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+export default async function handler(req, res) {
+  // CORS 處理
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
-    const { imageBase64, text, prompt, action, payload } = body;
+    const { action, payload, prompt, imageBase64, text } = req.body;
 
-    // 從 Netlify 的環境變數讀取 API Key
-    const apiKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-    
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return { 
-        statusCode: 500, 
-        body: JSON.stringify({ error: 'API Key not configured on server' }) 
-      };
+      return res.status(500).json({ error: 'Server configuration error: Missing Gemini API Key' });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -32,7 +34,7 @@ export const handler: Handler = async (event, context) => {
 
       const { flightInfo, weatherInfo, wardrobeItems, userNotes } = payload;
 
-      // 階段 1：行程解析 (Data Extraction)
+      // Stage 1
       const stage1Prompt = `
 # 系統任務：行程解析 Agent
 你是一個旅行資料分析師。請分析以下使用者的行程資訊，並輸出純 JSON：
@@ -47,10 +49,16 @@ export const handler: Handler = async (event, context) => {
 - 天氣：${JSON.stringify(weatherInfo)}
       `;
       const stage1Result = await jsonModel.generateContent(stage1Prompt);
-      const stage1Text = stage1Result.response.text();
-      const stage1Data = JSON.parse(stage1Text.replace(/```json\n?|\n?```/g, '').trim());
+      const stage1DataText = stage1Result.response.text();
+      let stage1Data;
+      try {
+        stage1Data = JSON.parse(stage1DataText);
+      } catch (e) {
+        const jsonMatch = stage1DataText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+        stage1Data = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(stage1DataText.replace(/```json\n?|\n?```/g, '').trim());
+      }
 
-      // 階段 2：穿搭決策 (Outfit Planner)
+      // Stage 2
       const stage2Prompt = `
 # 系統任務：穿搭決策 Agent
 你是一位時尚造型師。請根據以下【行程情境】與使用者的【衣物庫存資料 (含連連看百搭權重)】，為每天規劃穿搭。
@@ -69,10 +77,16 @@ export const handler: Handler = async (event, context) => {
 - 衣物庫存：${JSON.stringify(wardrobeItems)}
       `;
       const stage2Result = await jsonModel.generateContent(stage2Prompt);
-      const stage2Text = stage2Result.response.text();
-      const stage2Data = JSON.parse(stage2Text.replace(/```json\n?|\n?```/g, '').trim());
+      const stage2DataText = stage2Result.response.text();
+      let stage2Data;
+      try {
+        stage2Data = JSON.parse(stage2DataText);
+      } catch (e) {
+        const jsonMatch = stage2DataText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+        stage2Data = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(stage2DataText.replace(/```json\n?|\n?```/g, '').trim());
+      }
 
-      // 階段 3：行李優化 (Packing & Optimization)
+      // Stage 3
       const stage3Prompt = `
 # 系統任務：行李優化 Agent
 你是一位精打細算的打包管家。請根據【階段2的穿搭清單】與【階段1的行李限額】，執行以下檢查：
@@ -95,27 +109,27 @@ export const handler: Handler = async (event, context) => {
 - 使用者備註：${userNotes || '無'}
       `;
       const stage3Result = await jsonModel.generateContent(stage3Prompt);
-      const stage3Text = stage3Result.response.text();
-      const stage3Data = JSON.parse(stage3Text.replace(/```json\n?|\n?```/g, '').trim());
+      const stage3DataText = stage3Result.response.text();
+      let stage3Data;
+      try {
+        stage3Data = JSON.parse(stage3DataText);
+      } catch (e) {
+        const jsonMatch = stage3DataText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+        stage3Data = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(stage3DataText.replace(/```json\n?|\n?```/g, '').trim());
+      }
 
-      // 組合三個階段的結果回傳給前端
-      return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          result: {
-            context: stage1Data,
-            outfits: stage2Data.outfit_combinations,
-            usage: stage2Data.item_usage_counts,
-            optimization: stage3Data
-          }
-        })
-      };
+      return res.status(200).json({
+        result: {
+          context: stage1Data,
+          outfits: stage2Data.outfit_combinations || [],
+          usage: stage2Data.item_usage_counts || {},
+          optimization: stage3Data
+        }
+      });
     }
 
-    let result;
+    // 處理單次圖片解析 (機票 / 物品圖片)
     if (imageBase64) {
-      // 處理圖片分析
       const base64Data = imageBase64.split(',')[1] || imageBase64;
       const mimeType = imageBase64.includes('png') ? 'image/png' : 'image/jpeg';
       
@@ -127,29 +141,26 @@ export const handler: Handler = async (event, context) => {
           },
         },
       ];
-      result = await model.generateContent([prompt, ...imageParts]);
-    } else if (text) {
-      // 處理純文字分析 (Gmail/Calendar)
-      result = await model.generateContent([prompt, text]);
-    } else if (prompt) {
-      // 處理只有 prompt 的情況
-      result = await model.generateContent(prompt);
-    } else {
-      return { statusCode: 400, body: JSON.stringify({ error: 'No image, text or prompt provided' }) };
+
+      const result = await model.generateContent([prompt, ...imageParts]);
+      return res.status(200).json({ result: result.response.text() });
     }
 
-    const responseText = result.response.text();
-    
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ result: responseText })
-    };
-  } catch (error: any) {
-    console.error('AI Analysis Error:', error);
-    return { 
-      statusCode: 500, 
-      body: JSON.stringify({ error: error.message || 'Internal Server Error' }) 
-    };
+    // 處理純文字/Gmail解析
+    if (text) {
+      const result = await model.generateContent([prompt, text]);
+      return res.status(200).json({ result: result.response.text() });
+    }
+
+    // 處理一般對話
+    if (prompt) {
+      const result = await model.generateContent(prompt);
+      return res.status(200).json({ result: result.response.text() });
+    }
+
+    return res.status(400).json({ error: 'Invalid request: missing action or prompt' });
+  } catch (error) {
+    console.error('API Error:', error);
+    return res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
-};
+}
