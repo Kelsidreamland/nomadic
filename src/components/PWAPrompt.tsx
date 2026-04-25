@@ -60,32 +60,32 @@ export function PWAPrompt() {
   if (!showPrompt && !needRefresh && !offlineReady) return null;
 
   return (
-    <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:bottom-4 md:w-96 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 z-50 animate-fade-in">
+    <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:bottom-4 md:w-96 bg-[var(--color-brand-cream)] rounded-2xl shadow-xl border border-[var(--color-brand-stone)] p-4 z-50 animate-fade-in">
       <div className="flex items-start justify-between">
         <div className="flex-1 pr-4">
-          <h3 className="font-bold text-[#2C3E50] mb-1">
-            {needRefresh ? '新版本已就緒' : offlineReady ? '已支援離線使用' : '安裝 Pack AI'}
+          <h3 className="font-bold text-[var(--color-brand-espresso)] mb-1">
+            {needRefresh ? 'Update Available' : offlineReady ? 'Ready for Offline Use' : 'Install Nomadic : my luggage'}
           </h3>
-          <p className="text-sm text-gray-500 mb-3">
+          <p className="text-sm text-[var(--color-brand-espresso)]/60 mb-3">
             {needRefresh 
-              ? '我們發布了新功能，點擊更新以獲取最新版本。' 
+              ? 'A new version is available. Click to update.' 
               : offlineReady
-              ? '應用程式已快取，您可以在沒有網路的情況下繼續使用。'
-              : '將 Pack AI 加入主畫面，獲得全螢幕、無廣告的 App 體驗，並支援離線打包。'}
+              ? 'The app is cached and ready to be used offline.'
+              : 'Add Nomadic to your home screen for a seamless, full-screen experience and offline packing.'}
           </p>
           
           <div className="flex space-x-2">
             {needRefresh ? (
               <button 
                 onClick={() => updateServiceWorker(true)}
-                className="bg-[#2C3E50] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-[#1A252F] transition-colors"
+                className="bg-[var(--color-brand-espresso)] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-[var(--color-brand-espresso)] transition-colors"
               >
                 立即更新
               </button>
             ) : showPrompt ? (
               <button 
                 onClick={handleInstallClick}
-                className="flex items-center space-x-1 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-blue-700 transition-colors"
+                className="flex items-center space-x-1 bg-[var(--color-brand-terracotta)] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-[var(--color-brand-terracotta-hover)] transition-colors"
               >
                 <Download size={16} />
                 <span>安裝到桌面</span>
@@ -94,13 +94,13 @@ export function PWAPrompt() {
             
             <button 
               onClick={close}
-              className="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-gray-200 transition-colors"
+              className="bg-[var(--color-brand-stone)] text-[var(--color-brand-espresso)] px-4 py-2 rounded-xl text-sm font-bold hover:opacity-80 transition-colors"
             >
               關閉
             </button>
           </div>
         </div>
-        <button onClick={close} className="text-gray-400 hover:text-gray-600">
+        <button onClick={close} className="text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)]/80">
           <X size={20} />
         </button>
       </div>

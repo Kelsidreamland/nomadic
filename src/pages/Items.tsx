@@ -107,10 +107,10 @@ export const Items = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black text-[#2C3E50] tracking-wider">{t('items.title')}</h2>
+        <h2 className="text-2xl font-black text-[var(--color-brand-espresso)] tracking-wider">{t('items.title')}</h2>
         <button 
           onClick={handleOpenAdd}
-          className="flex items-center space-x-1 bg-[#2C3E50] text-white px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-[#1A252F] transition-colors"
+          className="flex items-center space-x-1 bg-[var(--color-brand-espresso)] text-white px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-[var(--color-brand-espresso)] transition-colors"
         >
           {isAdding && !isEditing ? <X size={16} /> : <Plus size={16} />}
           <span>{isAdding && !isEditing ? t('items.cancel') : t('items.add')}</span>
@@ -118,32 +118,32 @@ export const Items = () => {
       </div>
 
       {isAdding && (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-4 relative">
+        <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] space-y-4 relative">
           {isEditing && (
             <button 
               onClick={handleCancel}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-colors"
+              className="absolute top-4 right-4 p-2 text-[var(--color-brand-espresso)]/40 hover:bg-gray-100 rounded-full transition-colors"
             >
               <X size={20} />
             </button>
           )}
           
-          <h3 className="font-bold text-lg text-[#2C3E50] mb-2 border-b border-gray-50 pb-2">
+          <h3 className="font-bold text-lg text-[var(--color-brand-espresso)] mb-2 border-b border-gray-50 pb-2">
             {isEditing ? t('items.edit') : t('items.add')}
           </h3>
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
             <div className="flex space-x-2">
               <div 
-                className="w-20 h-20 bg-gray-50 rounded-2xl flex-shrink-0 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors overflow-hidden"
+                className="w-20 h-20 bg-[var(--color-brand-sand)] rounded-2xl flex-shrink-0 border-2 border-dashed border-[var(--color-brand-stone)] flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors overflow-hidden"
                 onClick={() => fileInputRef.current?.click()}
               >
                 {newItem.image ? (
                   <img src={newItem.image} alt="Preview" className="w-full h-full object-cover" />
                 ) : (
                   <>
-                    <ImageIcon size={20} className="text-gray-400 mb-1" />
-                    <span className="text-[10px] text-gray-400 font-bold">{t('items.uploadImage')}</span>
+                    <ImageIcon size={20} className="text-[var(--color-brand-espresso)]/40 mb-1" />
+                    <span className="text-[10px] text-[var(--color-brand-espresso)]/40 font-bold">{t('items.uploadImage')}</span>
                   </>
                 )}
                 <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
@@ -151,11 +151,11 @@ export const Items = () => {
 
               {!newItem.image && (
                 <div 
-                  className="w-20 h-20 bg-gray-50 rounded-2xl flex-shrink-0 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors overflow-hidden"
+                  className="w-20 h-20 bg-[var(--color-brand-sand)] rounded-2xl flex-shrink-0 border-2 border-dashed border-[var(--color-brand-stone)] flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors overflow-hidden"
                   onClick={() => cameraInputRef.current?.click()}
                 >
-                  <Camera size={20} className="text-gray-400 mb-1" />
-                  <span className="text-[10px] text-gray-400 font-bold">{t('items.takePhoto', '現場拍照')}</span>
+                  <Camera size={20} className="text-[var(--color-brand-espresso)]/40 mb-1" />
+                  <span className="text-[10px] text-[var(--color-brand-espresso)]/40 font-bold">{t('items.takePhoto', '現場拍照')}</span>
                   <input type="file" accept="image/*" capture="environment" className="hidden" ref={cameraInputRef} onChange={handleImageUpload} />
                 </div>
               )}
@@ -168,12 +168,12 @@ export const Items = () => {
                   placeholder={t('items.namePlaceholder')} 
                   value={newItem.name} 
                   onChange={e => setNewItem({...newItem, name: e.target.value})}
-                  className="flex-1 px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+                  className="flex-1 px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
                 />
                 <button 
                   onClick={() => handleAiAutoFill()}
                   disabled={isAiThinking}
-                  className="px-4 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold flex items-center space-x-1 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                  className="px-4 py-3 bg-blue-50 text-[var(--color-brand-terracotta)] rounded-xl font-bold flex items-center space-x-1 hover:bg-[var(--color-brand-stone)] transition-colors disabled:opacity-50"
                   title={t('items.aiAutoFill')}
                 >
                   <Sparkles size={16} />
@@ -187,7 +187,7 @@ export const Items = () => {
             <select 
               value={newItem.category} 
               onChange={e => setNewItem({...newItem, category: e.target.value as any})}
-              className="px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+              className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
             >
               <option value="衣物">{t('items.categoryClothes', '衣物')}</option>
               <option value="器材">{t('items.categoryGear', '器材')}</option>
@@ -199,7 +199,7 @@ export const Items = () => {
               <select 
                 value={newItem.subCategory} 
                 onChange={e => setNewItem({...newItem, subCategory: e.target.value as any})}
-                className="px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+                className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
               >
                 <option value="上衣">{t('items.subTop', '上衣')}</option>
                 <option value="下裝">{t('items.subBottom', '下裝')}</option>
@@ -219,7 +219,7 @@ export const Items = () => {
             <select 
               value={newItem.season} 
               onChange={e => setNewItem({...newItem, season: e.target.value as any})}
-              className="px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+              className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
             >
               <option value="通用">{t('items.seasonGeneral')}</option>
               <option value="冬季">{t('items.seasonWinter')}</option>
@@ -229,7 +229,7 @@ export const Items = () => {
 
           <button 
             onClick={() => setShowAdvanced(!showAdvanced)} 
-            className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-xl text-gray-500 font-bold text-sm hover:bg-gray-100 transition-colors"
+            className="flex items-center justify-between w-full p-3 bg-[var(--color-brand-sand)] rounded-xl text-[var(--color-brand-espresso)]/60 font-bold text-sm hover:bg-gray-100 transition-colors"
           >
             <span>✨ AI 進階屬性與備註 (選填)</span>
             <ChevronDown size={16} className={`transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
@@ -239,33 +239,33 @@ export const Items = () => {
             <div className="space-y-4 animate-fade-in">
               {/* Pack AI Refactor: New Metadata Fields */}
               {newItem.category === '衣物' && (
-                <div className="grid grid-cols-2 gap-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50">
+                <div className="grid grid-cols-2 gap-4 bg-blue-50/50 p-4 rounded-2xl border border-[var(--color-brand-terracotta)]/50">
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">主要顏色</label>
+                    <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">主要顏色</label>
                     <input 
                       type="text" 
                       placeholder="例如: 黑色, 藏青色" 
                       value={newItem.color || ''} 
                       onChange={e => setNewItem({...newItem, color: e.target.value})}
-                      className="w-full px-4 py-3 bg-white rounded-xl outline-none focus:ring-2 focus:ring-blue-400 text-sm border border-gray-100"
+                      className="w-full px-4 py-3 bg-[var(--color-brand-cream)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">適合溫度</label>
+                    <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">適合溫度</label>
                     <input 
                       type="text" 
                       placeholder="例如: 15-25°C" 
                       value={newItem.tempRange || ''} 
                       onChange={e => setNewItem({...newItem, tempRange: e.target.value})}
-                      className="w-full px-4 py-3 bg-white rounded-xl outline-none focus:ring-2 focus:ring-blue-400 text-sm border border-gray-100"
+                      className="w-full px-4 py-3 bg-[var(--color-brand-cream)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">適用場景</label>
+                    <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">適用場景</label>
                     <select 
                       value={newItem.occasion || '其他'} 
                       onChange={e => setNewItem({...newItem, occasion: e.target.value as any})}
-                      className="w-full px-4 py-3 bg-white rounded-xl outline-none focus:ring-2 focus:ring-blue-400 text-sm border border-gray-100"
+                      className="w-full px-4 py-3 bg-[var(--color-brand-cream)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     >
                       <option value="商務">商務 (Business)</option>
                       <option value="休閒">休閒 (Casual)</option>
@@ -275,11 +275,11 @@ export const Items = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">易皺程度</label>
+                    <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">易皺程度</label>
                     <select 
                       value={newItem.wrinkleProne || '適中'} 
                       onChange={e => setNewItem({...newItem, wrinkleProne: e.target.value as any})}
-                      className="w-full px-4 py-3 bg-white rounded-xl outline-none focus:ring-2 focus:ring-blue-400 text-sm border border-gray-100"
+                      className="w-full px-4 py-3 bg-[var(--color-brand-cream)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     >
                       <option value="易皺">易皺 (Wrinkle-prone)</option>
                       <option value="適中">適中 (Normal)</option>
@@ -293,7 +293,7 @@ export const Items = () => {
                 <select 
                   value={newItem.condition} 
                   onChange={e => setNewItem({...newItem, condition: e.target.value as any})}
-                  className="px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+                  className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
                 >
                   <option value="新">{t('items.condNew', '新')}</option>
                   <option value="舊">{t('items.condOld', '舊')}</option>
@@ -303,7 +303,7 @@ export const Items = () => {
                 <select 
                   value={newItem.luggageId} 
                   onChange={e => setNewItem({...newItem, luggageId: e.target.value})}
-                  className="px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+                  className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
                 >
                   <option value="">{t('items.unassigned')}</option>
                   {luggages.map(l => (
@@ -317,7 +317,7 @@ export const Items = () => {
                   type="date" 
                   value={newItem.expirationDate || ''} 
                   onChange={e => setNewItem({...newItem, expirationDate: e.target.value})}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50] text-gray-500"
+                  className="w-full px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-[var(--color-brand-espresso)]/60"
                 />
               )}
 
@@ -325,7 +325,7 @@ export const Items = () => {
                 placeholder={t('items.notesPlaceholder')}
                 value={newItem.notes || ''}
                 onChange={e => setNewItem({...newItem, notes: e.target.value})}
-                className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50] h-20 resize-none text-sm"
+                className="w-full px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] h-20 resize-none text-sm"
               />
 
               <label className="flex items-center space-x-2 p-2">
@@ -333,16 +333,16 @@ export const Items = () => {
                   type="checkbox" 
                   checked={newItem.isDiscardable} 
                   onChange={e => setNewItem({...newItem, isDiscardable: e.target.checked})}
-                  className="w-5 h-5 text-[#2C3E50] rounded focus:ring-[#2C3E50]"
+                  className="w-5 h-5 text-[var(--color-brand-espresso)] rounded focus:ring-[var(--color-brand-espresso)]"
                 />
-                <span className="text-sm font-medium text-gray-700">{t('items.discardable')}</span>
+                <span className="text-sm font-medium text-[var(--color-brand-espresso)]/80">{t('items.discardable')}</span>
               </label>
             </div>
           )}
 
           <button 
             onClick={handleSave}
-            className="w-full py-3 bg-[#2C3E50] text-white rounded-xl font-bold tracking-widest shadow-md hover:bg-[#1A252F] transition-colors"
+            className="w-full py-3 bg-[var(--color-brand-espresso)] text-white rounded-xl font-bold tracking-widest shadow-md hover:bg-[var(--color-brand-espresso)] transition-colors"
           >
             {isEditing ? t('items.update') : t('items.save')}
           </button>
@@ -350,7 +350,7 @@ export const Items = () => {
       )}
 
       {items.length === 0 ? (
-        <div className="text-center py-20 text-gray-400">
+        <div className="text-center py-20 text-[var(--color-brand-espresso)]/40">
           <PackageSearch size={48} className="mx-auto mb-4 opacity-50" />
           <p>{t('items.empty')}</p>
         </div>
@@ -360,22 +360,22 @@ export const Items = () => {
             const isExpiring = item.category === '保養品' && item.expirationDate && new Date(item.expirationDate) < new Date(expiringCutoff);
             
             return (
-              <div key={item.id} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex justify-between items-start group hover:border-gray-200 transition-colors">
+              <div key={item.id} className="bg-[var(--color-brand-cream)] p-5 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex justify-between items-start group hover:border-[var(--color-brand-stone)] transition-colors">
                 <div className="flex space-x-4">
                   {item.image ? (
-                    <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-2xl border border-gray-100 shadow-sm" style={{ filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.1))' }} />
+                    <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-2xl border border-[var(--color-brand-stone)] shadow-sm" style={{ filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.1))' }} />
                   ) : (
-                    <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100">
-                      <ImageIcon size={24} className="text-gray-300" />
+                    <div className="w-16 h-16 bg-[var(--color-brand-sand)] rounded-2xl flex items-center justify-center border border-[var(--color-brand-stone)]">
+                      <ImageIcon size={24} className="text-[var(--color-brand-espresso)]/30" />
                     </div>
                   )}
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
-                      <h3 className="font-bold text-[#2C3E50] text-lg">{item.name}</h3>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-bold">{item.category}</span>
+                      <h3 className="font-bold text-[var(--color-brand-espresso)] text-lg">{item.name}</h3>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-[var(--color-brand-espresso)]/80 font-bold">{item.category}</span>
                       {item.isDiscardable && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-bold">可丟棄</span>}
                     </div>
-                    <div className="text-xs font-medium text-gray-400 flex items-center space-x-2">
+                    <div className="text-xs font-medium text-[var(--color-brand-espresso)]/40 flex items-center space-x-2">
                       <span>{item.season}</span>
                       <span>•</span>
                       <span>{item.condition}</span>
@@ -388,12 +388,12 @@ export const Items = () => {
                       {item.luggageId && (
                         <>
                           <span>•</span>
-                          <span className="text-blue-500">{luggages.find(l => l.id === item.luggageId)?.name || '未知行李'}</span>
+                          <span className="text-[var(--color-brand-terracotta)]">{luggages.find(l => l.id === item.luggageId)?.name || '未知行李'}</span>
                         </>
                       )}
                     </div>
                     {item.notes && (
-                      <p className="text-xs text-gray-500 mt-2 line-clamp-2">{item.notes}</p>
+                      <p className="text-xs text-[var(--color-brand-espresso)]/60 mt-2 line-clamp-2">{item.notes}</p>
                     )}
                     {isExpiring && (
                       <div className="text-xs text-orange-500 font-bold mt-2">
@@ -403,10 +403,10 @@ export const Items = () => {
                   </div>
                 </div>
                 <div className="flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <button onClick={() => handleOpenEdit(item)} className="p-2 text-gray-300 hover:text-[#2C3E50] transition-colors bg-gray-50 rounded-xl hover:bg-gray-100">
+                  <button onClick={() => handleOpenEdit(item)} className="p-2 text-[var(--color-brand-espresso)]/30 hover:text-[var(--color-brand-espresso)] transition-colors bg-[var(--color-brand-sand)] rounded-xl hover:bg-gray-100">
                     <Edit2 size={16} />
                   </button>
-                  <button onClick={() => handleDelete(item.id)} className="p-2 text-gray-300 hover:text-red-500 transition-colors bg-red-50 rounded-xl hover:bg-red-100">
+                  <button onClick={() => handleDelete(item.id)} className="p-2 text-[var(--color-brand-espresso)]/30 hover:text-red-500 transition-colors bg-red-50 rounded-xl hover:bg-red-100">
                     <Trash2 size={16} />
                   </button>
                 </div>

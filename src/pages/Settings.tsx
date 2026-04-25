@@ -53,28 +53,28 @@ export const Settings = () => {
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black text-[#2C3E50] tracking-wider">{t('app.settings')}</h2>
+        <h2 className="text-2xl font-black text-[var(--color-brand-espresso)] tracking-wider">{t('app.settings')}</h2>
         <button 
           onClick={handleSave}
-          className="flex items-center space-x-2 bg-[#2C3E50] text-white px-6 py-2 rounded-full font-bold shadow-md hover:bg-[#1A252F] transition-all"
+          className="flex items-center space-x-2 bg-[var(--color-brand-espresso)] text-white px-6 py-2 rounded-full font-bold shadow-md hover:bg-[var(--color-brand-espresso)] transition-all"
         >
           {saved ? <CheckCircle size={18} className="text-green-400" /> : <Save size={18} />}
           <span>{saved ? 'Saved' : 'Save Config'}</span>
         </button>
       </div>
 
-      <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-6">
-        <h3 className="font-bold text-xl text-[#2C3E50] flex items-center space-x-2">
+      <div className="bg-[var(--color-brand-cream)] p-6 md:p-8 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] space-y-6">
+        <h3 className="font-bold text-xl text-[var(--color-brand-espresso)] flex items-center space-x-2">
           <ShieldCheck size={20} className="text-green-500" />
           <span>{t('settings.aiConfig')}</span>
         </h3>
         
         <div className="space-y-4">
-          <label className="flex items-center space-x-2 text-sm font-bold text-gray-700 uppercase tracking-wider">
+          <label className="flex items-center space-x-2 text-sm font-bold text-[var(--color-brand-espresso)]/80 uppercase tracking-wider">
             <Key size={16} />
             <span>{t('settings.geminiKey')}</span>
           </label>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-[var(--color-brand-espresso)]/60">
             {t('settings.geminiDesc')}
           </p>
           <input
@@ -82,7 +82,7 @@ export const Settings = () => {
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder={t('settings.geminiPlaceholder')}
-            className="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-[#2C3E50] transition-all outline-none font-mono"
+            className="w-full px-4 py-3 rounded-xl bg-[var(--color-brand-sand)] border-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] transition-all outline-none font-mono"
           />
         </div>
 
@@ -104,14 +104,14 @@ export const Settings = () => {
                 checked={useLocalAi}
                 onChange={() => setUseLocalAi(!useLocalAi)}
               />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--color-brand-cream)] after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
             </label>
           </div>
         )}
 
         <button
           onClick={handleSave}
-          className="w-full py-4 bg-[#2C3E50] hover:bg-[#1A252F] text-white rounded-xl font-bold tracking-widest uppercase transition-colors flex items-center justify-center space-x-2 shadow-lg shadow-gray-200"
+          className="w-full py-4 bg-[var(--color-brand-espresso)] hover:bg-[var(--color-brand-espresso)] text-white rounded-xl font-bold tracking-widest uppercase transition-colors flex items-center justify-center space-x-2 shadow-lg shadow-gray-200"
         >
           {saved ? (
             <>

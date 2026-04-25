@@ -62,24 +62,24 @@ export const Luggages = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black text-[#2C3E50] tracking-wider">{t('luggages.title')}</h2>
+        <h2 className="text-2xl font-black text-[var(--color-brand-espresso)] tracking-wider">{t('luggages.title')}</h2>
         <button 
           onClick={() => setIsAdding(!isAdding)}
-          className="flex items-center space-x-1 bg-[#2C3E50] text-white px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-[#1A252F] transition-colors"
+          className="flex items-center space-x-1 bg-[var(--color-brand-espresso)] text-white px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-[var(--color-brand-espresso)] transition-colors"
         >
           <Plus size={16} />
           <span>{t('luggages.add')}</span>
         </button>
       </div>
 
-      <div className="flex space-x-2 p-1 bg-white rounded-2xl shadow-sm border border-gray-100 max-w-sm">
+      <div className="flex space-x-2 p-1 bg-[var(--color-brand-cream)] rounded-2xl shadow-sm border border-[var(--color-brand-stone)] max-w-sm">
         {[{ id: '所有', label: t('luggages.all') }, { id: '冬季', label: t('luggages.winter') }, { id: '夏季', label: t('luggages.summer') }].map(season => (
           <button
             key={season.id}
             onClick={() => setSeasonFilter(season.id as any)}
             className={clsx(
               'flex-1 py-2 text-sm font-bold rounded-xl transition-all',
-              currentSeasonFilter === season.id ? 'bg-[#2C3E50] text-white shadow-md' : 'text-gray-400 hover:text-gray-600'
+              currentSeasonFilter === season.id ? 'bg-[var(--color-brand-espresso)] text-white shadow-md' : 'text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)]/80'
             )}
           >
             {season.label}
@@ -88,20 +88,20 @@ export const Luggages = () => {
       </div>
 
       {isAdding && (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+        <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] space-y-4">
           <input 
             type="text" 
             placeholder={t('luggages.namePlaceholder')} 
             value={newLuggage.name} 
             onChange={e => setNewLuggage({...newLuggage, name: e.target.value})}
-            className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+            className="w-full px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
           />
           
           <div className="grid grid-cols-2 gap-4">
             <select 
               value={newLuggage.type} 
               onChange={e => setNewLuggage({...newLuggage, type: e.target.value as any})}
-              className="px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+              className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
             >
               <option value="托运">{t('luggages.typeChecked')}</option>
               <option value="手提">{t('luggages.typeCarryOn')}</option>
@@ -112,7 +112,7 @@ export const Luggages = () => {
             <select 
               value={newLuggage.season} 
               onChange={e => setNewLuggage({...newLuggage, season: e.target.value as any})}
-              className="px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+              className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
             >
               <option value="混合">{t('luggages.seasonMixed')}</option>
               <option value="冬季">{t('luggages.seasonWinter')}</option>
@@ -121,35 +121,35 @@ export const Luggages = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-bold text-gray-500 pl-2">{t('luggages.sizeLabel')}</label>
+            <label className="text-sm font-bold text-[var(--color-brand-espresso)]/60 pl-2">{t('luggages.sizeLabel')}</label>
             <div className="flex space-x-2">
               <input 
                 type="number" 
                 placeholder="L" 
                 value={newLuggage.length || ''} 
                 onChange={e => setNewLuggage({...newLuggage, length: parseFloat(e.target.value)})}
-                className="w-1/3 px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+                className="w-1/3 px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
               />
               <input 
                 type="number" 
                 placeholder="W" 
                 value={newLuggage.width || ''} 
                 onChange={e => setNewLuggage({...newLuggage, width: parseFloat(e.target.value)})}
-                className="w-1/3 px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+                className="w-1/3 px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
               />
               <input 
                 type="number" 
                 placeholder="H" 
                 value={newLuggage.height || ''} 
                 onChange={e => setNewLuggage({...newLuggage, height: parseFloat(e.target.value)})}
-                className="w-1/3 px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50]"
+                className="w-1/3 px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
               />
             </div>
           </div>
 
           <button 
             onClick={handleAdd}
-            className="w-full py-3 bg-[#2C3E50] text-white rounded-xl font-bold tracking-widest shadow-md"
+            className="w-full py-3 bg-[var(--color-brand-espresso)] text-white rounded-xl font-bold tracking-widest shadow-md"
           >
             {t('luggages.save')}
           </button>
@@ -157,7 +157,7 @@ export const Luggages = () => {
       )}
 
       {luggages.length === 0 ? (
-        <div className="text-center py-20 text-gray-400">
+        <div className="text-center py-20 text-[var(--color-brand-espresso)]/40">
           <Briefcase size={48} className="mx-auto mb-4 opacity-50" />
           <p>{t('luggages.empty')}</p>
         </div>
@@ -167,25 +167,25 @@ export const Luggages = () => {
             const currentWeight = getLuggageWeight(luggage);
 
             return (
-              <div key={luggage.id} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between">
+              <div key={luggage.id} className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex flex-col justify-between">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="font-bold text-[#2C3E50] text-xl mb-1">{luggage.name}</h3>
+                    <h3 className="font-bold text-[var(--color-brand-espresso)] text-xl mb-1">{luggage.name}</h3>
                     <div className="flex space-x-2 mb-2">
-                      <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600 font-bold">{luggage.type}</span>
-                      <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-bold">{luggage.season}</span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-[var(--color-brand-terracotta)] font-bold">{luggage.type}</span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-[var(--color-brand-espresso)]/80 font-bold">{luggage.season}</span>
                     </div>
-                    <p className="text-xs text-gray-400 font-medium">{t('luggages.size')}: {luggage.length} × {luggage.width} × {luggage.height} cm</p>
+                    <p className="text-xs text-[var(--color-brand-espresso)]/40 font-medium">{t('luggages.size')}: {luggage.length} × {luggage.width} × {luggage.height} cm</p>
                   </div>
-                  <button onClick={() => handleDelete(luggage.id)} className="p-2 text-gray-300 hover:text-red-500 transition-colors">
+                  <button onClick={() => handleDelete(luggage.id)} className="p-2 text-[var(--color-brand-espresso)]/30 hover:text-red-500 transition-colors">
                     <Trash2 size={18} />
                   </button>
                 </div>
                 
                 <div className="space-y-4 border-t border-gray-50 pt-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold text-gray-500">{t('luggages.currentWeight')}</span>
-                    <span className="text-2xl font-black text-[#2C3E50]">{currentWeight.toFixed(1)} kg</span>
+                    <span className="text-sm font-bold text-[var(--color-brand-espresso)]/60">{t('luggages.currentWeight')}</span>
+                    <span className="text-2xl font-black text-[var(--color-brand-espresso)]">{currentWeight.toFixed(1)} kg</span>
                   </div>
                   
                   <div className="flex space-x-2">
@@ -194,18 +194,18 @@ export const Luggages = () => {
                       placeholder={t('luggages.recordPlaceholder')} 
                       value={weightInputs[luggage.id] || ''}
                       onChange={e => setWeightInputs({...weightInputs, [luggage.id]: parseFloat(e.target.value)})}
-                      className="w-1/2 px-4 py-2 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#2C3E50] text-sm"
+                      className="w-1/2 px-4 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
                     />
                     <button 
                       onClick={() => handleRecordWeight(luggage.id)}
-                      className="w-1/2 py-2 bg-[#2C3E50] text-white rounded-xl text-sm font-bold shadow-md hover:bg-[#1A252F] transition-colors"
+                      className="w-1/2 py-2 bg-[var(--color-brand-espresso)] text-white rounded-xl text-sm font-bold shadow-md hover:bg-[var(--color-brand-espresso)] transition-colors"
                     >
                       {t('luggages.recordBtn')}
                     </button>
                   </div>
 
                   {luggage.weightHistory && luggage.weightHistory.length > 0 && (
-                    <div className="mt-2 text-xs text-gray-400">
+                    <div className="mt-2 text-xs text-[var(--color-brand-espresso)]/40">
                       <p>{t('luggages.lastRecord')} {new Date(luggage.weightHistory[luggage.weightHistory.length - 1].date).toLocaleString()}</p>
                     </div>
                   )}

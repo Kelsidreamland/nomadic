@@ -1,0 +1,3 @@
+- [x] 確認 `src/services/ai.ts` 內的所有模型都已更換為 `gemini-2.5-flash`。
+- [x] 確認在 `src/pages/Dashboard.tsx` 內 `useGoogleLogin` 的 `onError` 會顯示提示（例如告知使用者是因為在 Trae 沙盒網域運行，需要將目前的網址加到 Google Cloud 的白名單）。
+- [x] 所有 Vitest 測試皆需能正常運行通過 (`npm test` 或 `npx vitest run src/services/ai.test.ts`)。

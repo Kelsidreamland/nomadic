@@ -30,21 +30,28 @@ export const Layout = ({ children }: LayoutProps) => {
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-[#FDFBF7] text-[#4A4A4A] font-sans">
-      <header className="bg-white/80 backdrop-blur-md px-6 py-4 shadow-sm z-20 flex justify-between items-center sticky top-0">
-        <h1 className="text-2xl font-black tracking-widest text-[#2C3E50] uppercase flex items-center gap-2">
-          NOMADIC
-          <button 
-            onClick={toggleLanguage}
-            className="ml-4 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors"
-          >
-            <Globe size={14} />
-            <span>{language === 'zh-TW' ? 'EN' : '繁中'}</span>
-          </button>
+    <div className="flex flex-col h-screen bg-[var(--color-brand-sand)] text-[var(--color-brand-espresso)] font-sans">
+      <header className="bg-[var(--color-brand-cream)]/80 backdrop-blur-md px-6 py-4 shadow-sm z-20 flex justify-between items-center sticky top-0 border-b border-[var(--color-brand-stone)]">
+        <h1 className="text-2xl font-black tracking-widest text-[var(--color-brand-espresso)] flex items-center gap-2">
+          <Link to="/" className="flex items-center space-x-3 group">
+            <div className="w-10 h-10 bg-[var(--color-brand-terracotta)] text-white rounded-xl flex items-center justify-center transform transition-transform group-hover:scale-105 shadow-md shadow-[var(--color-brand-terracotta)]/20">
+              <Briefcase size={22} strokeWidth={2.5} />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-serif font-bold text-2xl tracking-tight text-[var(--color-brand-espresso)] leading-none">Nomadic</span>
+              <span className="text-[10px] text-[var(--color-brand-olive)] uppercase tracking-widest font-semibold leading-none mt-1">my luggage</span>
+            </div>
+          </Link>
         </h1>
         
         {/* Desktop Nav */}
-        <div className="flex items-center space-x-6">
+        <div className="flex items-center space-x-4 md:space-x-6">
+          <button 
+            onClick={toggleLanguage}
+            className="text-xs font-bold px-3 py-1.5 rounded-full border border-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/80 hover:bg-[var(--color-brand-sand)] transition-colors"
+          >
+            {language === 'zh-TW' ? 'EN' : '繁中'}
+          </button>
           <nav className="hidden md:flex space-x-8">
             {navItems.map((item) => (
               <Link
@@ -52,7 +59,7 @@ export const Layout = ({ children }: LayoutProps) => {
                 to={item.path}
                 className={clsx(
                   'flex items-center space-x-2 text-sm font-semibold tracking-wider transition-colors',
-                  location.pathname === item.path ? 'text-[#2C3E50] border-b-2 border-[#2C3E50]' : 'text-gray-400 hover:text-gray-600'
+                  location.pathname === item.path ? 'text-[var(--color-brand-espresso)] border-b-2 border-[var(--color-brand-espresso)]' : 'text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)]/80'
                 )}
               >
                 <item.icon size={18} />
@@ -65,7 +72,7 @@ export const Layout = ({ children }: LayoutProps) => {
             href="https://api.payuni.com.tw/api/uop/receive_info/2/3/NPPA226028039/mgYrU0DqoPbb6vatwL86Z" 
             target="_blank" 
             rel="noreferrer"
-            className="hidden md:flex items-center space-x-2 bg-[#FFDD00] text-yellow-900 px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+            className="hidden md:flex items-center space-x-2 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
           >
             <Coffee size={16} />
             <span>Sponsor / VIP</span>
@@ -80,7 +87,7 @@ export const Layout = ({ children }: LayoutProps) => {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 w-full bg-white/90 backdrop-blur-lg border-t border-gray-100 pb-safe z-50">
+      <nav className="md:hidden fixed bottom-0 w-full bg-[var(--color-brand-cream)]/90 backdrop-blur-lg border-t border-[var(--color-brand-stone)] pb-safe z-50">
         <div className="flex justify-around items-center h-[72px]">
           {navItems.map((item) => (
             <Link
@@ -88,7 +95,7 @@ export const Layout = ({ children }: LayoutProps) => {
               to={item.path}
               className={clsx(
                 'flex flex-col items-center justify-center w-full h-full space-y-1 transition-all duration-300 ease-in-out',
-                location.pathname === item.path ? 'text-[#2C3E50] -translate-y-1' : 'text-gray-400'
+                location.pathname === item.path ? 'text-[var(--color-brand-espresso)] -translate-y-1' : 'text-[var(--color-brand-espresso)]/40'
               )}
             >
               <div className={clsx("p-2 rounded-xl", location.pathname === item.path ? 'bg-gray-100/80 shadow-inner' : '')}>

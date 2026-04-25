@@ -74,30 +74,30 @@ export const Outfits = () => {
   };
 
   const renderVersatilityBadge = (count: number) => {
-    if (count === 0) return <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[10px] font-bold">0 搭配 (建議捨棄)</span>;
+    if (count === 0) return <span className="bg-gray-100 text-[var(--color-brand-espresso)]/60 px-2 py-0.5 rounded-full text-[10px] font-bold">0 搭配 (建議捨棄)</span>;
     if (count >= 3) return <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold">{count} 搭配 (高百搭)</span>;
-    return <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold">{count} 搭配</span>;
+    return <span className="bg-[var(--color-brand-stone)] text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold">{count} 搭配</span>;
   };
 
   const renderItemCard = (item: Item, isTop: boolean = false) => {
     const isSelected = selectedTopId === item.id;
     const matchCount = getMatchCount(item.id, isTop);
     
-    let cardStyle = "border-gray-100 bg-white hover:border-gray-300 hover:shadow-sm";
+    let cardStyle = "border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] hover:border-gray-300 hover:shadow-sm";
     
     if (isTop) {
       if (isSelected) {
-        cardStyle = "border-[#2C3E50] bg-blue-50/50 shadow-md ring-2 ring-[#2C3E50] ring-offset-2";
+        cardStyle = "border-[var(--color-brand-espresso)] bg-blue-50/50 shadow-md ring-2 ring-[var(--color-brand-espresso)] ring-offset-2";
       } else if (selectedTopId) {
-        cardStyle = "border-gray-100 bg-white opacity-50 grayscale-[50%]"; // Dim other tops when one is selected
+        cardStyle = "border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] opacity-50 grayscale-[50%]"; // Dim other tops when one is selected
       }
     } else {
       if (selectedTopId) {
         const isMatched = matches.some(m => m.topItemId === selectedTopId && m.bottomItemId === item.id);
         if (isMatched) {
-          cardStyle = "border-blue-400 bg-blue-50 shadow-md ring-2 ring-blue-400 ring-offset-1";
+          cardStyle = "border-[var(--color-brand-terracotta)] bg-blue-50 shadow-md ring-2 ring-blue-400 ring-offset-1";
         } else {
-          cardStyle = "border-gray-100 bg-gray-50 opacity-60 hover:opacity-100 hover:border-blue-300 border-dashed border-2";
+          cardStyle = "border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] opacity-60 hover:opacity-100 hover:border-[var(--color-brand-terracotta)] border-dashed border-2";
         }
       }
     }
@@ -124,8 +124,8 @@ export const Outfits = () => {
             />
           </div>
         )}
-        <div className="font-bold text-[#2C3E50] text-sm truncate w-full mt-auto">{item.name}</div>
-        <div className="text-[10px] text-gray-400 mt-1">{item.subCategory} • {item.wrinkleProne || '適中'}</div>
+        <div className="font-bold text-[var(--color-brand-espresso)] text-sm truncate w-full mt-auto">{item.name}</div>
+        <div className="text-[10px] text-[var(--color-brand-espresso)]/40 mt-1">{item.subCategory} • {item.wrinkleProne || '適中'}</div>
       </div>
     );
   };
@@ -134,17 +134,17 @@ export const Outfits = () => {
     <div className="space-y-6 animate-fade-in pb-20">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-black text-[#2C3E50] tracking-wider">{t('outfits.title')}</h2>
-          <p className="text-sm text-gray-500 font-medium mt-1">點擊上衣，再點擊下裝即可建立搭配</p>
+          <h2 className="text-2xl font-black text-[var(--color-brand-espresso)] tracking-wider">{t('outfits.title')}</h2>
+          <p className="text-sm text-[var(--color-brand-espresso)]/60 font-medium mt-1">點擊上衣，再點擊下裝即可建立搭配</p>
         </div>
-        <div className="bg-white px-4 py-2 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-2">
+        <div className="bg-[var(--color-brand-cream)] px-4 py-2 rounded-2xl shadow-sm border border-[var(--color-brand-stone)] flex items-center space-x-2">
           <Sparkles size={18} className="text-yellow-500" />
-          <span className="font-bold text-[#2C3E50]">{t('outfits.totalSets', { count: matches.length })}</span>
+          <span className="font-bold text-[var(--color-brand-espresso)]">{t('outfits.totalSets', { count: matches.length })}</span>
         </div>
       </div>
 
       {(aiAdvice || isThinking) && (
-        <div className="bg-[#2C3E50] text-white p-5 rounded-3xl shadow-lg relative overflow-hidden animate-fade-in">
+        <div className="bg-[var(--color-brand-espresso)] text-white p-5 rounded-3xl shadow-lg relative overflow-hidden animate-fade-in">
           <div className="absolute -right-4 -top-4 opacity-10">
             <Bot size={100} />
           </div>
@@ -154,9 +154,9 @@ export const Outfits = () => {
               <h4 className="font-bold text-sm text-blue-200 uppercase tracking-wider mb-1">{t('outfits.aiReview')}</h4>
               {isThinking ? (
                 <div className="flex space-x-1 items-center h-5">
-                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="w-2 h-2 bg-[var(--color-brand-cream)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 bg-[var(--color-brand-cream)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 bg-[var(--color-brand-cream)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               ) : (
                 <p className="text-sm font-medium leading-relaxed">{aiAdvice}</p>
@@ -167,20 +167,20 @@ export const Outfits = () => {
       )}
 
       {tops.length === 0 && bottoms.length === 0 ? (
-        <div className="text-center py-20 text-gray-400 bg-white rounded-3xl border border-dashed border-gray-200">
+        <div className="text-center py-20 text-[var(--color-brand-espresso)]/40 bg-[var(--color-brand-cream)] rounded-3xl border border-dashed border-[var(--color-brand-stone)]">
           <Info size={48} className="mx-auto mb-4 opacity-50" />
           <p>{t('outfits.empty')}</p>
         </div>
       ) : (
         <div className="space-y-8">
           {/* Tops Section */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-[var(--color-brand-cream)] rounded-3xl shadow-sm border border-[var(--color-brand-stone)] p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-gray-800 tracking-widest">上半身 (Tops & Outerwear)</h3>
+              <h3 className="font-bold text-[var(--color-brand-espresso)] tracking-widest">上半身 (Tops & Outerwear)</h3>
               {selectedTopId && (
                 <button 
                   onClick={() => setSelectedTopId(null)}
-                  className="text-xs font-bold text-blue-500 bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100"
+                  className="text-xs font-bold text-[var(--color-brand-terracotta)] bg-blue-50 px-3 py-1 rounded-full hover:bg-[var(--color-brand-stone)]"
                 >
                   取消選取
                 </button>
@@ -189,13 +189,13 @@ export const Outfits = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {tops.map(top => renderItemCard(top, true))}
             </div>
-            {tops.length === 0 && <p className="text-sm text-gray-400 py-4">尚無上衣資料</p>}
+            {tops.length === 0 && <p className="text-sm text-[var(--color-brand-espresso)]/40 py-4">尚無上衣資料</p>}
           </div>
 
           {/* Bottoms Section */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 relative">
+          <div className="bg-[var(--color-brand-cream)] rounded-3xl shadow-sm border border-[var(--color-brand-stone)] p-6 relative">
             {!selectedTopId && (
-              <div className="absolute inset-0 z-20 bg-white/60 backdrop-blur-[1px] rounded-3xl flex items-center justify-center">
+              <div className="absolute inset-0 z-20 bg-[var(--color-brand-cream)]/60 backdrop-blur-[1px] rounded-3xl flex items-center justify-center">
                 <div className="bg-gray-800 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg flex items-center space-x-2">
                   <span className="animate-pulse">👆</span>
                   <span>請先從上方選擇一件上衣</span>
@@ -203,11 +203,11 @@ export const Outfits = () => {
               </div>
             )}
             
-            <h3 className="font-bold text-gray-800 tracking-widest mb-4">下半身與配件 (Bottoms & Accessories)</h3>
+            <h3 className="font-bold text-[var(--color-brand-espresso)] tracking-widest mb-4">下半身與配件 (Bottoms & Accessories)</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {bottoms.map(bottom => renderItemCard(bottom, false))}
             </div>
-            {bottoms.length === 0 && <p className="text-sm text-gray-400 py-4">尚無下裝資料</p>}
+            {bottoms.length === 0 && <p className="text-sm text-[var(--color-brand-espresso)]/40 py-4">尚無下裝資料</p>}
           </div>
         </div>
       )}
@@ -215,7 +215,7 @@ export const Outfits = () => {
       {matches.length > 0 && (
         <button 
           onClick={getMatchDecision}
-          className="w-full py-4 bg-white border border-gray-200 hover:border-[#2C3E50] text-[#2C3E50] rounded-2xl font-bold tracking-widest shadow-sm transition-colors flex justify-center items-center space-x-2"
+          className="w-full py-4 bg-[var(--color-brand-cream)] border border-[var(--color-brand-stone)] hover:border-[var(--color-brand-espresso)] text-[var(--color-brand-espresso)] rounded-2xl font-bold tracking-widest shadow-sm transition-colors flex justify-center items-center space-x-2"
         >
           <Bot size={20} />
           <span>{t('outfits.aiReduce')}</span>

@@ -1,7 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Earthy Warmth Palette */
+  --color-brand-sand: #F4EFE6;
+  --color-brand-espresso: #3D332D;
+  --color-brand-terracotta: #C86A4C;
+  --color-brand-terracotta-hover: #b55c3f;
+  --color-brand-olive: #8C9A74;
+  --color-brand-olive-hover: #7b8865;
+  --color-brand-cream: #FCFBF9;
+  --color-brand-stone: #E8E2D6;
+
+  /* Typography */
+  --font-sans: 'Poppins', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Lora', 'Noto Serif TC', Georgia, Cambria, 'Times New Roman', Times, serif;
+
   --animate-fade-in: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -19,10 +32,20 @@
 body {
   margin: 0;
   padding: 0;
-  background-color: #FDFBF7;
-  color: #4A4A4A;
+  background-color: var(--color-brand-sand);
+  color: var(--color-brand-espresso);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4, h5, h6, .font-serif {
+  font-family: var(--font-serif);
+}
+
+/* Base interactive elements */
+button {
+  font-family: var(--font-sans);
 }
 
 /* Hide scrollbar for clean aesthetic */

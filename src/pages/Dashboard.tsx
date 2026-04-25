@@ -7,12 +7,17 @@ import { Bot, Plane, ShoppingBag, AlertTriangle, Mail, Plus, Save, X, ArrowRight
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useGoogleLogin } from '@react-oauth/google';
+import { Onboarding } from '../components/Onboarding';
 
 export const Dashboard = () => {
   const { t } = useTranslation();
   const luggages = useLiveQuery(() => db.luggages.toArray()) || [];
   const items = useLiveQuery(() => db.items.toArray()) || [];
   const flights = useLiveQuery(() => db.flights.toArray()) || [];
+  
+  const [isFirstTimeUser, setIsFirstTimeUser] = useState(() => {
+    return localStorage.getItem('nomadic_onboarded') !== 'true';
+  });
   
   const [insights, setInsights] = useState<any>(null);
   const [isThinking, setIsThinking] = useState(false);
@@ -145,55 +150,91 @@ export const Dashboard = () => {
     }
   };
 
+  const [newItemName, setNewItemName] = useState('');
+
+  const handleAddTodoItem = async (name: string) => {
+    if (!name.trim()) return;
+    const newItem = {
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      category: '其他' as const,
+      season: '通用' as const,
+      condition: '新' as const,
+      isDiscardable: true,
+      luggageId: luggages[0]?.id || 'todo-list',
+      createdAt: Date.now()
+    };
+    await db.items.add(newItem);
+    setNewItemName('');
+  };
+
+  const smartSuggestions = ['SIM卡/網卡', '萬國充', '護照', '行動電源', '常備藥', '牙刷/牙膏'];
+
   const daysToFlight = upcomingFlight 
     ? Math.ceil((new Date(upcomingFlight.departureDate).getTime() - now) / (1000 * 60 * 60 * 24))
     : null;
+
+  if (isFirstTimeUser) {
+    return (
+      <Onboarding 
+        onComplete={() => {
+          localStorage.setItem('nomadic_onboarded', 'true');
+          setIsFirstTimeUser(false);
+        }}
+        onManualSkip={() => {
+          localStorage.setItem('nomadic_onboarded', 'true');
+          setIsFirstTimeUser(false);
+          handleManualAdd();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h2 className="text-3xl font-black text-[#2C3E50] tracking-wider">{t('app.dashboard')}</h2>
-          <p className="text-gray-500 font-medium mt-1">{t('dashboard.greeting')} {location}</p>
+          <h2 className="text-3xl font-black text-[var(--color-brand-espresso)] tracking-wider">{t('app.dashboard')}</h2>
+          <p className="text-[var(--color-brand-espresso)]/60 font-medium mt-1">{t('dashboard.greeting')} {location}</p>
         </div>
       </div>
 
       {showFlightForm && (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+        <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="font-bold text-lg text-[#2C3E50]">航班資訊</h3>
-            <button onClick={() => setShowFlightForm(false)} className="text-gray-400 hover:text-gray-600">
+            <h3 className="font-bold text-lg text-[var(--color-brand-espresso)]">航班資訊</h3>
+            <button onClick={() => setShowFlightForm(false)} className="text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)]/80">
               <X size={20} />
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">目的地</label>
-              <input type="text" className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500" value={flightData.destination} onChange={e => setFlightData({...flightData, destination: e.target.value})} placeholder="例如：東京" />
+              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">目的地</label>
+              <input type="text" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.destination} onChange={e => setFlightData({...flightData, destination: e.target.value})} placeholder="例如：東京" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">航空公司</label>
-              <input type="text" className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500" value={flightData.airline} onChange={e => setFlightData({...flightData, airline: e.target.value})} placeholder="例如：長榮航空" />
+              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">航空公司</label>
+              <input type="text" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.airline} onChange={e => setFlightData({...flightData, airline: e.target.value})} placeholder="例如：長榮航空" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">出發日期</label>
-              <input type="date" className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500" value={flightData.departureDate} onChange={e => setFlightData({...flightData, departureDate: e.target.value})} />
+              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">出發日期</label>
+              <input type="date" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.departureDate} onChange={e => setFlightData({...flightData, departureDate: e.target.value})} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">托運限額 (kg)</label>
-              <input type="number" className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500" value={flightData.checkedAllowance} onChange={e => setFlightData({...flightData, checkedAllowance: Number(e.target.value)})} />
+              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">托運限額 (kg)</label>
+              <input type="number" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.checkedAllowance} onChange={e => setFlightData({...flightData, checkedAllowance: Number(e.target.value)})} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">手提限額 (kg)</label>
-              <input type="number" className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500" value={flightData.carryOnAllowance} onChange={e => setFlightData({...flightData, carryOnAllowance: Number(e.target.value)})} />
+              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">手提限額 (kg)</label>
+              <input type="number" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.carryOnAllowance} onChange={e => setFlightData({...flightData, carryOnAllowance: Number(e.target.value)})} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">隨身限額 (kg)</label>
-              <input type="number" className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500" value={flightData.personalAllowance} onChange={e => setFlightData({...flightData, personalAllowance: Number(e.target.value)})} />
+              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">隨身限額 (kg)</label>
+              <input type="number" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.personalAllowance} onChange={e => setFlightData({...flightData, personalAllowance: Number(e.target.value)})} />
             </div>
           </div>
           <div className="flex justify-end pt-2">
-            <button onClick={handleSaveFlight} className="flex items-center space-x-2 bg-[#2C3E50] text-white px-6 py-2 rounded-xl font-bold shadow-md hover:bg-[#1a252f] transition-colors">
+            <button onClick={handleSaveFlight} className="flex items-center space-x-2 bg-[var(--color-brand-espresso)] text-white px-6 py-2 rounded-xl font-bold shadow-md hover:bg-black transition-colors">
               <Save size={16} />
               <span>儲存航班</span>
             </button>
@@ -206,7 +247,7 @@ export const Dashboard = () => {
         <div className="space-y-6">
           {/* Flight Card (Existing Code) */}
           {upcomingFlight ? (
-            <div className="bg-[#2C3E50] text-white p-6 rounded-3xl shadow-lg relative overflow-hidden">
+            <div className="bg-[var(--color-brand-espresso)] text-white p-6 rounded-3xl shadow-lg relative overflow-hidden">
               <div className="absolute -right-6 -bottom-10 opacity-10">
                 <Plane size={160} />
               </div>
@@ -214,42 +255,42 @@ export const Dashboard = () => {
                 <div>
                   <div className="flex items-center space-x-3 mb-2">
                     <p className="text-sm font-bold text-blue-200 tracking-widest uppercase">{t('dashboard.nextFlight')}</p>
-                    <button onClick={handleManualAdd} className="text-blue-200 hover:text-white transition-colors bg-white/10 px-2 py-1 rounded text-xs">
+                    <button onClick={handleManualAdd} className="text-blue-200 hover:text-white transition-colors bg-[var(--color-brand-cream)]/10 px-2 py-1 rounded text-xs">
                       {t('settings.editFlight', '編輯')}
                     </button>
                   </div>
                   <h3 className="text-2xl font-black">{upcomingFlight.destination}</h3>
-                  <p className="text-blue-100 mt-2">{upcomingFlight.airline} • {t('dashboard.allowance')} {upcomingFlight.checkedAllowance}kg</p>
+                  <p className="text-[var(--color-brand-stone)] mt-2">{upcomingFlight.airline} • {t('dashboard.allowance')} {upcomingFlight.checkedAllowance}kg</p>
                 </div>
-                <div className="text-center bg-white/10 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/20">
+                <div className="text-center bg-[var(--color-brand-cream)]/10 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/20">
                   <div className="text-4xl font-black">{daysToFlight}</div>
                   <div className="text-xs font-bold uppercase tracking-widest mt-1">{t('dashboard.days')}</div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center space-x-4">
-                <div className="p-4 bg-gray-50 rounded-2xl">
-                  <Plane size={24} className="text-gray-400" />
+                <div className="p-4 bg-[var(--color-brand-sand)] rounded-2xl">
+                  <Plane size={24} className="text-[var(--color-brand-espresso)]/40" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-[#2C3E50]">{t('dashboard.noFlights')}</h3>
-                  <p className="text-sm text-gray-500">{t('dashboard.noFlightsSub')}</p>
+                  <h3 className="font-bold text-[var(--color-brand-espresso)]">{t('dashboard.noFlights')}</h3>
+                  <p className="text-sm text-[var(--color-brand-espresso)]/60">{t('dashboard.noFlightsSub')}</p>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button 
                   onClick={() => login()} 
                   disabled={isSyncing}
-                  className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 text-sm"
+                  className="flex items-center justify-center space-x-2 bg-[var(--color-brand-terracotta)] hover:bg-[var(--color-brand-terracotta-hover)] text-white px-4 py-2 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 text-sm"
                 >
                   <Mail size={16} />
                   <span>{isSyncing ? 'Syncing...' : 'Sync Flights'}</span>
                 </button>
                 <button 
                   onClick={handleManualAdd}
-                  className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl font-bold transition-all shadow-sm text-sm"
+                  className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-[var(--color-brand-espresso)]/80 px-4 py-2 rounded-xl font-bold transition-all shadow-sm text-sm"
                 >
                   <Plus size={16} />
                   <span>Add Manual</span>
@@ -262,16 +303,16 @@ export const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button 
               onClick={startAiPlan}
-              className="w-full py-5 bg-[#2C3E50] hover:bg-[#1A252F] text-white rounded-3xl font-bold tracking-widest shadow-lg shadow-[#2C3E50]/20 transition-all transform hover:scale-[1.02] flex justify-center items-center space-x-2"
+              className="w-full py-5 bg-[var(--color-brand-espresso)] hover:bg-[var(--color-brand-espresso)] text-white rounded-3xl font-bold tracking-widest shadow-lg shadow-[var(--color-brand-espresso)]/20 transition-all transform hover:scale-[1.02] flex justify-center items-center space-x-2"
             >
-              <Bot size={20} className="text-blue-400" />
+              <Bot size={20} className="text-[var(--color-brand-olive)]" />
               <span>讓 AI 幫我做減法 (膠囊衣櫥推薦)</span>
             </button>
             <button 
               onClick={startChecklist}
-              className="w-full py-5 bg-white border-2 border-gray-100 hover:border-blue-100 text-[#2C3E50] rounded-3xl font-bold tracking-widest shadow-sm transition-all flex justify-center items-center space-x-2"
+              className="w-full py-5 bg-[var(--color-brand-cream)] border-2 border-[var(--color-brand-stone)] hover:border-[var(--color-brand-terracotta)] text-[var(--color-brand-espresso)] rounded-3xl font-bold tracking-widest shadow-sm transition-all flex justify-center items-center space-x-2"
             >
-              <CheckCircle2 size={20} className="text-gray-400" />
+              <CheckCircle2 size={20} className="text-[var(--color-brand-espresso)]/40" />
               <span>我自己手動打包 (Checklist)</span>
             </button>
           </div>
@@ -279,22 +320,22 @@ export const Dashboard = () => {
       )}
 
       {upcomingFlight && (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-6">
-          <h3 className="font-bold text-lg text-[#2C3E50]">{t('dashboard.allowanceTitle')}</h3>
+        <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] space-y-6">
+          <h3 className="font-bold text-lg text-[var(--color-brand-espresso)]">{t('dashboard.allowanceTitle')}</h3>
           <div className="space-y-2">
             <div className="flex justify-between items-end">
               <div>
-                <p className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-1">{t('dashboard.checked')}</p>
-                <h4 className="text-xl font-black text-[#2C3E50]">{checkedWeight.toFixed(1)} <span className="text-sm text-gray-400">kg</span></h4>
+                <p className="text-xs font-bold text-[var(--color-brand-espresso)]/40 tracking-widest uppercase mb-1">{t('dashboard.checked')}</p>
+                <h4 className="text-xl font-black text-[var(--color-brand-espresso)]">{checkedWeight.toFixed(1)} <span className="text-sm text-[var(--color-brand-espresso)]/40">kg</span></h4>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-bold text-gray-400 uppercase">{t('dashboard.limit')}</p>
-                <p className="text-sm font-bold text-[#2C3E50]">{upcomingFlight?.checkedAllowance || 0} kg</p>
+                <p className="text-[10px] font-bold text-[var(--color-brand-espresso)]/40 uppercase">{t('dashboard.limit')}</p>
+                <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{upcomingFlight?.checkedAllowance || 0} kg</p>
               </div>
             </div>
             <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
               <div 
-                className={clsx("h-full transition-all duration-1000", checkedWeight > (upcomingFlight?.checkedAllowance || 0) ? 'bg-red-500' : 'bg-[#2C3E50]')} 
+                className={clsx("h-full transition-all duration-1000", checkedWeight > (upcomingFlight?.checkedAllowance || 0) ? 'bg-red-500' : 'bg-[var(--color-brand-espresso)]')} 
                 style={{ width: `${Math.min(100, (checkedWeight / (upcomingFlight?.checkedAllowance || 1)) * 100)}%` }}
               ></div>
             </div>
@@ -303,17 +344,17 @@ export const Dashboard = () => {
           <div className="space-y-2">
             <div className="flex justify-between items-end">
               <div>
-                <p className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-1">{t('dashboard.carryOn')}</p>
-                <h4 className="text-xl font-black text-[#2C3E50]">{carryOnWeight.toFixed(1)} <span className="text-sm text-gray-400">kg</span></h4>
+                <p className="text-xs font-bold text-[var(--color-brand-espresso)]/40 tracking-widest uppercase mb-1">{t('dashboard.carryOn')}</p>
+                <h4 className="text-xl font-black text-[var(--color-brand-espresso)]">{carryOnWeight.toFixed(1)} <span className="text-sm text-[var(--color-brand-espresso)]/40">kg</span></h4>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-bold text-gray-400 uppercase">{t('dashboard.limit')}</p>
-                <p className="text-sm font-bold text-[#2C3E50]">{upcomingFlight?.carryOnAllowance || 0} kg</p>
+                <p className="text-[10px] font-bold text-[var(--color-brand-espresso)]/40 uppercase">{t('dashboard.limit')}</p>
+                <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{upcomingFlight?.carryOnAllowance || 0} kg</p>
               </div>
             </div>
             <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
               <div 
-                className={clsx("h-full transition-all duration-1000", carryOnWeight > (upcomingFlight?.carryOnAllowance || 0) ? 'bg-red-500' : 'bg-blue-400')} 
+                className={clsx("h-full transition-all duration-1000", carryOnWeight > (upcomingFlight?.carryOnAllowance || 0) ? 'bg-red-500' : 'bg-[var(--color-brand-olive)]')} 
                 style={{ width: `${Math.min(100, (carryOnWeight / (upcomingFlight?.carryOnAllowance || 1)) * 100)}%` }}
               ></div>
             </div>
@@ -325,22 +366,22 @@ export const Dashboard = () => {
       {plannerStep === 'ai-plan' && (
         <div className="space-y-6 animate-fade-in">
           <div className="flex items-center space-x-3 mb-6">
-            <button onClick={() => setPlannerStep('context')} className="text-gray-400 hover:text-gray-600">
+            <button onClick={() => setPlannerStep('context')} className="text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)]/80">
               <X size={24} />
             </button>
-            <h2 className="text-2xl font-black text-[#2C3E50]">AI 智能打包建議</h2>
+            <h2 className="text-2xl font-black text-[var(--color-brand-espresso)]">AI 智能打包建議</h2>
           </div>
 
           {isThinking ? (
-            <div className="bg-white p-12 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-center items-center space-y-6">
+            <div className="bg-[var(--color-brand-cream)] p-12 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex flex-col justify-center items-center space-y-6">
               <div className="flex space-x-2">
-                <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="w-3 h-3 bg-[var(--color-brand-olive)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-3 h-3 bg-[var(--color-brand-olive)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-3 h-3 bg-[var(--color-brand-olive)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
-              <p className="font-bold text-gray-500 text-center">
+              <p className="font-bold text-[var(--color-brand-espresso)]/60 text-center">
                 正在分析行程、天氣與您的衣櫥庫存...<br/>
-                <span className="text-xs font-normal text-gray-400 mt-2 block">這可能需要幾秒鐘的時間</span>
+                <span className="text-xs font-normal text-[var(--color-brand-espresso)]/40 mt-2 block">這可能需要幾秒鐘的時間</span>
               </p>
             </div>
           ) : insights ? (
@@ -364,8 +405,8 @@ export const Dashboard = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* 建議捨棄 */}
                 {insights.optimization?.remove_suggestions && insights.optimization.remove_suggestions.length > 0 && (
-                  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                    <h3 className="font-bold text-gray-800 mb-4 flex items-center text-red-500">
+                  <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl border border-[var(--color-brand-stone)] shadow-sm">
+                    <h3 className="font-bold text-[var(--color-brand-espresso)] mb-4 flex items-center text-red-500">
                       <X size={18} className="mr-2" /> 建議捨棄 (減輕負重)
                     </h3>
                     <ul className="space-y-4">
@@ -373,10 +414,10 @@ export const Dashboard = () => {
                         const originalItem = items.find(inv => inv.id === item.item_id);
                         return (
                           <li key={i} className="flex items-start space-x-3 text-sm">
-                            <div className="mt-0.5 text-gray-400 shrink-0"><Circle size={16} /></div>
+                            <div className="mt-0.5 text-[var(--color-brand-espresso)]/40 shrink-0"><Circle size={16} /></div>
                             <div>
-                              <span className="font-bold text-[#2C3E50]">{originalItem?.name || item.item_id}</span>
-                              <p className="text-gray-500 text-xs mt-1">{item.reason}</p>
+                              <span className="font-bold text-[var(--color-brand-espresso)]">{originalItem?.name || item.item_id}</span>
+                              <p className="text-[var(--color-brand-espresso)]/60 text-xs mt-1">{item.reason}</p>
                             </div>
                           </li>
                         );
@@ -387,14 +428,14 @@ export const Dashboard = () => {
 
                 {/* 備品建議 */}
                 {insights.optimization?.packing_advice && insights.optimization.packing_advice.length > 0 && (
-                  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                    <h3 className="font-bold text-gray-800 mb-4 flex items-center text-blue-500">
+                  <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl border border-[var(--color-brand-stone)] shadow-sm">
+                    <h3 className="font-bold text-[var(--color-brand-espresso)] mb-4 flex items-center text-[var(--color-brand-terracotta)]">
                       <ShoppingBag size={18} className="mr-2" /> 打包與備品建議
                     </h3>
                     <ul className="space-y-3">
                       {insights.optimization.packing_advice.map((advice: string, i: number) => (
-                        <li key={i} className="flex items-start space-x-2 text-sm text-gray-600">
-                          <span className="text-blue-400 font-bold">•</span>
+                        <li key={i} className="flex items-start space-x-2 text-sm text-[var(--color-brand-espresso)]/80">
+                          <span className="text-[var(--color-brand-olive)] font-bold">•</span>
                           <span>{advice}</span>
                         </li>
                       ))}
@@ -405,14 +446,14 @@ export const Dashboard = () => {
 
               <button 
                 onClick={startChecklist}
-                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold tracking-widest shadow-md transition-colors flex justify-center items-center space-x-2"
+                className="w-full py-4 bg-[var(--color-brand-terracotta)] hover:bg-[var(--color-brand-terracotta-hover)] text-white rounded-2xl font-bold tracking-widest shadow-md transition-colors flex justify-center items-center space-x-2"
               >
                 <span>確認並進入打包清單</span>
                 <ArrowRight size={20} />
               </button>
             </div>
           ) : (
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 text-center text-red-400 text-sm">
+            <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] text-center text-red-400 text-sm">
               AI 分析失敗，請確認 API Key 設定或稍後再試。
             </div>
           )}
@@ -422,16 +463,16 @@ export const Dashboard = () => {
       {/* Planner Step 3: Checklist */}
       {plannerStep === 'checklist' && (
         <div className="space-y-6 animate-fade-in pb-20">
-          <div className="flex items-center justify-between mb-6 sticky top-0 bg-gray-50/90 backdrop-blur-md py-4 z-10">
+          <div className="flex items-center justify-between mb-6 sticky top-0 bg-[var(--color-brand-sand)]/90 backdrop-blur-md py-4 z-10">
             <div className="flex items-center space-x-3">
-              <button onClick={() => setPlannerStep('context')} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setPlannerStep('context')} className="text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)]/80">
                 <X size={24} />
               </button>
-              <h2 className="text-2xl font-black text-[#2C3E50]">打包清單</h2>
+              <h2 className="text-2xl font-black text-[var(--color-brand-espresso)]">打包清單</h2>
             </div>
             <div className="text-right">
-              <span className="text-2xl font-black text-[#2C3E50]">{packedItemIds.length}</span>
-              <span className="text-sm font-bold text-gray-400"> / {items.length - removedItemIds.length}</span>
+              <span className="text-2xl font-black text-[var(--color-brand-espresso)]">{packedItemIds.length}</span>
+              <span className="text-sm font-bold text-[var(--color-brand-espresso)]/40"> / {items.length - removedItemIds.length}</span>
             </div>
           </div>
 
@@ -464,15 +505,46 @@ export const Dashboard = () => {
           )}
 
           {/* Checklist UI */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-[var(--color-brand-cream)] rounded-3xl shadow-sm border border-[var(--color-brand-stone)] overflow-hidden mb-6">
+            <div className="p-4 border-b border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)]/50">
+              <div className="flex space-x-2 mb-3">
+                <input 
+                  type="text" 
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddTodoItem(newItemName)}
+                  placeholder="新增待辦物品..."
+                  className="flex-1 bg-[var(--color-brand-cream)] border border-[var(--color-brand-stone)] rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm"
+                />
+                <button 
+                  onClick={() => handleAddTodoItem(newItemName)}
+                  disabled={!newItemName.trim()}
+                  className="bg-[var(--color-brand-espresso)] text-white px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-black transition-colors"
+                >
+                  新增
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {smartSuggestions.map(suggestion => (
+                  <button
+                    key={suggestion}
+                    onClick={() => handleAddTodoItem(suggestion)}
+                    className="flex items-center space-x-1 text-xs font-medium text-[var(--color-brand-espresso)]/60 bg-[var(--color-brand-cream)] border border-[var(--color-brand-stone)] px-3 py-1.5 rounded-full hover:border-[var(--color-brand-terracotta)] hover:text-[var(--color-brand-terracotta)] transition-colors shadow-sm"
+                  >
+                    <Plus size={12} />
+                    <span>{suggestion}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
             {items.filter(item => !removedItemIds.includes(item.id)).map(item => {
               const isPacked = packedItemIds.includes(item.id);
               return (
                 <div 
                   key={item.id} 
                   className={clsx(
-                    "flex items-center justify-between p-4 border-b border-gray-50 transition-colors hover:bg-gray-50",
-                    isPacked ? "opacity-50 bg-gray-50/50" : ""
+                    "flex items-center justify-between p-4 border-b border-gray-50 transition-colors hover:bg-[var(--color-brand-sand)]",
+                    isPacked ? "opacity-50 bg-[var(--color-brand-sand)]/50" : ""
                   )}
                 >
                   <div 
@@ -486,8 +558,8 @@ export const Dashboard = () => {
                       {isPacked && <CheckCircle2 size={14} className="text-white" />}
                     </div>
                     <div>
-                      <h4 className={clsx("font-bold", isPacked ? "line-through text-gray-400" : "text-[#2C3E50]")}>{item.name}</h4>
-                      <p className="text-xs text-gray-400">{item.category} • {item.subCategory}</p>
+                      <h4 className={clsx("font-bold", isPacked ? "line-through text-[var(--color-brand-espresso)]/40" : "text-[var(--color-brand-espresso)]")}>{item.name}</h4>
+                      <p className="text-xs text-[var(--color-brand-espresso)]/40">{item.category} • {item.subCategory}</p>
                     </div>
                   </div>
                   
