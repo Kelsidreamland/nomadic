@@ -74,9 +74,9 @@ export const Outfits = () => {
   };
 
   const renderVersatilityBadge = (count: number) => {
-    if (count === 0) return <span className="bg-gray-100 text-[var(--color-brand-espresso)]/60 px-2 py-0.5 rounded-full text-[10px] font-bold">0 搭配 (建議捨棄)</span>;
-    if (count >= 3) return <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold">{count} 搭配 (高百搭)</span>;
-    return <span className="bg-[var(--color-brand-stone)] text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold">{count} 搭配</span>;
+    if (count === 0) return <span className="bg-gray-100 text-[var(--color-brand-espresso)]/60 px-2 py-0.5 rounded-full text-[10px] font-bold">{t('outfits.versatility0')}</span>;
+    if (count >= 3) return <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold">{t('outfits.versatilityHigh', { count })}</span>;
+    return <span className="bg-[var(--color-brand-stone)] text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold">{t('outfits.versatilityNormal', { count })}</span>;
   };
 
   const renderItemCard = (item: Item, isTop: boolean = false) => {
@@ -135,11 +135,13 @@ export const Outfits = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)] tracking-wider">{t('outfits.title')}</h2>
-          <p className="text-sm text-[var(--color-brand-espresso)]/60 font-medium mt-1">點擊上衣，再點擊下裝即可建立搭配</p>
+          <p className="text-sm text-[var(--color-brand-espresso)]/60 font-medium mt-1">{t('outfits.description')}</p>
         </div>
         <div className="bg-[var(--color-brand-cream)] px-4 py-2 rounded-2xl shadow-sm border border-[var(--color-brand-stone)] flex items-center space-x-2">
           <Sparkles size={18} className="text-yellow-500" />
-          <span className="font-bold text-[var(--color-brand-espresso)]">{t('outfits.totalSets', { count: matches.length })}</span>
+          <span className="font-bold text-[var(--color-brand-espresso)]">
+            {t('outfits.totalSets', { count: matches.length })}
+          </span>
         </div>
       </div>
 
@@ -176,20 +178,20 @@ export const Outfits = () => {
           {/* Tops Section */}
           <div className="bg-[var(--color-brand-cream)] rounded-3xl shadow-sm border border-[var(--color-brand-stone)] p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-[var(--color-brand-espresso)] tracking-widest">上半身 (Tops & Outerwear)</h3>
+              <h3 className="font-bold text-[var(--color-brand-espresso)] tracking-widest">{t('outfits.tops')}</h3>
               {selectedTopId && (
                 <button 
                   onClick={() => setSelectedTopId(null)}
                   className="text-xs font-bold text-[var(--color-brand-terracotta)] bg-blue-50 px-3 py-1 rounded-full hover:bg-[var(--color-brand-stone)]"
                 >
-                  取消選取
+                  {t('outfits.cancelSelection')}
                 </button>
               )}
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {tops.map(top => renderItemCard(top, true))}
             </div>
-            {tops.length === 0 && <p className="text-sm text-[var(--color-brand-espresso)]/40 py-4">尚無上衣資料</p>}
+            {tops.length === 0 && <p className="text-sm text-[var(--color-brand-espresso)]/40 py-4">{t('outfits.noTops')}</p>}
           </div>
 
           {/* Bottoms Section */}
@@ -198,16 +200,16 @@ export const Outfits = () => {
               <div className="absolute inset-0 z-20 bg-[var(--color-brand-cream)]/60 backdrop-blur-[1px] rounded-3xl flex items-center justify-center">
                 <div className="bg-gray-800 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg flex items-center space-x-2">
                   <span className="animate-pulse">👆</span>
-                  <span>請先從上方選擇一件上衣</span>
+                  <span>{t('outfits.selectTopFirst')}</span>
                 </div>
               </div>
             )}
             
-            <h3 className="font-bold text-[var(--color-brand-espresso)] tracking-widest mb-4">下半身與配件 (Bottoms & Accessories)</h3>
+            <h3 className="font-bold text-[var(--color-brand-espresso)] tracking-widest mb-4">{t('outfits.bottoms')}</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {bottoms.map(bottom => renderItemCard(bottom, false))}
             </div>
-            {bottoms.length === 0 && <p className="text-sm text-[var(--color-brand-espresso)]/40 py-4">尚無下裝資料</p>}
+            {bottoms.length === 0 && <p className="text-sm text-[var(--color-brand-espresso)]/40 py-4">{t('outfits.noBottoms')}</p>}
           </div>
         </div>
       )}
@@ -218,7 +220,7 @@ export const Outfits = () => {
           className="w-full py-4 bg-[var(--color-brand-cream)] border border-[var(--color-brand-stone)] hover:border-[var(--color-brand-espresso)] text-[var(--color-brand-espresso)] rounded-2xl font-bold tracking-widest shadow-sm transition-colors flex justify-center items-center space-x-2"
         >
           <Bot size={20} />
-          <span>{t('outfits.aiReduce')}</span>
+          <span>{t('outfits.aiReduce', { count: matches.length })}</span>
         </button>
       )}
     </div>

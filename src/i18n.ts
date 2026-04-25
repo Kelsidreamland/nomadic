@@ -256,6 +256,25 @@ const resources = {
         discardableBadge: '可丟棄',
         unknownLuggage: '未知行李'
       }
+      outfits: {
+        title: '智能穿搭',
+        description: '點擊上衣，再點擊下裝即可建立搭配',
+        totalSets: '已搭出 {{count}} 套',
+        aiReview: 'AI 穿搭顧問點評',
+        aiThinking: 'AI 思考中...',
+        empty: '還沒有可以搭配的衣物',
+        tops: '上半身 (Tops & Outerwear)',
+        cancelSelection: '取消選取',
+        noTops: '尚無上衣資料',
+        selectTopFirst: '請先從上方選擇一件上衣',
+        bottoms: '下半身與配件 (Bottoms & Accessories)',
+        noBottoms: '尚無下裝資料',
+        aiReduce: '讓 AI 幫我精簡這 {{count}} 套穿搭',
+        versatility0: '0 搭配 (建議捨棄)',
+        versatilityHigh: '{{count}} 搭配 (高百搭)',
+        versatilityNormal: '{{count}} 搭配',
+        aiError: 'AI 決策失敗'
+      }
     }
   },
   en: {
@@ -510,6 +529,25 @@ const resources = {
         expiringWarning: '⚠️ This product will expire in 30 days',
         discardableBadge: 'Discardable',
         unknownLuggage: 'Unknown Luggage'
+      }
+      outfits: {
+        title: 'Smart Outfits',
+        description: 'Tap a top, then tap a bottom to create an outfit',
+        totalSets: '{{count}} Sets Created',
+        aiReview: 'AI Stylist Review',
+        aiThinking: 'AI is thinking...',
+        empty: 'No items available for styling yet',
+        tops: 'Tops & Outerwear',
+        cancelSelection: 'Cancel Selection',
+        noTops: 'No tops added yet',
+        selectTopFirst: 'Please select a top first',
+        bottoms: 'Bottoms & Accessories',
+        noBottoms: 'No bottoms added yet',
+        aiReduce: 'Let AI optimize these {{count}} outfits',
+        versatility0: '0 Matches (Discard)',
+        versatilityHigh: '{{count}} Matches (Versatile)',
+        versatilityNormal: '{{count}} Matches',
+        aiError: 'AI Decision Failed'
       }
     }
   }
