@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, type Flight } from '../db';
+import { db, type Flight, type Item } from '../db';
 import { generateSmartInsights } from '../services/ai';
 import { getGeoIpLocation, syncGmailFlights } from '../services/google';
 import { Bot, Plane, ShoppingBag, AlertTriangle, Mail, Plus, Save, X, ArrowRight, CheckCircle2, Circle, Trash2 } from 'lucide-react';
@@ -43,7 +43,8 @@ export const Dashboard = () => {
         await syncGmailFlights(tokenResponse.access_token);
       } catch (error) {
         console.error("Failed to sync flights:", error);
-        alert("Sync failed. Check console for details.");
+        const message = error instanceof Error ? error.message : String(error);
+        alert(`Sync failed. ${message}`);
       } finally {
         setIsSyncing(false);
       }
@@ -94,19 +95,12 @@ export const Dashboard = () => {
   };
 
   // Calculate weights by luggage type
-  const totalWeight = items.reduce((sum, item) => {
-    if (removedItemIds.includes(item.id)) return sum;
-    return sum + (item.weight || 0); // Placeholder, wait for actual weight logic if present
-  }, 0);
+  const totalWeight = 0;
   const checkedWeight = luggages.filter(l => l.type === '托运').reduce((sum, l) => {
     return sum + (l.weightHistory?.length > 0 ? l.weightHistory[l.weightHistory.length - 1].weight : 0);
   }, 0);
   
   const carryOnWeight = luggages.filter(l => l.type === '手提').reduce((sum, l) => {
-    return sum + (l.weightHistory?.length > 0 ? l.weightHistory[l.weightHistory.length - 1].weight : 0);
-  }, 0);
-
-  const personalWeight = luggages.filter(l => l.type === '随身').reduce((sum, l) => {
     return sum + (l.weightHistory?.length > 0 ? l.weightHistory[l.weightHistory.length - 1].weight : 0);
   }, 0);
 
@@ -556,12 +550,20 @@ export const Dashboard = () => {
               const isPacked = packedItemIds.includes(item.id);
               
               // 根據類別映射翻譯 Key
-              let i18nCategory = item.category;
-              switch (item.category) {
-                case '衣物': i18nCategory = t('items.categoryClothes', '衣物'); break;
-                case '盥洗': i18nCategory = t('items.categoryGear', '盥洗'); break;
-                case '電子': i18nCategory = t('items.categoryGear', '電子'); break;
-                case '其他': i18nCategory = t('items.categoryOther', '其他'); break;
+              let i18nCategory: string = item.category;
+              switch (item.category as Item['category']) {
+                case '衣物':
+                  i18nCategory = t('items.categoryClothes', '衣物');
+                  break;
+                case '器材':
+                  i18nCategory = t('items.categoryGear', '器材');
+                  break;
+                case '保养品':
+                  i18nCategory = t('items.categorySkincare', '保養品');
+                  break;
+                case '其他':
+                  i18nCategory = t('items.categoryOther', '其他');
+                  break;
               }
 
               return (

@@ -3,6 +3,14 @@ import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import { analyzeTextWithAI } from './ai';
 
+const decodeBase64UrlUtf8 = (base64Url: string) => {
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+  const binary = window.atob(padded);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder('utf-8').decode(bytes);
+};
+
 // 呼叫 Gmail API 尋找機票信件
 export const fetchGmailFlights = async (accessToken: string) => {
   try {
@@ -42,7 +50,7 @@ export const fetchGmailFlights = async (accessToken: string) => {
 
       if (base64Body) {
         // Base64 URL Decode
-        const decodedStr = decodeURIComponent(escape(window.atob(base64Body.replace(/-/g, '+').replace(/_/g, '/'))));
+        const decodedStr = decodeBase64UrlUtf8(base64Body);
         emailContents.push({ id: msg.id, snippet: msgRes.data.snippet, body: decodedStr });
       }
     }
@@ -50,7 +58,13 @@ export const fetchGmailFlights = async (accessToken: string) => {
     return emailContents;
   } catch (error) {
     console.error("Gmail API Error:", error);
-    throw error;
+
+    const axiosErr = error as any;
+    const status = axiosErr?.response?.status;
+    const statusText = axiosErr?.response?.statusText;
+    const apiMessage = axiosErr?.response?.data?.error?.message;
+    const details = [status ? `HTTP ${status}` : undefined, statusText, apiMessage].filter(Boolean).join(' - ');
+    throw new Error(details ? `Gmail API Error: ${details}` : 'Gmail API Error');
   }
 };
 
@@ -62,7 +76,8 @@ export const fetchCalendarFlights = async (accessToken: string) => {
     const timeMin = new Date().toISOString();
     const timeMax = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(); // 尋找未來半年內
 
-    const res = await axios.get(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&q=flight|機票|航班&singleEvents=true&orderBy=startTime`, {
+    const q = encodeURIComponent('flight 機票 航班');
+    const res = await axios.get(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&q=${q}&singleEvents=true&orderBy=startTime`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
 
@@ -82,7 +97,13 @@ export const fetchCalendarFlights = async (accessToken: string) => {
     return calendarContents;
   } catch (error) {
     console.error("Calendar API Error:", error);
-    throw error;
+
+    const axiosErr = error as any;
+    const status = axiosErr?.response?.status;
+    const statusText = axiosErr?.response?.statusText;
+    const apiMessage = axiosErr?.response?.data?.error?.message;
+    const details = [status ? `HTTP ${status}` : undefined, statusText, apiMessage].filter(Boolean).join(' - ');
+    throw new Error(details ? `Calendar API Error: ${details}` : 'Calendar API Error');
   }
 };
 
@@ -93,7 +114,12 @@ export const syncGmailFlights = async (accessToken?: string) => {
   
   // 在這裡，你可以組合 Gmail 和 Calendar 的結果，並丟給 AI 分析
   const gmailData = await fetchGmailFlights(accessToken);
-  const calendarData = await fetchCalendarFlights(accessToken);
+  let calendarData: any[] = [];
+  try {
+    calendarData = await fetchCalendarFlights(accessToken);
+  } catch (e) {
+    console.warn('Calendar sync failed, continuing with Gmail only:', e);
+  }
   
   // 將抓下來的資料組合成一段長文字讓 AI 去判斷
   let combinedText = '';

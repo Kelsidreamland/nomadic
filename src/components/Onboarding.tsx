@@ -22,7 +22,8 @@ export const Onboarding = ({ onComplete, onManualSkip }: OnboardingProps) => {
         onComplete();
       } catch (error) {
         console.error("Failed to sync flights:", error);
-        alert("Sync failed. Please try again.");
+        const message = error instanceof Error ? error.message : String(error);
+        alert(`Sync failed. ${message}`);
       } finally {
         setIsSyncing(false);
       }
@@ -44,7 +45,7 @@ export const Onboarding = ({ onComplete, onManualSkip }: OnboardingProps) => {
         
         <div className="text-center space-y-4 mb-16">
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-[var(--color-brand-espresso)]">
-            {t('onboarding.title')} <span className="text-[var(--color-brand-olive)] font-light block md:inline text-3xl md:text-6xl mt-2 md:mt-0">{t('onboarding.subtitle')}</span>
+            {t('onboarding.title')} <span className="text-[var(--color-brand-olive)] font-light block md:inline text-3xl md:text-6xl mt-2 md:mt-0 font-sans">{t('onboarding.subtitle')}</span>
           </h1>
           <p className="text-xl text-[var(--color-brand-espresso)]/60 max-w-2xl mx-auto font-medium">
             {t('onboarding.description')}
