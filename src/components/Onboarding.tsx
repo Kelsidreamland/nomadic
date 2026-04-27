@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { syncGmailFlights } from '../services/google';
+import { db } from '../db';
 import { Calendar, CheckCircle2, ChevronRight, Mail, Map, Sparkles } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
@@ -18,16 +18,14 @@ export const Onboarding = ({ onComplete, onManualSkip }: OnboardingProps) => {
     onSuccess: async (tokenResponse) => {
       setIsSyncing(true);
       try {
-        const flights = await syncGmailFlights(tokenResponse.access_token);
-        if (flights.length === 0) {
-          // No flights found, but authorization successful
-          alert('授權成功！目前 Gmail/Calendar 中沒有找到航班資訊，之後有機票時會自動同步。');
-        }
+        // Store access token for manual sync later
+        await db.user_configs.put({ id: '1', gmailToken: tokenResponse.access_token, geminiApiKey: '', useLocalAi: false, adPreferences: '' });
+        alert('授權成功！你可以在 Dashboard 點擊「同步航班」按鈕來抓取 Gmail/Calendar 的航班資訊。');
         onComplete();
       } catch (error) {
-        console.error("Failed to sync flights:", error);
+        console.error("Failed to store authorization:", error);
         const message = error instanceof Error ? error.message : String(error);
-        alert(`Sync failed. ${message}`);
+        alert(`授權失敗: ${message}`);
       } finally {
         setIsSyncing(false);
       }

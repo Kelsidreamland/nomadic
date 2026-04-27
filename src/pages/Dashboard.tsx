@@ -14,11 +14,12 @@ export const Dashboard = () => {
   const luggages = useLiveQuery(() => db.luggages.toArray()) || [];
   const items = useLiveQuery(() => db.items.toArray()) || [];
   const flights = useLiveQuery(() => db.flights.toArray()) || [];
-  
+  const userConfig = useLiveQuery(() => db.user_configs.get('1')) || null;
+
   const [isFirstTimeUser, setIsFirstTimeUser] = useState(() => {
     return localStorage.getItem('nomadic_onboarded') !== 'true';
   });
-  
+
   const [insights, setInsights] = useState<any>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [location, setLocation] = useState('Global');
@@ -36,17 +37,17 @@ export const Dashboard = () => {
     personalAllowance: 0
   });
 
+  const isAuthorized = userConfig?.gmailToken && userConfig.gmailToken.length > 0;
+
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      setIsSyncing(true);
       try {
-        await syncGmailFlights(tokenResponse.access_token);
+        await db.user_configs.put({ id: '1', gmailToken: tokenResponse.access_token, geminiApiKey: userConfig?.geminiApiKey || '', useLocalAi: userConfig?.useLocalAi || false, adPreferences: userConfig?.adPreferences || '' });
+        alert('授權成功！你現在可以點擊「同步航班」按鈕來抓取 Gmail/Calendar 的航班資訊。');
       } catch (error) {
-        console.error("Failed to sync flights:", error);
+        console.error("Failed to store authorization:", error);
         const message = error instanceof Error ? error.message : String(error);
-        alert(`Sync failed. ${message}`);
-      } finally {
-        setIsSyncing(false);
+        alert(`授權失敗: ${message}`);
       }
     },
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly',
@@ -59,6 +60,28 @@ export const Dashboard = () => {
       }
     }
   });
+
+  const handleManualSync = async () => {
+    if (!isAuthorized) {
+      alert('請先進行 Google 授權');
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const syncedFlights = await syncGmailFlights(userConfig.gmailToken);
+      if (syncedFlights.length === 0) {
+        alert('同步完成，但目前 Gmail/Calendar 中沒有找到航班資訊。');
+      } else {
+        alert(`同步成功！找到 ${syncedFlights.length} 筆航班資訊。`);
+      }
+    } catch (error) {
+      console.error("Failed to sync flights:", error);
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`同步失敗: ${message}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleManualAdd = () => {
     if (upcomingFlight) {
@@ -269,40 +292,64 @@ export const Dashboard = () => {
                   </div>
                 </div>
               </div>
-              <button 
-                onClick={handleManualAdd}
-                className="w-full md:w-auto bg-[var(--color-brand-espresso)] text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-md hover:bg-black transition-all z-10 hover:-translate-y-0.5"
-              >
-                {t('dashboard.editFlight', '編輯航班')}
-              </button>
+              <div className="flex flex-col md:flex-row gap-2 z-10">
+                {isAuthorized && (
+                  <button
+                    onClick={handleManualSync}
+                    disabled={isSyncing}
+                    className="w-full md:w-auto bg-[var(--color-brand-terracotta)] hover:bg-[var(--color-brand-terracotta-hover)] text-white px-4 py-3 rounded-2xl text-sm font-bold shadow-md transition-all disabled:opacity-50"
+                  >
+                    <Mail size={16} className="inline mr-2" />
+                    {isSyncing ? t('dashboard.syncing', '同步中...') : t('dashboard.syncFlights', '同步航班')}
+                  </button>
+                )}
+                <button
+                  onClick={handleManualAdd}
+                  className="w-full md:w-auto bg-[var(--color-brand-espresso)] text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-md hover:bg-black transition-all hover:-translate-y-0.5"
+                >
+                  {t('dashboard.editFlight', '編輯航班')}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center space-x-4">
                 <div className="p-4 bg-[var(--color-brand-sand)] rounded-2xl">
-                  <Plane size={24} className="text-[var(--color-brand-espresso)]/40" />
+                  <Plane size={24} className={isAuthorized ? "text-[var(--color-brand-olive)]" : "text-[var(--color-brand-espresso)]/40"} />
                 </div>
                 <div>
                   <h3 className="font-bold text-[var(--color-brand-espresso)]">{t('dashboard.noFlights')}</h3>
-                  <p className="text-sm text-[var(--color-brand-espresso)]/60">{t('dashboard.noFlightsSub')}</p>
+                  <p className="text-sm text-[var(--color-brand-espresso)]/60">
+                    {isAuthorized ? t('dashboard.noFlightsSubAuthed', '已授權，點擊同步按鈕抓取航班資訊') : t('dashboard.noFlightsSub')}
+                  </p>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <button 
-                  onClick={() => login()} 
-                  disabled={isSyncing}
-                  className="flex items-center justify-center space-x-2 bg-[var(--color-brand-terracotta)] hover:bg-[var(--color-brand-terracotta-hover)] text-white px-4 py-2 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 text-sm"
-                  title={t('dashboard.syncGmail', '同步 Gmail 航班')}
-                >
-                  <Mail size={16} />
-                  <span>{isSyncing ? t('dashboard.syncing', 'Syncing...') : t('dashboard.syncFlights', 'Sync Flights')}</span>
-                </button>
-                <button 
+                {isAuthorized ? (
+                  <button
+                    onClick={handleManualSync}
+                    disabled={isSyncing}
+                    className="flex items-center justify-center space-x-2 bg-[var(--color-brand-terracotta)] hover:bg-[var(--color-brand-terracotta-hover)] text-white px-4 py-2 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 text-sm"
+                  >
+                    <Mail size={16} />
+                    <span>{isSyncing ? t('dashboard.syncing', '同步中...') : t('dashboard.syncFlights', '同步航班')}</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => login()}
+                    disabled={isSyncing}
+                    className="flex items-center justify-center space-x-2 bg-[var(--color-brand-terracotta)] hover:bg-[var(--color-brand-terracotta-hover)] text-white px-4 py-2 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 text-sm"
+                  >
+                    <Mail size={16} />
+                    <span>{isSyncing ? t('dashboard.syncing', '同步中...') : t('dashboard.authorize', 'Google 授權')}</span>
+                  </button>
+                )}
+                <button
                   onClick={handleManualAdd}
                   className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-[var(--color-brand-espresso)]/80 px-4 py-2 rounded-xl font-bold transition-all shadow-sm text-sm"
                 >
                   <Plus size={16} />
-                  <span>{t('dashboard.addManual', 'Add Manual')}</span>
+                  <span>{t('dashboard.addManual', '手動新增')}</span>
                 </button>
               </div>
             </div>
