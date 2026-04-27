@@ -146,7 +146,13 @@ export const syncGmailFlights = async (accessToken?: string) => {
   // 將資料交給 Netlify Function 上的 Gemini AI 解析
   console.log("Sending data to AI for analysis...");
   const parsedData = await analyzeTextWithAI(combinedText);
-  
+
+  // Handle no-flight case gracefully
+  if ((parsedData as any).noFlight) {
+    console.log('No flight data found, but authorization successful');
+    return [];
+  }
+
   const flight = {
     id: uuidv4(),
     ...parsedData
@@ -154,7 +160,7 @@ export const syncGmailFlights = async (accessToken?: string) => {
 
   // 儲存到本地資料庫
   await db.flights.add(flight);
-  
+
   return [flight];
 };
 

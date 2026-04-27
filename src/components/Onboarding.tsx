@@ -18,7 +18,11 @@ export const Onboarding = ({ onComplete, onManualSkip }: OnboardingProps) => {
     onSuccess: async (tokenResponse) => {
       setIsSyncing(true);
       try {
-        await syncGmailFlights(tokenResponse.access_token);
+        const flights = await syncGmailFlights(tokenResponse.access_token);
+        if (flights.length === 0) {
+          // No flights found, but authorization successful
+          alert('授權成功！目前 Gmail/Calendar 中沒有找到航班資訊，之後有機票時會自動同步。');
+        }
         onComplete();
       } catch (error) {
         console.error("Failed to sync flights:", error);

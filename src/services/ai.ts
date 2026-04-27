@@ -11,11 +11,10 @@ const getGeminiClient = async () => {
   if (import.meta.env.PROD) {
     // Return a proxy object that routes generateContent to our Netlify Function
     return {
-      getGenerativeModel: ({ model, generationConfig }: any) => ({
+      getGenerativeModel: ({ model: _model }: any) => ({
         generateContent: async (promptOrParts: any) => {
           let prompt = promptOrParts;
           let imageBase64 = undefined;
-          let text = undefined;
           
           // Handle array of parts (for images)
           if (Array.isArray(promptOrParts)) {
@@ -315,7 +314,7 @@ ${airlinesContext}
   "carryOnAllowance": "手提行李重量限額(kg)。優先使用文本，沒提到就參考基礎規範，否則通常是7",
   "personalAllowance": "隨身物品重量限額(kg)。優先使用文本，沒提到就參考基礎規範，否則填0"
 }
-只返回純JSON字串，不要任何Markdown格式。如果文本中找不到機票資訊，請在 JSON 中拋出 error 屬性如 {"error": "找不到航班資訊"}。`;
+只返回純JSON字串，不要任何Markdown格式。如果文本中找不到機票資訊，請返回 {"noFlight": true, "reason": "找不到航班資訊"}，不要返回 error。`;
 
   try {
     const result = await model.generateContent([prompt, text]);
@@ -326,6 +325,11 @@ ${airlinesContext}
       throw new Error(parsed.error);
     }
 
+    // Handle no-flight case gracefully
+    if (parsed.noFlight) {
+      return { noFlight: true, reason: parsed.reason || '找不到航班資訊' };
+    }
+
     return parsed;
   } catch (error) {
     console.error('AI Text Analysis failed:', error);
@@ -334,8 +338,7 @@ ${airlinesContext}
       throw new Error(`AI API 錯誤: ${err.message}`);
     }
     if (err instanceof SyntaxError) {
-      const rawText = result?.response?.text() || '';
-      throw new Error(`AI 回傳格式錯誤: ${rawText.substring(0, 100)}`);
+      throw new Error(`AI 回傳格式錯誤`);
     }
     throw new Error(`航班文本解析失敗: ${err.message || '未知錯誤'}`);
   }
