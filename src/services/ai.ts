@@ -321,15 +321,23 @@ ${airlinesContext}
     const result = await model.generateContent([prompt, text]);
     const resultText = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(resultText);
-    
+
     if (parsed.error) {
       throw new Error(parsed.error);
     }
-    
+
     return parsed;
   } catch (error) {
     console.error('AI Text Analysis failed:', error);
-    throw new Error('航班文本解析失敗');
+    const err = error as any;
+    if (err.message?.includes('API')) {
+      throw new Error(`AI API 錯誤: ${err.message}`);
+    }
+    if (err instanceof SyntaxError) {
+      const rawText = result?.response?.text() || '';
+      throw new Error(`AI 回傳格式錯誤: ${rawText.substring(0, 100)}`);
+    }
+    throw new Error(`航班文本解析失敗: ${err.message || '未知錯誤'}`);
   }
 };
 
