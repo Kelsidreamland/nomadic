@@ -151,7 +151,7 @@ export const Luggages = () => {
               ))}
             </div>
             <p className="text-xs leading-relaxed text-[var(--color-brand-espresso)]/50 bg-[var(--color-brand-sand)] border border-[var(--color-brand-stone)] rounded-2xl px-4 py-3">
-              特殊行李箱尺寸可能會不符合部分航空公司規定，填寫詳細規格以便 AI 幫忙比對。
+              {t('luggages.sizeReminder')}
             </p>
             <div className="flex space-x-2">
               <input 

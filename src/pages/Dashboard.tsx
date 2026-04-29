@@ -77,7 +77,7 @@ export const Dashboard = () => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    alert(`已收到「${file.name}」。PDF / 截圖自動解析會在下一版接上，目前請先用手動填表建立旅程。`);
+    alert(t('dashboard.uploadComingSoon', { fileName: file.name }));
   };
 
   // Calculate weights by luggage type
@@ -293,9 +293,9 @@ export const Dashboard = () => {
                   <FileText size={24} className="text-[var(--color-brand-terracotta)]" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-[var(--color-brand-espresso)]">建立你的旅程</h3>
+                  <h3 className="font-bold text-[var(--color-brand-espresso)]">{t('dashboard.createTripTitle')}</h3>
                   <p className="text-sm text-[var(--color-brand-espresso)]/60">
-                    不需要 Google 授權。你可以手動填寫航班，或上傳行程單 PDF / 截圖準備後續解析。
+                    {t('dashboard.createTripDesc')}
                   </p>
                 </div>
               </div>
@@ -305,11 +305,11 @@ export const Dashboard = () => {
                   className="flex items-center justify-center space-x-2 bg-[var(--color-brand-terracotta)] hover:bg-[var(--color-brand-terracotta-hover)] text-white px-4 py-4 rounded-2xl font-bold transition-all shadow-md hover:shadow-lg text-sm"
                 >
                   <Plus size={16} />
-                  <span>自己依照表格填寫</span>
+                  <span>{t('dashboard.manualInput')}</span>
                 </button>
                 <label className="flex items-center justify-center space-x-2 bg-[var(--color-brand-sand)] hover:bg-gray-100 text-[var(--color-brand-espresso)]/80 px-4 py-4 rounded-2xl font-bold transition-all shadow-sm text-sm border border-[var(--color-brand-stone)] cursor-pointer">
                   <Upload size={16} />
-                  <span>上傳 PDF / 截圖</span>
+                  <span>{t('dashboard.uploadPdfImage')}</span>
                   <input
                     type="file"
                     accept=".pdf,image/*"
