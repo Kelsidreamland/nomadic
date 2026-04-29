@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Flight, type Item } from '../db';
-import { analyzeTextWithAI, generateSmartInsights } from '../services/ai';
+import { generateSmartInsights } from '../services/ai';
 import { getGeoIpLocation } from '../services/google';
-import { Bot, Plane, ShoppingBag, AlertTriangle, Plus, Save, X, ArrowRight, CheckCircle2, Circle, Trash2, Edit2, FileText, Loader2 } from 'lucide-react';
+import { Bot, Plane, ShoppingBag, AlertTriangle, Plus, Save, X, ArrowRight, CheckCircle2, Circle, Trash2, Edit2, FileText, Upload } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { Onboarding } from '../components/Onboarding';
@@ -21,8 +21,6 @@ export const Dashboard = () => {
   const [insights, setInsights] = useState<any>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [location, setLocation] = useState('Global');
-  const [isParsingItinerary, setIsParsingItinerary] = useState(false);
-  const [itineraryText, setItineraryText] = useState('');
   const [now] = useState(() => Date.now());
   const [plannerStep, setPlannerStep] = useState<'context' | 'ai-plan' | 'checklist'>('context');
   const [packedItemIds, setPackedItemIds] = useState<string[]>([]);
@@ -52,6 +50,9 @@ export const Dashboard = () => {
       });
     }
     setShowFlightForm(true);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   };
 
   const [showFlightForm, setShowFlightForm] = useState(false);
@@ -72,35 +73,11 @@ export const Dashboard = () => {
     setShowFlightForm(false);
   };
 
-  const handleParseItinerary = async () => {
-    if (!itineraryText.trim()) {
-      alert('請先貼上行程單、電子機票或航空公司確認信文字。');
-      return;
-    }
-    setIsParsingItinerary(true);
-    try {
-      const parsed = await analyzeTextWithAI(itineraryText);
-      if ((parsed as any).noFlight) {
-        alert((parsed as any).reason || '目前沒有解析到航班資訊，請改用手動輸入。');
-        return;
-      }
-      setFlightData({
-        airline: parsed.airline || '',
-        destination: parsed.destination || '',
-        departureDate: parsed.departureDate || new Date().toISOString().split('T')[0],
-        checkedAllowance: Number(parsed.checkedAllowance || 0),
-        carryOnAllowance: Number(parsed.carryOnAllowance || 7),
-        personalAllowance: Number(parsed.personalAllowance || 0)
-      });
-      setShowFlightForm(true);
-      alert('已解析行程資訊，請確認欄位後儲存航班。');
-    } catch (error) {
-      console.error('Failed to parse itinerary:', error);
-      const message = error instanceof Error ? error.message : String(error);
-      alert(`行程解析失敗：${message}`);
-    } finally {
-      setIsParsingItinerary(false);
-    }
+  const handleItineraryFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    alert(`已收到「${file.name}」。PDF / 截圖自動解析會在下一版接上，目前請先用手動填表建立旅程。`);
   };
 
   // Calculate weights by luggage type
@@ -318,33 +295,28 @@ export const Dashboard = () => {
                 <div>
                   <h3 className="font-bold text-[var(--color-brand-espresso)]">建立你的旅程</h3>
                   <p className="text-sm text-[var(--color-brand-espresso)]/60">
-                    不需要 Google 授權。你可以貼上行程單文字讓 AI 解析，或直接手動輸入航班。
+                    不需要 Google 授權。你可以手動填寫航班，或上傳行程單 PDF / 截圖準備後續解析。
                   </p>
                 </div>
               </div>
-              <textarea
-                value={itineraryText}
-                onChange={(e) => setItineraryText(e.target.value)}
-                rows={5}
-                placeholder="貼上電子機票、航空公司確認信或行程單文字。例如：航空公司、目的地、出發日期、行李額度..."
-                className="w-full bg-[var(--color-brand-sand)] border border-[var(--color-brand-stone)] rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm resize-none"
-              />
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={handleParseItinerary}
-                  disabled={isParsingItinerary || !itineraryText.trim()}
-                  className="flex items-center justify-center space-x-2 bg-[var(--color-brand-terracotta)] hover:bg-[var(--color-brand-terracotta-hover)] text-white px-4 py-2 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 text-sm"
-                >
-                  {isParsingItinerary ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
-                  <span>{isParsingItinerary ? '解析中...' : 'AI 解析行程單'}</span>
-                </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <button
                   onClick={handleManualAdd}
-                  className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-[var(--color-brand-espresso)]/80 px-4 py-2 rounded-xl font-bold transition-all shadow-sm text-sm"
+                  className="flex items-center justify-center space-x-2 bg-[var(--color-brand-terracotta)] hover:bg-[var(--color-brand-terracotta-hover)] text-white px-4 py-4 rounded-2xl font-bold transition-all shadow-md hover:shadow-lg text-sm"
                 >
                   <Plus size={16} />
-                  <span>{t('dashboard.addManual', '手動新增')}</span>
+                  <span>自己依照表格填寫</span>
                 </button>
+                <label className="flex items-center justify-center space-x-2 bg-[var(--color-brand-sand)] hover:bg-gray-100 text-[var(--color-brand-espresso)]/80 px-4 py-4 rounded-2xl font-bold transition-all shadow-sm text-sm border border-[var(--color-brand-stone)] cursor-pointer">
+                  <Upload size={16} />
+                  <span>上傳 PDF / 截圖</span>
+                  <input
+                    type="file"
+                    accept=".pdf,image/*"
+                    onChange={handleItineraryFileUpload}
+                    className="hidden"
+                  />
+                </label>
               </div>
             </div>
           )}
