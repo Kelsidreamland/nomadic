@@ -25,6 +25,24 @@ export const Items = () => {
   };
   const [newItem, setNewItem] = useState<Partial<Item>>(defaultNewItem);
 
+  const getLuggageTypeLabel = (type: string) => {
+    switch (type) {
+      case '托运': return t('luggages.typeChecked');
+      case '手提': return t('luggages.typeCarryOn');
+      case '随身': return t('luggages.typePersonal');
+      case '特殊': return t('luggages.typeSpecial');
+      default: return type;
+    }
+  };
+
+  const examples = [
+    { label: t('items.exampleWhiteShirt'), value: '白色襯衫', category: '衣物' as const },
+    { label: t('items.exampleBlackPants'), value: '黑色西裝褲', category: '衣物' as const },
+    { label: t('items.exampleLightJacket'), value: '輕量外套', category: '衣物' as const },
+    { label: t('items.exampleSneakers'), value: '運動鞋', category: '衣物' as const },
+    { label: t('items.exampleAdapter'), value: '萬國轉接頭', category: '器材' as const },
+  ];
+
   const createStickerPreview = async (base64: string): Promise<string> => {
     const image = new Image();
     image.src = base64;
@@ -154,26 +172,26 @@ export const Items = () => {
             <Sparkles size={18} className="text-[var(--color-brand-terracotta)]" />
           </div>
           <div className="space-y-2">
-            <h3 className="font-bold text-[var(--color-brand-espresso)]">新手教學：建立你的 AI 衣物庫</h3>
+            <h3 className="font-bold text-[var(--color-brand-espresso)]">{t('items.tutorialTitle')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-[var(--color-brand-espresso)]/60">
-              <div className="bg-[var(--color-brand-sand)] rounded-2xl px-3 py-2">1. 拍照或上傳衣物照片，系統會產生貼紙風格預覽。</div>
-              <div className="bg-[var(--color-brand-sand)] rounded-2xl px-3 py-2">2. 點擊 AI 自動填寫，確認分類、季節、顏色與適合溫度。</div>
-              <div className="bg-[var(--color-brand-sand)] rounded-2xl px-3 py-2">3. 儲存後會同步到打包清單，也能在連連看頁面建立搭配。</div>
+              <div className="bg-[var(--color-brand-sand)] rounded-2xl px-3 py-2">{t('items.tutorialStep1')}</div>
+              <div className="bg-[var(--color-brand-sand)] rounded-2xl px-3 py-2">{t('items.tutorialStep2')}</div>
+              <div className="bg-[var(--color-brand-sand)] rounded-2xl px-3 py-2">{t('items.tutorialStep3')}</div>
             </div>
             <div className="flex flex-wrap gap-2 pt-1">
-              {['白色襯衫', '黑色西裝褲', '輕量外套', '運動鞋', '萬國轉接頭'].map(example => (
+              {examples.map(example => (
                 <button
-                  key={example}
+                  key={example.value}
                   type="button"
                   onClick={() => {
                     setIsAdding(true);
                     setIsEditing(null);
-                    setNewItem({ ...defaultNewItem, name: example, category: example.includes('轉接') ? '器材' : '衣物' });
+                    setNewItem({ ...defaultNewItem, name: example.value, category: example.category });
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                   className="text-xs font-bold bg-white/60 border border-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/70 px-3 py-1.5 rounded-full hover:border-[var(--color-brand-terracotta)] hover:text-[var(--color-brand-terracotta)] transition-colors"
                 >
-                  + {example}
+                  + {example.label}
                 </button>
               ))}
             </div>
@@ -295,7 +313,7 @@ export const Items = () => {
             onClick={() => setShowAdvanced(!showAdvanced)} 
             className="flex items-center justify-between w-full p-3 bg-[var(--color-brand-sand)] rounded-xl text-[var(--color-brand-espresso)]/60 font-bold text-sm hover:bg-gray-100 transition-colors"
           >
-            <span>✨ AI 進階屬性與備註 (選填)</span>
+            <span>✨ {t('items.advancedTitle')}</span>
             <ChevronDown size={16} className={`transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
           </button>
 
@@ -305,49 +323,49 @@ export const Items = () => {
               {newItem.category === '衣物' && (
                 <div className="grid grid-cols-2 gap-4 bg-blue-50/50 p-4 rounded-2xl border border-[var(--color-brand-terracotta)]/50">
                   <div>
-                    <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">主要顏色</label>
+                    <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">{t('items.colorLabel')}</label>
                     <input 
                       type="text" 
-                      placeholder="例如: 黑色, 藏青色" 
+                      placeholder={t('items.colorPlaceholder')}
                       value={newItem.color || ''} 
                       onChange={e => setNewItem({...newItem, color: e.target.value})}
                       className="w-full px-4 py-3 bg-[var(--color-brand-cream)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">適合溫度</label>
+                    <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">{t('items.tempLabel')}</label>
                     <input 
                       type="text" 
-                      placeholder="例如: 15-25°C" 
+                      placeholder={t('items.tempPlaceholder')}
                       value={newItem.tempRange || ''} 
                       onChange={e => setNewItem({...newItem, tempRange: e.target.value})}
                       className="w-full px-4 py-3 bg-[var(--color-brand-cream)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">適用場景</label>
+                    <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">{t('items.occasionLabel')}</label>
                     <select 
                       value={newItem.occasion || '其他'} 
                       onChange={e => setNewItem({...newItem, occasion: e.target.value as any})}
                       className="w-full px-4 py-3 bg-[var(--color-brand-cream)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     >
-                      <option value="商務">商務 (Business)</option>
-                      <option value="休閒">休閒 (Casual)</option>
-                      <option value="運動">運動 (Sport)</option>
-                      <option value="正式">正式 (Formal)</option>
-                      <option value="其他">其他 (Other)</option>
+                      <option value="商務">{t('items.occasionBusiness')}</option>
+                      <option value="休閒">{t('items.occasionCasual')}</option>
+                      <option value="運動">{t('items.occasionSport')}</option>
+                      <option value="正式">{t('items.occasionFormal')}</option>
+                      <option value="其他">{t('items.occasionOther')}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">易皺程度</label>
+                    <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">{t('items.wrinkleLabel')}</label>
                     <select 
                       value={newItem.wrinkleProne || '適中'} 
                       onChange={e => setNewItem({...newItem, wrinkleProne: e.target.value as any})}
                       className="w-full px-4 py-3 bg-[var(--color-brand-cream)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     >
-                      <option value="易皺">易皺 (Wrinkle-prone)</option>
-                      <option value="適中">適中 (Normal)</option>
-                      <option value="抗皺">抗皺 (Wrinkle-free)</option>
+                      <option value="易皺">{t('items.wrinkleHigh')}</option>
+                      <option value="適中">{t('items.wrinkleMedium')}</option>
+                      <option value="抗皺">{t('items.wrinkleLow')}</option>
                     </select>
                   </div>
                 </div>
@@ -371,7 +389,7 @@ export const Items = () => {
                 >
                   <option value="">{t('items.unassigned')}</option>
                   {luggages.map(l => (
-                    <option key={l.id} value={l.id}>{l.name} ({l.type})</option>
+                    <option key={l.id} value={l.id}>{l.name} ({getLuggageTypeLabel(l.type)})</option>
                   ))}
                 </select>
               </div>

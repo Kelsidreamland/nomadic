@@ -53,6 +53,26 @@ export const Luggages = () => {
     return luggage.weightHistory[luggage.weightHistory.length - 1].weight;
   };
 
+  const getLuggageTypeLabel = (type: Luggage['type']) => {
+    switch (type) {
+      case '托运': return t('luggages.typeChecked');
+      case '手提': return t('luggages.typeCarryOn');
+      case '随身': return t('luggages.typePersonal');
+      case '特殊': return t('luggages.typeSpecial');
+      default: return type;
+    }
+  };
+
+  const getLuggageSeasonLabel = (season: Luggage['season']) => {
+    switch (season) {
+      case '混合': return t('luggages.seasonMixed');
+      case '冬季': return t('luggages.seasonWinter');
+      case '夏季': return t('luggages.seasonSummer');
+      case '通用': return t('items.seasonGeneral');
+      default: return season;
+    }
+  };
+
   const [weightInputs, setWeightInputs] = useState<{[key: string]: number}>({});
 
   const handleRecordWeight = async (luggageId: string) => {
@@ -203,8 +223,8 @@ export const Luggages = () => {
                   <div>
                     <h3 className="font-bold text-[var(--color-brand-espresso)] text-xl mb-1">{luggage.name}</h3>
                     <div className="flex space-x-2 mb-2">
-                      <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-[var(--color-brand-terracotta)] font-bold">{luggage.type}</span>
-                      <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-[var(--color-brand-espresso)]/80 font-bold">{luggage.season}</span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-[var(--color-brand-terracotta)] font-bold">{getLuggageTypeLabel(luggage.type)}</span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-[var(--color-brand-espresso)]/80 font-bold">{getLuggageSeasonLabel(luggage.season)}</span>
                     </div>
                     <p className="text-xs text-[var(--color-brand-espresso)]/40 font-medium">{t('luggages.size')}: {luggage.length} × {luggage.width} × {luggage.height} cm</p>
                   </div>
