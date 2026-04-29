@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Flight, type Item } from '../db';
 import { generateSmartInsights } from '../services/ai';
 import { getGeoIpLocation, syncGmailFlights } from '../services/google';
-import { Bot, Plane, ShoppingBag, AlertTriangle, Mail, Plus, Save, X, ArrowRight, CheckCircle2, Circle, Trash2 } from 'lucide-react';
+import { Bot, Plane, ShoppingBag, AlertTriangle, Mail, Plus, Save, X, ArrowRight, CheckCircle2, Circle, Trash2, Edit2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useGoogleLogin } from '@react-oauth/google';
@@ -28,6 +28,8 @@ export const Dashboard = () => {
   const [plannerStep, setPlannerStep] = useState<'context' | 'ai-plan' | 'checklist'>('context');
   const [packedItemIds, setPackedItemIds] = useState<string[]>([]);
   const [removedItemIds, setRemovedItemIds] = useState<string[]>([]);
+  const [editingChecklistItemId, setEditingChecklistItemId] = useState<string | null>(null);
+  const [editingChecklistName, setEditingChecklistName] = useState('');
   const [flightData, setFlightData] = useState<Partial<Flight>>({
     airline: '',
     destination: '',
@@ -132,6 +134,11 @@ export const Dashboard = () => {
   }, []);
 
   const startAiPlan = async () => {
+    if (items.length === 0) {
+      alert('目前還沒有任何物品或衣物可以分析。請先在「物品管理 / 衣物管理」新增物品，或先到打包清單新增待辦物品。');
+      setPlannerStep('checklist');
+      return;
+    }
     setPlannerStep('ai-plan');
     setIsThinking(true);
     try {
@@ -187,6 +194,23 @@ export const Dashboard = () => {
     };
     await db.items.add(newItem);
     setNewItemName('');
+  };
+
+  const handleStartEditChecklistItem = (item: Item) => {
+    setEditingChecklistItemId(item.id);
+    setEditingChecklistName(item.name);
+  };
+
+  const handleSaveChecklistItem = async () => {
+    if (!editingChecklistItemId || !editingChecklistName.trim()) return;
+    await db.items.update(editingChecklistItemId, { name: editingChecklistName.trim() });
+    setEditingChecklistItemId(null);
+    setEditingChecklistName('');
+  };
+
+  const handleCancelEditChecklistItem = () => {
+    setEditingChecklistItemId(null);
+    setEditingChecklistName('');
   };
 
   const smartSuggestions = [
@@ -605,7 +629,7 @@ export const Dashboard = () => {
                 case '器材':
                   i18nCategory = t('items.categoryGear', '器材');
                   break;
-                case '保养品':
+                case '保養品':
                   i18nCategory = t('items.categorySkincare', '保養品');
                   break;
                 case '其他':
@@ -621,25 +645,66 @@ export const Dashboard = () => {
                     isPacked ? "opacity-50 bg-[var(--color-brand-sand)]/50" : ""
                   )}
                 >
-                  <div 
-                    className="flex items-center space-x-4 flex-1 cursor-pointer"
-                    onClick={() => toggleItemPacked(item.id)}
-                  >
-                    <div className={clsx(
-                      "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
-                      isPacked ? "bg-green-500 border-green-500" : "border-gray-300"
-                    )}>
-                      {isPacked && <CheckCircle2 size={14} className="text-white" />}
+                  {editingChecklistItemId === item.id ? (
+                    <div className="flex items-center space-x-2 flex-1">
+                      <input
+                        type="text"
+                        value={editingChecklistName}
+                        onChange={(e) => setEditingChecklistName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveChecklistItem();
+                          if (e.key === 'Escape') handleCancelEditChecklistItem();
+                        }}
+                        className="flex-1 bg-[var(--color-brand-cream)] border border-[var(--color-brand-stone)] rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm"
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleSaveChecklistItem}
+                        disabled={!editingChecklistName.trim()}
+                        className="bg-[var(--color-brand-espresso)] text-white px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50"
+                      >
+                        {t('dashboard.save', '儲存')}
+                      </button>
+                      <button
+                        onClick={handleCancelEditChecklistItem}
+                        className="bg-gray-100 text-[var(--color-brand-espresso)]/70 px-3 py-2 rounded-xl text-xs font-bold"
+                      >
+                        {t('dashboard.cancel', '取消')}
+                      </button>
                     </div>
-                    <div>
-                      <h4 className={clsx("font-bold", isPacked ? "line-through text-[var(--color-brand-espresso)]/40" : "text-[var(--color-brand-espresso)]")}>{item.name}</h4>
-                      <p className="text-xs text-[var(--color-brand-espresso)]/40">{i18nCategory} • {item.subCategory}</p>
+                  ) : (
+                    <div 
+                      className="flex items-center space-x-4 flex-1 cursor-pointer"
+                      onClick={() => toggleItemPacked(item.id)}
+                    >
+                      <div className={clsx(
+                        "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
+                        isPacked ? "bg-green-500 border-green-500" : "border-gray-300"
+                      )}>
+                        {isPacked && <CheckCircle2 size={14} className="text-white" />}
+                      </div>
+                      <div>
+                        <h4 className={clsx("font-bold", isPacked ? "line-through text-[var(--color-brand-espresso)]/40" : "text-[var(--color-brand-espresso)]")}>{item.name}</h4>
+                        <p className="text-xs text-[var(--color-brand-espresso)]/40">{i18nCategory} • {item.subCategory}</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   
                   <div className="flex items-center space-x-3 ml-4">
                     {item.image && (
                       <img src={item.image} alt={item.name} className="w-10 h-10 object-cover rounded-lg grayscale opacity-70" />
+                    )}
+                    {editingChecklistItemId !== item.id && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartEditChecklistItem(item);
+                        }}
+                        className="text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)] p-2 rounded-full hover:bg-[var(--color-brand-sand)] transition-colors"
+                        title={t('dashboard.editItem', '編輯此物品')}
+                      >
+                        <Edit2 size={18} />
+                      </button>
                     )}
                     {item.isDiscardable && !isPacked && (
                       <button 
