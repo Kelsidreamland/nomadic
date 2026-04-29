@@ -7,6 +7,15 @@ import { useStore } from '../store';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 
+const luggageSizePresets = [
+  { label: '30"', length: 78, width: 52, height: 31 },
+  { label: '28"', length: 75, width: 49, height: 30 },
+  { label: '26"', length: 68, width: 45, height: 28 },
+  { label: '24"', length: 61, width: 41, height: 26 },
+  { label: '22"', length: 56, width: 38, height: 24 },
+  { label: '20"', length: 55, width: 36, height: 23 },
+];
+
 export const Luggages = () => {
   const { t } = useTranslation();
   const { currentSeasonFilter, setSeasonFilter } = useStore();
@@ -122,6 +131,28 @@ export const Luggages = () => {
 
           <div className="space-y-2">
             <label className="text-sm font-bold text-[var(--color-brand-espresso)]/60 pl-2">{t('luggages.sizeLabel')}</label>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+              {luggageSizePresets.map(preset => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => setNewLuggage({
+                    ...newLuggage,
+                    name: newLuggage.name || `${preset.label} ${t('luggages.title')}`,
+                    length: preset.length,
+                    width: preset.width,
+                    height: preset.height,
+                    type: preset.label === '20"' || preset.label === '22"' ? '手提' : '托运'
+                  })}
+                  className="px-3 py-2 bg-[var(--color-brand-sand)] border border-[var(--color-brand-stone)] rounded-xl text-xs font-bold text-[var(--color-brand-espresso)]/70 hover:border-[var(--color-brand-terracotta)] hover:text-[var(--color-brand-terracotta)] transition-colors"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs leading-relaxed text-[var(--color-brand-espresso)]/50 bg-[var(--color-brand-sand)] border border-[var(--color-brand-stone)] rounded-2xl px-4 py-3">
+              特殊行李箱尺寸可能會不符合部分航空公司規定，填寫詳細規格以便 AI 幫忙比對。
+            </p>
             <div className="flex space-x-2">
               <input 
                 type="number" 

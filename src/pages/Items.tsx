@@ -25,6 +25,36 @@ export const Items = () => {
   };
   const [newItem, setNewItem] = useState<Partial<Item>>(defaultNewItem);
 
+  const createStickerPreview = async (base64: string): Promise<string> => {
+    const image = new Image();
+    image.src = base64;
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('Image load failed'));
+    });
+
+    const maxSize = 320;
+    const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+    const imageWidth = Math.max(1, Math.round(image.width * scale));
+    const imageHeight = Math.max(1, Math.round(image.height * scale));
+    const padding = Math.max(12, Math.round(Math.min(imageWidth, imageHeight) * 0.08));
+    const canvas = document.createElement('canvas');
+    canvas.width = imageWidth + padding * 2;
+    canvas.height = imageHeight + padding * 2;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return base64;
+
+    ctx.fillStyle = 'white';
+    ctx.shadowColor = 'rgba(0,0,0,0.12)';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.roundRect(4, 4, canvas.width - 8, canvas.height - 8, 28);
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.drawImage(image, padding, padding, imageWidth, imageHeight);
+    return canvas.toDataURL('image/png');
+  };
+
   const handleOpenAdd = () => {
     setIsEditing(null);
     setNewItem(defaultNewItem);
@@ -48,7 +78,7 @@ export const Items = () => {
     if (!newItem.name) return;
     
     if (isEditing) {
-      await db.items.update(isEditing, { ...newItem, updatedAt: Date.now() });
+      await db.items.update(isEditing, { ...newItem });
     } else {
       await db.items.add({
         ...newItem,
@@ -72,7 +102,8 @@ export const Items = () => {
     const reader = new FileReader();
     reader.onload = async (ev) => {
       const base64 = ev.target?.result as string;
-      setNewItem(prev => ({ ...prev, image: base64 }));
+      const stickerImage = await createStickerPreview(base64);
+      setNewItem(prev => ({ ...prev, image: stickerImage }));
       handleAiAutoFill(base64);
     };
     reader.readAsDataURL(file);
@@ -115,6 +146,39 @@ export const Items = () => {
           {isAdding && !isEditing ? <X size={16} /> : <Plus size={16} />}
           <span>{isAdding && !isEditing ? t('items.cancel') : t('items.add')}</span>
         </button>
+      </div>
+
+      <div className="bg-[var(--color-brand-cream)] border border-[var(--color-brand-stone)] rounded-3xl p-5 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-[var(--color-brand-sand)] flex items-center justify-center shrink-0">
+            <Sparkles size={18} className="text-[var(--color-brand-terracotta)]" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-bold text-[var(--color-brand-espresso)]">新手教學：建立你的 AI 衣物庫</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-[var(--color-brand-espresso)]/60">
+              <div className="bg-[var(--color-brand-sand)] rounded-2xl px-3 py-2">1. 拍照或上傳衣物照片，系統會產生貼紙風格預覽。</div>
+              <div className="bg-[var(--color-brand-sand)] rounded-2xl px-3 py-2">2. 點擊 AI 自動填寫，確認分類、季節、顏色與適合溫度。</div>
+              <div className="bg-[var(--color-brand-sand)] rounded-2xl px-3 py-2">3. 儲存後會同步到打包清單，也能在連連看頁面建立搭配。</div>
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {['白色襯衫', '黑色西裝褲', '輕量外套', '運動鞋', '萬國轉接頭'].map(example => (
+                <button
+                  key={example}
+                  type="button"
+                  onClick={() => {
+                    setIsAdding(true);
+                    setIsEditing(null);
+                    setNewItem({ ...defaultNewItem, name: example, category: example.includes('轉接') ? '器材' : '衣物' });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="text-xs font-bold bg-white/60 border border-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/70 px-3 py-1.5 rounded-full hover:border-[var(--color-brand-terracotta)] hover:text-[var(--color-brand-terracotta)] transition-colors"
+                >
+                  + {example}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {isAdding && (
@@ -360,7 +424,7 @@ export const Items = () => {
             const isExpiring = item.category === '保養品' && item.expirationDate && new Date(item.expirationDate) < new Date(expiringCutoff);
             
             // 根據類別映射翻譯 Key
-            let i18nCategory = item.category;
+            let i18nCategory: string = item.category;
             switch (item.category) {
               case '衣物': i18nCategory = t('items.categoryClothes', '衣物'); break;
               case '器材': i18nCategory = t('items.categoryGear', '器材'); break;

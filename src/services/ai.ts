@@ -78,6 +78,34 @@ const extractJson = (text: string) => {
   }
 };
 
+const normalizeItemAnalysis = (value: any) => {
+  const categoryMap: Record<string, string> = {
+    保养品: '保養品',
+    盥洗: '保養品',
+    電子: '器材',
+    电子: '器材',
+  };
+  const subCategoryMap: Record<string, string> = {
+    下装: '下裝',
+    连身裙: '連身裙',
+    配饰: '配飾',
+    内搭: '內搭',
+    袜子: '襪子',
+    内衣: '內衣',
+    内裤: '內褲',
+  };
+  const allowedCategories = ['衣物', '器材', '保養品', '其他'];
+  const allowedSubCategories = ['上衣', '下裝', '連身裙', '鞋子', '配飾', '外套', '內搭', '襪子', '內衣', '內褲'];
+  const category = categoryMap[value.category] || value.category;
+  const subCategory = subCategoryMap[value.subCategory] || value.subCategory;
+
+  return {
+    ...value,
+    category: allowedCategories.includes(category) ? category : '其他',
+    subCategory: allowedSubCategories.includes(subCategory) ? subCategory : undefined,
+  };
+};
+
 export const generateSmartInsights = async (contextData: any) => {
   // Always use the backend agent pipeline for this specific feature in production
   if (import.meta.env.PROD) {
@@ -386,9 +414,9 @@ export const analyzeItemWithAI = async (name: string, base64Image?: string) => {
     const responseText = result.response.text();
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      return normalizeItemAnalysis(JSON.parse(jsonMatch[0]));
     }
-    return JSON.parse(responseText);
+    return normalizeItemAnalysis(JSON.parse(responseText));
   } catch (err) {
     console.error('AI Auto-fill failed:', err);
     throw new Error('AI 物品解析失敗');

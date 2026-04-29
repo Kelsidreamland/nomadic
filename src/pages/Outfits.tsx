@@ -12,8 +12,8 @@ export const Outfits = () => {
   const items = useLiveQuery(() => db.items.toArray()) || [];
   const matches = useLiveQuery(() => db.outfit_matches.toArray()) || [];
   
-  const tops = items.filter(i => i.category === '衣物' && ['上衣', '内搭', '外套', '连身裙'].includes(i.subCategory || ''));
-  const bottoms = items.filter(i => i.category === '衣物' && ['下装', '鞋子', '配饰'].includes(i.subCategory || ''));
+  const tops = items.filter(i => i.category === '衣物' && ['上衣', '內搭', '外套', '連身裙'].includes(i.subCategory || ''));
+  const bottoms = items.filter(i => i.category === '衣物' && ['下裝', '鞋子', '配飾'].includes(i.subCategory || ''));
 
   const [selectedTopId, setSelectedTopId] = useState<string | null>(null);
   const [aiAdvice, setAiAdvice] = useState<string | null>(null);

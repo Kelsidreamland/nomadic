@@ -16,11 +16,11 @@ export interface Item {
   id: string;
   luggageId: string;
   name: string;
-  category: '衣物' | '器材' | '保养品' | '其他';
-  subCategory?: '上衣' | '下装' | '连身裙' | '鞋子' | '配饰' | '外套' | '内搭' | '袜子' | '内衣' | '内裤';
+  category: '衣物' | '器材' | '保養品' | '其他';
+  subCategory?: '上衣' | '下裝' | '連身裙' | '鞋子' | '配飾' | '外套' | '內搭' | '襪子' | '內衣' | '內褲';
   season: '冬季' | '夏季' | '通用';
   expirationDate?: string;
-  condition: '新' | '旧' | '快用完';
+  condition: '新' | '舊' | '快用完';
   isDiscardable: boolean;
   notes?: string;
   createdAt: number;
