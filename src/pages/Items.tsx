@@ -5,25 +5,28 @@ import { v4 as uuidv4 } from 'uuid';
 import { Plus, Trash2, PackageSearch, Camera, Sparkles, Image as ImageIcon, Edit2, X, ChevronDown } from 'lucide-react';
 import { analyzeItemWithAI } from '../services/ai';
 import { useTranslation } from 'react-i18next';
+import { useStore } from '../store';
+
+const defaultNewItem: Partial<Item> = {
+  name: '', category: '衣物', subCategory: '上衣', season: '通用', condition: '新', isDiscardable: false, luggageId: '', notes: '', image: ''
+};
 
 export const Items = () => {
   const { t } = useTranslation();
   const items = useLiveQuery(() => db.items.toArray()) || [];
   const luggages = useLiveQuery(() => db.luggages.toArray()) || [];
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { activeLuggageId, setActiveLuggageId } = useStore();
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [editingItem, setEditingItem] = useState<Partial<Item> | null>(null);
+  const [editingImage, setEditingImage] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
-  const [isEditing, setIsEditing] = useState<string | null>(null);
-  const [isAiThinking, setIsAiThinking] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [manualItem, setManualItem] = useState<Partial<Item>>({ ...defaultNewItem });
   const [now] = useState(() => Date.now());
   const expiringCutoff = now + 30 * 24 * 60 * 60 * 1000;
-  
-  const defaultNewItem: Partial<Item> = {
-    name: '', category: '衣物', subCategory: '上衣', season: '通用', condition: '新', isDiscardable: false, luggageId: '', notes: '', image: ''
-  };
-  const [newItem, setNewItem] = useState<Partial<Item>>(defaultNewItem);
 
   const getLuggageTypeLabel = (type: string) => {
     switch (type) {
@@ -35,14 +38,6 @@ export const Items = () => {
     }
   };
 
-  const examples = [
-    { label: t('items.exampleWhiteShirt'), value: '白色襯衫', category: '衣物' as const },
-    { label: t('items.exampleBlackPants'), value: '黑色西裝褲', category: '衣物' as const },
-    { label: t('items.exampleLightJacket'), value: '輕量外套', category: '衣物' as const },
-    { label: t('items.exampleSneakers'), value: '運動鞋', category: '衣物' as const },
-    { label: t('items.exampleAdapter'), value: '萬國轉接頭', category: '器材' as const },
-  ];
-
   const createStickerPreview = async (base64: string): Promise<string> => {
     const image = new Image();
     image.src = base64;
@@ -50,7 +45,6 @@ export const Items = () => {
       image.onload = () => resolve();
       image.onerror = () => reject(new Error('Image load failed'));
     });
-
     const maxSize = 320;
     const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
     const imageWidth = Math.max(1, Math.round(image.width * scale));
@@ -61,7 +55,6 @@ export const Items = () => {
     canvas.height = imageHeight + padding * 2;
     const ctx = canvas.getContext('2d');
     if (!ctx) return base64;
-
     ctx.fillStyle = 'white';
     ctx.shadowColor = 'rgba(0,0,0,0.12)';
     ctx.shadowBlur = 12;
@@ -73,39 +66,101 @@ export const Items = () => {
     return canvas.toDataURL('image/png');
   };
 
-  const handleOpenAdd = () => {
-    setIsEditing(null);
-    setNewItem(defaultNewItem);
-    setIsAdding(!isAdding);
+  const handleImageCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const base64 = ev.target?.result as string;
+      const sticker = await createStickerPreview(base64);
+      setEditingImage(sticker);
+      setIsAnalyzing(true);
+      setEditingItem({ ...defaultNewItem, image: sticker, luggageId: activeLuggageId || '' });
+      try {
+        const result = await analyzeItemWithAI('', base64);
+        setEditingItem(prev => ({
+          ...prev,
+          name: result.name || prev?.name,
+          category: result.category || prev?.category,
+          subCategory: result.subCategory || prev?.subCategory,
+          season: result.season || prev?.season,
+          color: result.color,
+          occasion: result.occasion,
+          wrinkleProne: result.wrinkleProne,
+          tempRange: result.tempRange,
+          notes: result.notes,
+          image: sticker,
+          luggageId: activeLuggageId || prev?.luggageId || '',
+        }));
+        if (result.color || result.occasion || result.wrinkleProne || result.tempRange) {
+          setShowAdvanced(true);
+        }
+      } catch (err: any) {
+        console.error('AI analysis failed', err);
+      }
+      setIsAnalyzing(false);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleOpenEdit = (item: Item) => {
-    setIsAdding(true);
-    setIsEditing(item.id);
-    setNewItem(item);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleManualImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const base64 = ev.target?.result as string;
+      const sticker = await createStickerPreview(base64);
+      setManualItem(prev => ({ ...prev, image: sticker }));
+      setIsAnalyzing(true);
+      try {
+        const result = await analyzeItemWithAI(manualItem.name || '', base64);
+        setManualItem(prev => ({
+          ...prev,
+          name: result.name || prev.name,
+          category: result.category || prev.category,
+          subCategory: result.subCategory || prev.subCategory,
+          season: result.season || prev.season,
+          color: result.color,
+          occasion: result.occasion,
+          wrinkleProne: result.wrinkleProne,
+          tempRange: result.tempRange,
+          notes: result.notes,
+          image: sticker,
+        }));
+      } catch (err: any) {
+        console.error('AI analysis failed', err);
+      }
+      setIsAnalyzing(false);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleCancel = () => {
-    setIsAdding(false);
-    setIsEditing(null);
-    setNewItem(defaultNewItem);
-  };
-
-  const handleSave = async () => {
-    if (!newItem.name) return;
-    
-    if (isEditing) {
-      await db.items.update(isEditing, { ...newItem });
+  const handleSaveConfirmed = async () => {
+    if (!editingItem?.name) return;
+    if ((editingItem as Item).id) {
+      await db.items.update((editingItem as Item).id, { ...editingItem });
     } else {
       await db.items.add({
-        ...newItem,
+        ...editingItem,
         id: uuidv4(),
         createdAt: Date.now(),
       } as Item);
     }
-    
-    handleCancel();
+    setEditingItem(null);
+    setEditingImage(null);
+    setShowAdvanced(false);
+  };
+
+  const handleSaveManual = async () => {
+    if (!manualItem.name) return;
+    await db.items.add({
+      ...manualItem,
+      id: uuidv4(),
+      createdAt: Date.now(),
+      luggageId: manualItem.luggageId || activeLuggageId || '',
+    } as Item);
+    setManualItem({ ...defaultNewItem });
+    setShowManualForm(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -114,240 +169,225 @@ export const Items = () => {
     await Promise.all(matches.map(m => db.outfit_matches.delete(m.id)));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const base64 = ev.target?.result as string;
-      const stickerImage = await createStickerPreview(base64);
-      setNewItem(prev => ({ ...prev, image: stickerImage }));
-      handleAiAutoFill(base64);
-    };
-    reader.readAsDataURL(file);
+  const handleEdit = (item: Item) => {
+    setEditingItem({ ...item });
+    setEditingImage(item.image || null);
+    setShowAdvanced(!!(item.color || item.occasion || item.wrinkleProne || item.tempRange));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleAiAutoFill = async (base64Image?: string) => {
-    if (!newItem.name && !base64Image) return;
-    setIsAiThinking(true);
-    try {
-      const result = await analyzeItemWithAI(newItem.name || '', base64Image || newItem.image);
-      setNewItem(prev => ({
-        ...prev,
-        name: result.name || prev.name,
-        category: result.category || prev.category,
-        subCategory: result.subCategory || prev.subCategory,
-        season: result.season || prev.season,
-        color: result.color || prev.color,
-        occasion: result.occasion || prev.occasion,
-        wrinkleProne: result.wrinkleProne || prev.wrinkleProne,
-        tempRange: result.tempRange || prev.tempRange,
-        notes: result.notes || prev.notes
-      }));
-      // Auto-expand advanced options if AI filled them
-      setShowAdvanced(true);
-    } catch (error: any) {
-      console.error("Auto-fill failed", error);
-      alert(error.message || '自動填寫失敗');
-    }
-    setIsAiThinking(false);
+  const cancelEditing = () => {
+    setEditingItem(null);
+    setEditingImage(null);
+    setShowAdvanced(false);
   };
+
+  const itemCountByLuggage = (luggageId: string) => items.filter(i => i.luggageId === luggageId).length;
+
+  const subCategoryOptions = [
+    { value: '上衣', label: t('items.subTop') },
+    { value: '下裝', label: t('items.subBottom') },
+    { value: '外套', label: t('items.subOuterwear') },
+    { value: '內搭', label: t('items.subInnerwear') },
+    { value: '連身裙', label: t('items.subDress') },
+    { value: '鞋子', label: t('items.subShoes') },
+    { value: '配飾', label: t('items.subAccessory') },
+    { value: '襪子', label: t('items.subSocks') },
+    { value: '內衣', label: t('items.subBra') },
+    { value: '內褲', label: t('items.subUnderpants') },
+  ];
+
+  const categoryOptions = [
+    { value: '衣物', label: t('items.categoryClothes') },
+    { value: '器材', label: t('items.categoryGear') },
+    { value: '保養品', label: t('items.categorySkincare') },
+    { value: '其他', label: t('items.categoryOther') },
+  ];
+
+  const seasonOptions = [
+    { value: '通用', label: t('items.seasonGeneral') },
+    { value: '冬季', label: t('items.seasonWinter') },
+    { value: '夏季', label: t('items.seasonSummer') },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)] tracking-wider">{t('items.title')}</h2>
-        <button 
-          onClick={handleOpenAdd}
-          className="flex items-center space-x-1 bg-[var(--color-brand-espresso)] text-white px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-[var(--color-brand-espresso)] transition-colors"
-        >
-          {isAdding && !isEditing ? <X size={16} /> : <Plus size={16} />}
-          <span>{isAdding && !isEditing ? t('items.cancel') : t('items.add')}</span>
-        </button>
       </div>
 
-      <div className="bg-[var(--color-brand-cream)] border border-[var(--color-brand-stone)] rounded-3xl p-5 shadow-sm">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-[var(--color-brand-sand)] flex items-center justify-center shrink-0">
-            <Sparkles size={18} className="text-[var(--color-brand-terracotta)]" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="font-bold text-[var(--color-brand-espresso)]">{t('items.tutorialTitle')}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-[var(--color-brand-espresso)]/60">
-              <div className="bg-[var(--color-brand-sand)] rounded-2xl px-3 py-2">{t('items.tutorialStep1')}</div>
-              <div className="bg-[var(--color-brand-sand)] rounded-2xl px-3 py-2">{t('items.tutorialStep2')}</div>
-              <div className="bg-[var(--color-brand-sand)] rounded-2xl px-3 py-2">{t('items.tutorialStep3')}</div>
-            </div>
-            <div className="flex flex-wrap gap-2 pt-1">
-              {examples.map(example => (
-                <button
-                  key={example.value}
-                  type="button"
-                  onClick={() => {
-                    setIsAdding(true);
-                    setIsEditing(null);
-                    setNewItem({ ...defaultNewItem, name: example.value, category: example.category });
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="text-xs font-bold bg-white/60 border border-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/70 px-3 py-1.5 rounded-full hover:border-[var(--color-brand-terracotta)] hover:text-[var(--color-brand-terracotta)] transition-colors"
-                >
-                  + {example.label}
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* Luggage selector */}
+      {luggages.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <span className="text-xs font-bold text-[var(--color-brand-espresso)]/40 shrink-0">{t('luggages.title')}:</span>
+          {luggages.map(l => (
+            <button
+              key={l.id}
+              onClick={() => setActiveLuggageId(l.id)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                activeLuggageId === l.id
+                  ? 'bg-[var(--color-brand-espresso)] text-white'
+                  : 'bg-white border border-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/60 hover:border-[var(--color-brand-terracotta)]'
+              }`}
+            >
+              {l.name} ({itemCountByLuggage(l.id)})
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Camera capture area */}
+      <div className="bg-[var(--color-brand-cream)] rounded-3xl shadow-sm border border-[var(--color-brand-stone)] p-8 text-center space-y-4">
+        <label className="flex flex-col items-center justify-center w-full h-40 bg-white rounded-3xl border-2 border-dashed border-[var(--color-brand-stone)] cursor-pointer hover:border-[var(--color-brand-terracotta)] transition-colors">
+          <Camera size={48} className="text-[var(--color-brand-espresso)]/25 mb-3" />
+          <span className="font-bold text-[var(--color-brand-espresso)]/50 text-lg">{t('items.takePhoto')}</span>
+          <span className="text-xs text-[var(--color-brand-espresso)]/30 mt-1">AI {t('items.aiAutoFill')}</span>
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleImageCapture}
+          />
+        </label>
+        <div className="flex items-center justify-center gap-4">
+          <label className="text-sm font-medium text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-terracotta)] cursor-pointer transition-colors">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageCapture}
+            />
+            {t('items.uploadImage')}
+          </label>
+          <span className="text-[var(--color-brand-espresso)]/20">|</span>
+          <button
+            onClick={() => { setShowManualForm(true); setManualItem({ ...defaultNewItem, luggageId: activeLuggageId || '' }); }}
+            className="text-sm font-medium text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-terracotta)] transition-colors"
+          >
+            {t('items.add')}
+          </button>
         </div>
       </div>
 
-      {isAdding && (
-        <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] space-y-4 relative">
-          {isEditing && (
-            <button 
-              onClick={handleCancel}
-              className="absolute top-4 right-4 p-2 text-[var(--color-brand-espresso)]/40 hover:bg-gray-100 rounded-full transition-colors"
-            >
+      {/* AI analyzing overlay */}
+      {isAnalyzing && (
+        <div className="bg-[var(--color-brand-cream)] p-8 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex flex-col items-center space-y-4">
+          <div className="flex space-x-2">
+            <div className="w-3 h-3 bg-[var(--color-brand-olive)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-3 h-3 bg-[var(--color-brand-olive)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <div className="w-3 h-3 bg-[var(--color-brand-olive)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+          <p className="font-bold text-[var(--color-brand-espresso)]/60">{t('items.analyzing')}</p>
+        </div>
+      )}
+
+      {/* Confirmation card (after photo or edit) */}
+      {editingItem && !isAnalyzing && (
+        <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="font-bold text-lg text-[var(--color-brand-espresso)]">
+              {(editingItem as Item).id ? t('items.edit') : t('items.add')}
+            </h3>
+            <button onClick={cancelEditing} className="p-2 text-[var(--color-brand-espresso)]/40 hover:bg-gray-100 rounded-full">
               <X size={20} />
             </button>
-          )}
-          
-          <h3 className="font-bold text-lg text-[var(--color-brand-espresso)] mb-2 border-b border-gray-50 pb-2">
-            {isEditing ? t('items.edit') : t('items.add')}
-          </h3>
-          
-          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
-            <div className="flex space-x-2">
-              <div 
-                className="w-20 h-20 bg-[var(--color-brand-sand)] rounded-2xl flex-shrink-0 border-2 border-dashed border-[var(--color-brand-stone)] flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors overflow-hidden"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {newItem.image ? (
-                  <img src={newItem.image} alt="Preview" className="w-full h-full object-cover" />
-                ) : (
-                  <>
-                    <ImageIcon size={20} className="text-[var(--color-brand-espresso)]/40 mb-1" />
-                    <span className="text-[10px] text-[var(--color-brand-espresso)]/40 font-bold">{t('items.uploadImage')}</span>
-                  </>
-                )}
-                <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
-              </div>
-
-              {!newItem.image && (
-                <div 
-                  className="w-20 h-20 bg-[var(--color-brand-sand)] rounded-2xl flex-shrink-0 border-2 border-dashed border-[var(--color-brand-stone)] flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors overflow-hidden"
-                  onClick={() => cameraInputRef.current?.click()}
-                >
-                  <Camera size={20} className="text-[var(--color-brand-espresso)]/40 mb-1" />
-                  <span className="text-[10px] text-[var(--color-brand-espresso)]/40 font-bold">{t('items.takePhoto', '現場拍照')}</span>
-                  <input type="file" accept="image/*" capture="environment" className="hidden" ref={cameraInputRef} onChange={handleImageUpload} />
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 w-full space-y-2">
-              <div className="flex space-x-2">
-                <input 
-                  type="text" 
-                  placeholder={t('items.namePlaceholder')} 
-                  value={newItem.name} 
-                  onChange={e => setNewItem({...newItem, name: e.target.value})}
-                  className="flex-1 px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
-                />
-                <button 
-                  onClick={() => handleAiAutoFill()}
-                  disabled={isAiThinking}
-                  className="px-4 py-3 bg-blue-50 text-[var(--color-brand-terracotta)] rounded-xl font-bold flex items-center space-x-1 hover:bg-[var(--color-brand-stone)] transition-colors disabled:opacity-50"
-                  title={t('items.aiAutoFill')}
-                >
-                  <Sparkles size={16} />
-                  <span>{isAiThinking ? t('items.analyzing') : t('items.aiAutoFill')}</span>
-                </button>
-              </div>
-            </div>
           </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <select 
-              value={newItem.category} 
-              onChange={e => setNewItem({...newItem, category: e.target.value as any})}
-              className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
-            >
-              <option value="衣物">{t('items.categoryClothes', '衣物')}</option>
-              <option value="器材">{t('items.categoryGear', '器材')}</option>
-              <option value="保養品">{t('items.categorySkincare', '保養品')}</option>
-              <option value="其他">{t('items.categoryOther', '其他')}</option>
-            </select>
 
-            {newItem.category === '衣物' && (
-              <select 
-                value={newItem.subCategory} 
-                onChange={e => setNewItem({...newItem, subCategory: e.target.value as any})}
-                className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
-              >
-                <option value="上衣">{t('items.subTop', '上衣')}</option>
-                <option value="下裝">{t('items.subBottom', '下裝')}</option>
-                <option value="外套">{t('items.subOuterwear', '外套')}</option>
-                <option value="內搭">{t('items.subInnerwear', '內搭')}</option>
-                <option value="連身裙">{t('items.subDress', '連身裙')}</option>
-                <option value="鞋子">{t('items.subShoes', '鞋子')}</option>
-                <option value="配飾">{t('items.subAccessory', '配飾')}</option>
-                <option value="襪子">{t('items.subSocks', '襪子')}</option>
-                <option value="內衣">{t('items.subBra', '內衣')}</option>
-                <option value="內褲">{t('items.subUnderpants', '內褲')}</option>
-              </select>
+          <div className="flex gap-4">
+            {editingImage && (
+              <img src={editingImage} alt="Preview" className="w-24 h-24 object-cover rounded-2xl border border-[var(--color-brand-stone)] shadow-sm shrink-0" />
             )}
+            <div className="flex-1 space-y-2">
+              <input
+                type="text"
+                placeholder={t('items.namePlaceholder')}
+                value={editingItem.name || ''}
+                onChange={e => setEditingItem({ ...editingItem, name: e.target.value })}
+                className="w-full px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] font-bold"
+                autoFocus
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={editingItem.category || '衣物'}
+                  onChange={e => setEditingItem({ ...editingItem, category: e.target.value as any, subCategory: undefined })}
+                  className="px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
+                >
+                  {categoryOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                {editingItem.category === '衣物' && (
+                  <select
+                    value={editingItem.subCategory || '上衣'}
+                    onChange={e => setEditingItem({ ...editingItem, subCategory: e.target.value as any })}
+                    className="px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
+                  >
+                    {subCategoryOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={editingItem.season || '通用'}
+                  onChange={e => setEditingItem({ ...editingItem, season: e.target.value as any })}
+                  className="px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
+                >
+                  {seasonOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                <select
+                  value={editingItem.luggageId || activeLuggageId || ''}
+                  onChange={e => setEditingItem({ ...editingItem, luggageId: e.target.value })}
+                  className="px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
+                >
+                  <option value="">{t('items.unassigned')}</option>
+                  {luggages.map(l => (
+                    <option key={l.id} value={l.id}>{l.name} ({getLuggageTypeLabel(l.type)})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
-            <select 
-              value={newItem.season} 
-              onChange={e => setNewItem({...newItem, season: e.target.value as any})}
-              className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
-            >
-              <option value="通用">{t('items.seasonGeneral')}</option>
-              <option value="冬季">{t('items.seasonWinter')}</option>
-              <option value="夏季">{t('items.seasonSummer')}</option>
-            </select>
-          </div>
-
-          <button 
-            onClick={() => setShowAdvanced(!showAdvanced)} 
+          {/* Advanced toggle */}
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
             className="flex items-center justify-between w-full p-3 bg-[var(--color-brand-sand)] rounded-xl text-[var(--color-brand-espresso)]/60 font-bold text-sm hover:bg-gray-100 transition-colors"
           >
-            <span>✨ {t('items.advancedTitle')}</span>
+            <span>{t('items.advancedTitle')}</span>
             <ChevronDown size={16} className={`transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
           </button>
 
           {showAdvanced && (
             <div className="space-y-4 animate-fade-in">
-              {/* Pack AI Refactor: New Metadata Fields */}
-              {newItem.category === '衣物' && (
-                <div className="grid grid-cols-2 gap-4 bg-blue-50/50 p-4 rounded-2xl border border-[var(--color-brand-terracotta)]/50">
+              {editingItem.category === '衣物' && (
+                <div className="grid grid-cols-2 gap-4 bg-[var(--color-brand-sand)]/50 p-4 rounded-2xl">
                   <div>
                     <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">{t('items.colorLabel')}</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder={t('items.colorPlaceholder')}
-                      value={newItem.color || ''} 
-                      onChange={e => setNewItem({...newItem, color: e.target.value})}
-                      className="w-full px-4 py-3 bg-[var(--color-brand-cream)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
+                      value={editingItem.color || ''}
+                      onChange={e => setEditingItem({ ...editingItem, color: e.target.value })}
+                      className="w-full px-3 py-2 bg-white rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">{t('items.tempLabel')}</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder={t('items.tempPlaceholder')}
-                      value={newItem.tempRange || ''} 
-                      onChange={e => setNewItem({...newItem, tempRange: e.target.value})}
-                      className="w-full px-4 py-3 bg-[var(--color-brand-cream)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
+                      value={editingItem.tempRange || ''}
+                      onChange={e => setEditingItem({ ...editingItem, tempRange: e.target.value })}
+                      className="w-full px-3 py-2 bg-white rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">{t('items.occasionLabel')}</label>
-                    <select 
-                      value={newItem.occasion || '其他'} 
-                      onChange={e => setNewItem({...newItem, occasion: e.target.value as any})}
-                      className="w-full px-4 py-3 bg-[var(--color-brand-cream)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
+                    <select
+                      value={editingItem.occasion || '其他'}
+                      onChange={e => setEditingItem({ ...editingItem, occasion: e.target.value as any })}
+                      className="w-full px-3 py-2 bg-white rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     >
                       <option value="商務">{t('items.occasionBusiness')}</option>
                       <option value="休閒">{t('items.occasionCasual')}</option>
@@ -358,10 +398,10 @@ export const Items = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">{t('items.wrinkleLabel')}</label>
-                    <select 
-                      value={newItem.wrinkleProne || '適中'} 
-                      onChange={e => setNewItem({...newItem, wrinkleProne: e.target.value as any})}
-                      className="w-full px-4 py-3 bg-[var(--color-brand-cream)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
+                    <select
+                      value={editingItem.wrinkleProne || '適中'}
+                      onChange={e => setEditingItem({ ...editingItem, wrinkleProne: e.target.value as any })}
+                      className="w-full px-3 py-2 bg-white rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     >
                       <option value="易皺">{t('items.wrinkleHigh')}</option>
                       <option value="適中">{t('items.wrinkleMedium')}</option>
@@ -372,49 +412,37 @@ export const Items = () => {
               )}
 
               <div className="grid grid-cols-2 gap-4">
-                <select 
-                  value={newItem.condition} 
-                  onChange={e => setNewItem({...newItem, condition: e.target.value as any})}
+                <select
+                  value={editingItem.condition || '新'}
+                  onChange={e => setEditingItem({ ...editingItem, condition: e.target.value as any })}
                   className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
                 >
-                  <option value="新">{t('items.condNew', '新')}</option>
-                  <option value="舊">{t('items.condOld', '舊')}</option>
-                  <option value="快用完">{t('items.condEmptying', '快用完')}</option>
+                  <option value="新">{t('items.condNew')}</option>
+                  <option value="舊">{t('items.condOld')}</option>
+                  <option value="快用完">{t('items.condEmptying')}</option>
                 </select>
-
-                <select 
-                  value={newItem.luggageId} 
-                  onChange={e => setNewItem({...newItem, luggageId: e.target.value})}
-                  className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
-                >
-                  <option value="">{t('items.unassigned')}</option>
-                  {luggages.map(l => (
-                    <option key={l.id} value={l.id}>{l.name} ({getLuggageTypeLabel(l.type)})</option>
-                  ))}
-                </select>
+                {editingItem.category === '保養品' && (
+                  <input
+                    type="date"
+                    value={editingItem.expirationDate || ''}
+                    onChange={e => setEditingItem({ ...editingItem, expirationDate: e.target.value })}
+                    className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-[var(--color-brand-espresso)]/60"
+                  />
+                )}
               </div>
-
-              {newItem.category === '保養品' && (
-                <input 
-                  type="date" 
-                  value={newItem.expirationDate || ''} 
-                  onChange={e => setNewItem({...newItem, expirationDate: e.target.value})}
-                  className="w-full px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-[var(--color-brand-espresso)]/60"
-                />
-              )}
 
               <textarea
                 placeholder={t('items.notesPlaceholder')}
-                value={newItem.notes || ''}
-                onChange={e => setNewItem({...newItem, notes: e.target.value})}
+                value={editingItem.notes || ''}
+                onChange={e => setEditingItem({ ...editingItem, notes: e.target.value })}
                 className="w-full px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] h-20 resize-none text-sm"
               />
 
               <label className="flex items-center space-x-2 p-2">
-                <input 
-                  type="checkbox" 
-                  checked={newItem.isDiscardable} 
-                  onChange={e => setNewItem({...newItem, isDiscardable: e.target.checked})}
+                <input
+                  type="checkbox"
+                  checked={editingItem.isDiscardable || false}
+                  onChange={e => setEditingItem({ ...editingItem, isDiscardable: e.target.checked })}
                   className="w-5 h-5 text-[var(--color-brand-espresso)] rounded focus:ring-[var(--color-brand-espresso)]"
                 />
                 <span className="text-sm font-medium text-[var(--color-brand-espresso)]/80">{t('items.discardable')}</span>
@@ -422,15 +450,98 @@ export const Items = () => {
             </div>
           )}
 
-          <button 
-            onClick={handleSave}
-            className="w-full py-3 bg-[var(--color-brand-espresso)] text-white rounded-xl font-bold tracking-widest shadow-md hover:bg-[var(--color-brand-espresso)] transition-colors"
+          <button
+            onClick={handleSaveConfirmed}
+            disabled={!editingItem.name}
+            className="w-full py-3 bg-[var(--color-brand-espresso)] disabled:opacity-30 text-white rounded-xl font-bold tracking-widest shadow-md hover:bg-black transition-colors"
           >
-            {isEditing ? t('items.update') : t('items.save')}
+            {(editingItem as Item).id ? t('items.update') : t('items.save')}
           </button>
         </div>
       )}
 
+      {/* Manual add form */}
+      {showManualForm && (
+        <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="font-bold text-lg text-[var(--color-brand-espresso)]">{t('items.add')}</h3>
+            <button onClick={() => setShowManualForm(false)} className="p-2 text-[var(--color-brand-espresso)]/40 hover:bg-gray-100 rounded-full">
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="flex gap-4 items-start">
+            <div className="flex flex-col gap-2">
+              <div
+                className="w-20 h-20 bg-[var(--color-brand-sand)] rounded-2xl border-2 border-dashed border-[var(--color-brand-stone)] flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 overflow-hidden"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {manualItem.image ? (
+                  <img src={manualItem.image} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <>
+                    <ImageIcon size={20} className="text-[var(--color-brand-espresso)]/40 mb-1" />
+                    <span className="text-[10px] text-[var(--color-brand-espresso)]/40 font-bold">{t('items.uploadImage')}</span>
+                  </>
+                )}
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                ref={fileInputRef}
+                onChange={handleManualImageUpload}
+              />
+            </div>
+
+            <div className="flex-1 space-y-2">
+              <input
+                type="text"
+                placeholder={t('items.namePlaceholder')}
+                value={manualItem.name || ''}
+                onChange={e => setManualItem({ ...manualItem, name: e.target.value })}
+                className="w-full px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={manualItem.category || '衣物'}
+                  onChange={e => setManualItem({ ...manualItem, category: e.target.value as any, subCategory: undefined })}
+                  className="px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
+                >
+                  {categoryOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                <select
+                  value={manualItem.season || '通用'}
+                  onChange={e => setManualItem({ ...manualItem, season: e.target.value as any })}
+                  className="px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
+                >
+                  {seasonOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+              <select
+                value={manualItem.luggageId || activeLuggageId || ''}
+                onChange={e => setManualItem({ ...manualItem, luggageId: e.target.value })}
+                className="w-full px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
+              >
+                <option value="">{t('items.unassigned')}</option>
+                {luggages.map(l => (
+                  <option key={l.id} value={l.id}>{l.name} ({getLuggageTypeLabel(l.type)})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSaveManual}
+            disabled={!manualItem.name}
+            className="w-full py-3 bg-[var(--color-brand-espresso)] disabled:opacity-30 text-white rounded-xl font-bold tracking-widest shadow-md hover:bg-black transition-colors"
+          >
+            {t('items.save')}
+          </button>
+        </div>
+      )}
+
+      {/* Item list */}
       {items.length === 0 ? (
         <div className="text-center py-20 text-[var(--color-brand-espresso)]/40">
           <PackageSearch size={48} className="mx-auto mb-4 opacity-50" />
@@ -440,65 +551,51 @@ export const Items = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {items.map(item => {
             const isExpiring = item.category === '保養品' && item.expirationDate && new Date(item.expirationDate) < new Date(expiringCutoff);
-            
-            // 根據類別映射翻譯 Key
             let i18nCategory: string = item.category;
             switch (item.category) {
-              case '衣物': i18nCategory = t('items.categoryClothes', '衣物'); break;
-              case '器材': i18nCategory = t('items.categoryGear', '器材'); break;
-              case '保養品': i18nCategory = t('items.categorySkincare', '保養品'); break;
-              case '其他': i18nCategory = t('items.categoryOther', '其他'); break;
+              case '衣物': i18nCategory = t('items.categoryClothes'); break;
+              case '器材': i18nCategory = t('items.categoryGear'); break;
+              case '保養品': i18nCategory = t('items.categorySkincare'); break;
+              case '其他': i18nCategory = t('items.categoryOther'); break;
             }
 
+            const luggage = luggages.find(l => l.id === item.luggageId);
+
             return (
-              <div key={item.id} className="bg-[var(--color-brand-cream)] p-5 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex justify-between items-start group hover:border-[var(--color-brand-stone)] transition-colors">
-                <div className="flex space-x-4">
+              <div key={item.id} className="bg-[var(--color-brand-cream)] p-4 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex justify-between items-start group hover:border-[var(--color-brand-stone)] transition-colors">
+                <div className="flex space-x-3">
                   {item.image ? (
-                    <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-2xl border border-[var(--color-brand-stone)] shadow-sm" style={{ filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.1))' }} />
+                    <img src={item.image} alt={item.name} className="w-14 h-14 object-cover rounded-2xl border border-[var(--color-brand-stone)] shadow-sm" />
                   ) : (
-                    <div className="w-16 h-16 bg-[var(--color-brand-sand)] rounded-2xl flex items-center justify-center border border-[var(--color-brand-stone)]">
-                      <ImageIcon size={24} className="text-[var(--color-brand-espresso)]/30" />
+                    <div className="w-14 h-14 bg-[var(--color-brand-sand)] rounded-2xl flex items-center justify-center border border-[var(--color-brand-stone)]">
+                      <ImageIcon size={20} className="text-[var(--color-brand-espresso)]/30" />
                     </div>
                   )}
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <h3 className="font-bold text-[var(--color-brand-espresso)] text-lg">{item.name}</h3>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-[var(--color-brand-espresso)]/80 font-bold">{i18nCategory}</span>
-                      {item.isDiscardable && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-bold">{t('items.discardableBadge', '可丟棄')}</span>}
-                    </div>
-                    <div className="text-xs font-medium text-[var(--color-brand-espresso)]/40 flex items-center space-x-2 flex-wrap gap-y-1">
-                      <span>{item.season === '通用' ? t('items.seasonGeneral') : item.season === '冬季' ? t('items.seasonWinter') : t('items.seasonSummer')}</span>
-                      <span>•</span>
-                      <span>{item.condition === '新' ? t('items.condNew') : item.condition === '舊' ? t('items.condOld') : t('items.condEmptying')}</span>
+                  <div className="space-y-0.5">
+                    <h3 className="font-bold text-[var(--color-brand-espresso)]">{item.name}</h3>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-[var(--color-brand-espresso)]/70 font-bold">{i18nCategory}</span>
                       {item.subCategory && (
-                        <>
-                          <span>•</span>
-                          <span>{t(`items.sub${item.subCategory === '上衣' ? 'Top' : item.subCategory === '下裝' ? 'Bottom' : item.subCategory === '外套' ? 'Outerwear' : item.subCategory === '內搭' ? 'Innerwear' : item.subCategory === '連身裙' ? 'Dress' : item.subCategory === '鞋子' ? 'Shoes' : item.subCategory === '配飾' ? 'Accessory' : item.subCategory === '襪子' ? 'Socks' : item.subCategory === '內衣' ? 'Bra' : 'Underpants'}`, item.subCategory)}</span>
-                        </>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-brand-sand)] text-[var(--color-brand-espresso)]/50 font-medium">{item.subCategory}</span>
                       )}
-                      {item.luggageId && (
-                        <>
-                          <span>•</span>
-                          <span className="text-[var(--color-brand-terracotta)]">{luggages.find(l => l.id === item.luggageId)?.name || t('items.unknownLuggage', '未知行李')}</span>
-                        </>
-                      )}
+                      <span className="text-[10px] text-[var(--color-brand-espresso)]/40">
+                        {item.season === '通用' ? t('items.seasonGeneral') : item.season === '冬季' ? t('items.seasonWinter') : t('items.seasonSummer')}
+                      </span>
                     </div>
-                    {item.notes && (
-                      <p className="text-xs text-[var(--color-brand-espresso)]/60 mt-2 line-clamp-2">{item.notes}</p>
+                    {luggage && (
+                      <p className="text-[10px] text-[var(--color-brand-terracotta)] font-medium">{luggage.name}</p>
                     )}
                     {isExpiring && (
-                      <div className="text-xs text-orange-500 font-bold mt-2">
-                        {t('items.expiringWarning')}
-                      </div>
+                      <p className="text-[10px] text-orange-500 font-bold">{t('items.expiringWarning')}</p>
                     )}
                   </div>
                 </div>
-                <div className="flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <button onClick={() => handleOpenEdit(item)} className="p-2 text-[var(--color-brand-espresso)]/30 hover:text-[var(--color-brand-espresso)] transition-colors bg-[var(--color-brand-sand)] rounded-xl hover:bg-gray-100">
-                    <Edit2 size={16} />
+                <div className="flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <button onClick={() => handleEdit(item)} className="p-1.5 text-[var(--color-brand-espresso)]/30 hover:text-[var(--color-brand-espresso)] transition-colors bg-[var(--color-brand-sand)] rounded-xl hover:bg-gray-100">
+                    <Edit2 size={14} />
                   </button>
-                  <button onClick={() => handleDelete(item.id)} className="p-2 text-[var(--color-brand-espresso)]/30 hover:text-red-500 transition-colors bg-red-50 rounded-xl hover:bg-red-100">
-                    <Trash2 size={16} />
+                  <button onClick={() => handleDelete(item.id)} className="p-1.5 text-[var(--color-brand-espresso)]/30 hover:text-red-500 transition-colors bg-red-50 rounded-xl hover:bg-red-100">
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>

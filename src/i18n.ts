@@ -6,9 +6,10 @@ const resources = {
     translation: {
       app: {
         dashboard: '準備出發',
+        overview: '總覽',
         luggages: '行李空間',
         items: '物品庫',
-        outfits: '智能穿搭',
+        outfits: '搭配統計',
         settings: '設置',
         tagline: '專為數字遊牧設計的極簡行李管家'
       },
@@ -67,24 +68,16 @@ const resources = {
         syncSuccess: '模擬同步 Gmail 機票成功！'
       },
       onboarding: {
-        title: 'Nomadic',
-        subtitle: ': 旅居管家',
-        description: '上傳行程單、使用表單手動輸入航班，或直接開始打包。Nomadic 不需要讀取你的 Gmail，也能幫你整理行李限制與打包清單。',
-        feature1Title: '行程單解析',
-        feature1Desc: '上傳航空公司確認信、PDF 或截圖，解析後先讓你確認再儲存。',
-        feature1Point1: '不需 Gmail 授權',
-        feature1Point2: '解析後可手動修正航班與行李限額',
-        feature2Title: 'AI 打包管家',
-        feature2Desc: '結合目的地、航班行李規則、衣物庫與打包清單，幫你做減法。',
-        feature2Point1: '可先手動建立旅程',
-        feature2Point2: '可直接從打包清單開始',
-        btnAuth: '授權 Google (推薦)',
-        btnSkip: '跳過，我要手動輸入',
-        btnStartTrip: '建立我的第一趟旅程',
-        btnChecklist: '先進入打包清單',
-        syncing: '資料同步中...',
-        errorMismatch: 'Google 登入失敗：重定向 URI 不匹配 (redirect_uri_mismatch)。\n\n這通常是因為您目前在預覽沙盒網域執行。請將目前的 URL 加入 Google Cloud Console 的「已授權的 JavaScript 來源」與「已授權的重新導向 URI」，或在本地端 (localhost:5173) 進行測試。',
-        errorGeneral: 'Google 登入失敗'
+        btnStart: '開始使用',
+        step1Title: '建立你的第一個行李箱',
+        step1Desc: '行李箱是 Nomadic 的核心。先建立一個你最常用的行李箱，後續拍照的物品會自動歸入。',
+        chooseSize: '選擇尺寸（可選）',
+        btnCreateLuggage: '建立行李箱',
+        btnSkip: '跳過',
+        step2Title: '試拍一件物品',
+        step2Desc: '拍下第一件物品，AI 會自動幫你辨識分類。之後可以在物品庫繼續新增更多。',
+        tapToPhoto: '點擊拍照，讓 AI 辨識',
+        btnDone: '完成，開始使用'
       },
       pwa: {
         updateAvailable: '新版本已就緒',
@@ -222,11 +215,9 @@ const resources = {
         exampleAdapter: '萬國轉接頭'
       },
       outfits: {
-        title: '智能穿搭',
-        subtitle: '點擊上衣，再點擊下裝即可連線搭配',
+        title: '搭配統計',
+        subtitle: '連線可搭配的單品，找出百搭款與重複品',
         totalSets: '共 {{count}} 套',
-        aiReview: 'Gemini AI 穿搭點評',
-        aiThinking: 'AI 思考中...',
         empty: '請先在「物品庫」中添加至少一件上衣/內搭和一件下裝',
         tops: '上半身 (Tops & Outerwear)',
         cancelSelection: '取消選取',
@@ -234,14 +225,23 @@ const resources = {
         selectTopFirst: '請先從上方選擇一件上衣',
         bottoms: '下半身與配件 (Bottoms & Accessories)',
         noBottoms: '尚無下裝資料',
-        outerwear: '外套 OUTERWEAR',
-        noOuterwear: '暫無外套',
-        aiReduce: '讓 AI 幫我做減法 (膠囊衣櫥推薦)',
         universal: '百搭單品',
+        avgPerItem: '平均每件搭配',
+        topVersatile: '百搭排行榜',
+        lowVersatile: '搭配數偏少',
         versatility0: '0 搭配 (建議捨棄)',
-        versatilityHigh: '{{count}} 搭配 (高百搭)',
-        versatilityNormal: '{{count}} 搭配',
-        aiError: 'AI 決策失敗'
+        versatilityHigh: '{{count}} 搭配',
+        versatilityNormal: '{{count}} 搭配'
+      },
+      overview: {
+        title: '總覽',
+        weightVsLimit: '重量 vs 限額',
+        itemsByLuggage: '行李物品',
+        items: '件物品',
+        noItems: '尚無物品',
+        aiReduce: 'AI 幫我做減法',
+        aiAnalyzing: 'AI 分析中...',
+        viewOutfits: '查看搭配統計'
       }
     }
   },
@@ -249,6 +249,7 @@ const resources = {
     translation: {
       app: {
         dashboard: 'Next Trip',
+        overview: 'Overview',
         luggages: 'Luggages',
         items: 'Inventory',
         outfits: 'Outfits',
@@ -310,24 +311,16 @@ const resources = {
         syncSuccess: 'Simulated Gmail flight sync successful!'
       },
       onboarding: {
-        title: 'Nomadic',
-        subtitle: ': my luggage',
-        description: 'Upload an itinerary, enter flight details manually, or start packing right away. Nomadic does not need Gmail access to organize baggage rules and packing lists.',
-        feature1Title: 'Itinerary Parsing',
-        feature1Desc: 'Upload an airline confirmation, PDF, or screenshot. Review the parsed details before saving.',
-        feature1Point1: 'No Gmail authorization required',
-        feature1Point2: 'Edit flight and baggage details before saving',
-        feature2Title: 'AI Packing Assistant',
-        feature2Desc: 'Combine destination, baggage rules, wardrobe, and checklist data to pack lighter.',
-        feature2Point1: 'Start with manual trip setup',
-        feature2Point2: 'Or go straight to the checklist',
-        btnAuth: 'Authorize Google (Recommended)',
-        btnSkip: 'Skip & Enter Manually',
-        btnStartTrip: 'Create My First Trip',
-        btnChecklist: 'Go to Packing Checklist',
-        syncing: 'Syncing Data...',
-        errorMismatch: 'Google Login Failed: Redirect URI mismatch. Please check your Google Cloud Console configuration.',
-        errorGeneral: 'Google Login Failed'
+        btnStart: 'Get Started',
+        step1Title: 'Create Your First Luggage',
+        step1Desc: 'Luggages are the core of Nomadic. Start by creating your most-used luggage — all items you photograph will be automatically assigned to it.',
+        chooseSize: 'Choose Size (optional)',
+        btnCreateLuggage: 'Create Luggage',
+        btnSkip: 'Skip',
+        step2Title: 'Try Photographing an Item',
+        step2Desc: 'Take a photo of your first item and AI will automatically identify and categorize it. You can add more items later from the inventory.',
+        tapToPhoto: 'Tap to take a photo for AI recognition',
+        btnDone: 'Done, Start Using'
       },
       pwa: {
         updateAvailable: 'Update Available',
@@ -465,11 +458,9 @@ const resources = {
         exampleAdapter: 'Universal Adapter'
       },
       outfits: {
-        title: 'Smart Outfits',
-        description: 'Tap a top, then tap a bottom to create an outfit',
+        title: 'Match Stats',
+        subtitle: 'Connect matching items to find versatile pieces and redundancies',
         totalSets: '{{count}} Sets Created',
-        aiReview: 'AI Stylist Review',
-        aiThinking: 'AI is thinking...',
         empty: 'No items available for styling yet',
         tops: 'Tops & Outerwear',
         cancelSelection: 'Cancel Selection',
@@ -477,11 +468,23 @@ const resources = {
         selectTopFirst: 'Please select a top first',
         bottoms: 'Bottoms & Accessories',
         noBottoms: 'No bottoms added yet',
-        aiReduce: 'Let AI optimize these {{count}} outfits',
+        universal: 'Versatile',
+        avgPerItem: 'Avg Per Item',
+        topVersatile: 'Most Versatile',
+        lowVersatile: 'Low Matches',
         versatility0: '0 Matches (Discard)',
-        versatilityHigh: '{{count}} Matches (Versatile)',
-        versatilityNormal: '{{count}} Matches',
-        aiError: 'AI Decision Failed'
+        versatilityHigh: '{{count}} Matches',
+        versatilityNormal: '{{count}} Matches'
+      },
+      overview: {
+        title: 'Overview',
+        weightVsLimit: 'Weight vs Limit',
+        itemsByLuggage: 'Items by Luggage',
+        items: 'items',
+        noItems: 'No items yet',
+        aiReduce: 'AI Help Me Reduce',
+        aiAnalyzing: 'AI analyzing...',
+        viewOutfits: 'View Outfit Stats'
       }
     }
   }

@@ -255,11 +255,6 @@ export const Luggages = () => {
                     </button>
                   </div>
 
-                  {luggage.weightHistory && luggage.weightHistory.length > 0 && (
-                    <div className="mt-2 text-xs text-[var(--color-brand-espresso)]/40">
-                      <p>{t('luggages.lastRecord')} {new Date(luggage.weightHistory[luggage.weightHistory.length - 1].date).toLocaleString()}</p>
-                    </div>
-                  )}
                 </div>
               </div>
             );

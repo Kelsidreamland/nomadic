@@ -1,83 +1,165 @@
-import { CheckCircle2, ChevronRight, FileText, Map, Sparkles } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Camera, Briefcase, ArrowRight, Plus, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { db } from '../db';
+import { v4 as uuidv4 } from 'uuid';
+
+const luggageSizePresets = [
+  { label: '30"', length: 78, width: 52, height: 31 },
+  { label: '28"', length: 75, width: 49, height: 30 },
+  { label: '26"', length: 68, width: 45, height: 28 },
+  { label: '24"', length: 61, width: 41, height: 26 },
+  { label: '22"', length: 56, width: 38, height: 24 },
+  { label: '20"', length: 55, width: 36, height: 23 },
+];
 
 interface OnboardingProps {
   onComplete: () => void;
-  onManualSkip: () => void;
 }
 
-export const Onboarding = ({ onComplete, onManualSkip }: OnboardingProps) => {
+export const Onboarding = ({ onComplete }: OnboardingProps) => {
   const { t } = useTranslation();
+  const [step, setStep] = useState(0);
+  const [luggageName, setLuggageName] = useState('');
+  const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCreateLuggage = async () => {
+    if (!luggageName.trim()) return;
+    const preset = selectedPreset !== null ? luggageSizePresets[selectedPreset] : luggageSizePresets[2];
+    await db.luggages.add({
+      id: uuidv4(),
+      name: luggageName.trim(),
+      type: preset.label === '20"' || preset.label === '22"' ? '手提' : '托运',
+      season: '混合',
+      length: preset.length,
+      width: preset.width,
+      height: preset.height,
+      weightHistory: [],
+      createdAt: Date.now(),
+    });
+    setStep(2);
+  };
+
+  if (step === 0) {
+    return (
+      <div className="fixed inset-0 bg-[var(--color-brand-sand)] z-50 flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-20 h-20 bg-[var(--color-brand-terracotta)] text-white rounded-3xl flex items-center justify-center mb-8 shadow-lg shadow-[var(--color-brand-terracotta)]/20">
+          <Briefcase size={40} strokeWidth={2} />
+        </div>
+        <h1 className="text-5xl font-black tracking-tighter text-[var(--color-brand-espresso)] mb-4">Nomadic</h1>
+        <p className="text-lg text-[var(--color-brand-espresso)]/60 max-w-md mb-12 leading-relaxed">
+          拍照盘点你的行李，AI 自动识别归类。<br />为数字游牧者设计的极简行李管家。
+        </p>
+        <button
+          onClick={() => setStep(1)}
+          className="bg-[var(--color-brand-espresso)] text-white px-10 py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-black transition-colors flex items-center space-x-2"
+        >
+          <span>{t('onboarding.btnStart')}</span>
+          <ArrowRight size={20} />
+        </button>
+      </div>
+    );
+  }
+
+  if (step === 1) {
+    return (
+      <div className="fixed inset-0 bg-[var(--color-brand-sand)] z-50 flex flex-col items-center justify-center p-8">
+        <div className="max-w-md w-full space-y-6">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-[var(--color-brand-olive)] text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[var(--color-brand-olive)]/20">
+              <Briefcase size={32} />
+            </div>
+            <h2 className="text-2xl font-bold text-[var(--color-brand-espresso)]">{t('onboarding.step1Title')}</h2>
+            <p className="text-sm text-[var(--color-brand-espresso)]/60 mt-2">{t('onboarding.step1Desc')}</p>
+          </div>
+
+          <input
+            type="text"
+            placeholder={t('luggages.namePlaceholder')}
+            value={luggageName}
+            onChange={e => setLuggageName(e.target.value)}
+            className="w-full px-4 py-4 bg-white rounded-2xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-lg"
+            autoFocus
+          />
+
+          <div>
+            <label className="text-sm font-bold text-[var(--color-brand-espresso)]/60 mb-2 block">{t('onboarding.chooseSize')}</label>
+            <div className="grid grid-cols-3 gap-2">
+              {luggageSizePresets.map((preset, i) => (
+                <button
+                  key={preset.label}
+                  onClick={() => setSelectedPreset(i)}
+                  className={`px-4 py-3 rounded-xl text-sm font-bold transition-colors ${
+                    selectedPreset === i
+                      ? 'bg-[var(--color-brand-espresso)] text-white shadow-md'
+                      : 'bg-white border border-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/70 hover:border-[var(--color-brand-terracotta)]'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={handleCreateLuggage}
+            disabled={!luggageName.trim()}
+            className="w-full py-4 bg-[var(--color-brand-espresso)] disabled:opacity-30 text-white rounded-2xl font-bold text-lg shadow-lg hover:bg-black transition-colors flex items-center justify-center space-x-2"
+          >
+            <Plus size={20} />
+            <span>{t('onboarding.btnCreateLuggage')}</span>
+          </button>
+
+          <button
+            onClick={() => setStep(2)}
+            className="w-full py-3 text-[var(--color-brand-espresso)]/50 text-sm font-medium hover:text-[var(--color-brand-espresso)] transition-colors"
+          >
+            {t('onboarding.btnSkip')}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 bg-[var(--color-brand-sand)] z-50 overflow-y-auto animate-fade-in flex flex-col">
-      <div className="flex-1 max-w-4xl mx-auto w-full px-6 py-12 flex flex-col justify-center">
-        
-        <div className="text-center space-y-4 mb-16">
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-[var(--color-brand-espresso)]">
-            {t('onboarding.title')} <span className="text-[var(--color-brand-olive)] font-light block md:inline text-3xl md:text-6xl mt-2 md:mt-0 font-sans">{t('onboarding.subtitle')}</span>
-          </h1>
-          <p className="text-xl text-[var(--color-brand-espresso)]/60 max-w-2xl mx-auto font-medium">
-            {t('onboarding.description')}
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
-          <div className="bg-[var(--color-brand-cream)] rounded-3xl p-8 border border-[var(--color-brand-stone)] hover:border-[var(--color-brand-terracotta)] transition-colors">
-            <div className="w-12 h-12 bg-[var(--color-brand-terracotta)] text-white rounded-2xl flex items-center justify-center mb-6">
-              <FileText size={24} />
-            </div>
-            <h3 className="text-xl font-bold text-[var(--color-brand-espresso)] mb-3">{t('onboarding.feature1Title')}</h3>
-            <p className="text-[var(--color-brand-espresso)]/60 mb-6">
-              {t('onboarding.feature1Desc')}
-            </p>
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3 text-sm font-bold text-[var(--color-brand-espresso)]">
-                <CheckCircle2 size={16} className="text-[var(--color-brand-terracotta)]" /> <span>{t('onboarding.feature1Point1')}</span>
-              </div>
-              <div className="flex items-center space-x-3 text-sm font-bold text-[var(--color-brand-espresso)]">
-                <CheckCircle2 size={16} className="text-[var(--color-brand-terracotta)]" /> <span>{t('onboarding.feature1Point2')}</span>
-              </div>
-            </div>
+    <div className="fixed inset-0 bg-[var(--color-brand-sand)] z-50 flex flex-col items-center justify-center p-8 text-center">
+      <div className="max-w-md w-full space-y-6">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-[var(--color-brand-terracotta)] text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[var(--color-brand-terracotta)]/20">
+            <Camera size={32} />
           </div>
-
-          <div className="bg-[var(--color-brand-cream)] rounded-3xl p-8 border border-[var(--color-brand-stone)] hover:border-[var(--color-brand-olive)] transition-colors">
-            <div className="w-12 h-12 bg-[var(--color-brand-olive)] text-white rounded-2xl flex items-center justify-center mb-6">
-              <Sparkles size={24} />
-            </div>
-            <h3 className="text-xl font-bold text-[var(--color-brand-espresso)] mb-3">{t('onboarding.feature2Title')}</h3>
-            <p className="text-[var(--color-brand-espresso)]/60 mb-6">
-              {t('onboarding.feature2Desc')}
-            </p>
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3 text-sm font-bold text-[var(--color-brand-espresso)]/80">
-                <CheckCircle2 size={16} className="text-[var(--color-brand-olive)]" /> <span>{t('onboarding.feature2Point1')}</span>
-              </div>
-              <div className="flex items-center space-x-3 text-sm font-bold text-[var(--color-brand-espresso)]/80">
-                <CheckCircle2 size={16} className="text-[var(--color-brand-olive)]" /> <span>{t('onboarding.feature2Point2')}</span>
-              </div>
-            </div>
-          </div>
+          <h2 className="text-2xl font-bold text-[var(--color-brand-espresso)]">{t('onboarding.step2Title')}</h2>
+          <p className="text-sm text-[var(--color-brand-espresso)]/60 mt-2">{t('onboarding.step2Desc')}</p>
         </div>
 
-        <div className="max-w-xl mx-auto w-full space-y-4">
-          <button
-            onClick={onManualSkip}
-            className="w-full py-5 px-6 rounded-2xl font-bold text-lg flex items-center justify-center space-x-3 transition-all transform hover:scale-[1.02] bg-[var(--color-brand-terracotta)] text-white shadow-xl hover:shadow-2xl hover:bg-[var(--color-brand-terracotta-hover)]"
-          >
-            <Map size={20} />
-            <span>{t('onboarding.btnStartTrip')}</span>
-          </button>
-          
-          <button
-            onClick={onComplete}
-            className="w-full py-5 px-6 rounded-2xl font-bold text-lg text-[var(--color-brand-espresso)]/60 bg-[var(--color-brand-cream)] border-2 border-[var(--color-brand-stone)] hover:border-[var(--color-brand-olive)] hover:text-[var(--color-brand-espresso)] transition-all flex items-center justify-center space-x-2"
-          >
-            <span>{t('onboarding.btnChecklist')}</span>
-            <ChevronRight size={20} />
-          </button>
-        </div>
+        <label className="flex flex-col items-center justify-center w-full h-48 bg-white rounded-3xl border-2 border-dashed border-[var(--color-brand-stone)] cursor-pointer hover:border-[var(--color-brand-terracotta)] transition-colors">
+          <Camera size={40} className="text-[var(--color-brand-espresso)]/30 mb-3" />
+          <span className="font-bold text-[var(--color-brand-espresso)]/60">{t('onboarding.tapToPhoto')}</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={onComplete}
+          />
+        </label>
 
+        <button
+          onClick={onComplete}
+          className="w-full py-4 bg-[var(--color-brand-espresso)] text-white rounded-2xl font-bold text-lg shadow-lg hover:bg-black transition-colors flex items-center justify-center space-x-2"
+        >
+          <CheckCircle2 size={20} />
+          <span>{t('onboarding.btnDone')}</span>
+        </button>
+
+        <button
+          onClick={onComplete}
+          className="w-full py-3 text-[var(--color-brand-espresso)]/50 text-sm font-medium hover:text-[var(--color-brand-espresso)] transition-colors"
+        >
+          {t('onboarding.btnSkip')}
+        </button>
       </div>
     </div>
   );

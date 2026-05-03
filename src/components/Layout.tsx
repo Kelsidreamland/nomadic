@@ -23,10 +23,10 @@ export const Layout = ({ children }: LayoutProps) => {
   };
 
   const navItems = [
-    { name: t('app.luggages'), path: '/luggages', icon: Briefcase },
+    { name: t('app.overview'), path: '/overview', icon: PlaneTakeoff },
     { name: t('app.items'), path: '/items', icon: Shirt },
     { name: t('app.outfits'), path: '/outfits', icon: Sparkles },
-    { name: t('app.dashboard'), path: '/', icon: PlaneTakeoff },
+    { name: t('app.luggages'), path: '/luggages', icon: Briefcase },
   ];
 
   return (
@@ -43,10 +43,10 @@ export const Layout = ({ children }: LayoutProps) => {
             </div>
           </Link>
         </h1>
-        
+
         {/* Desktop Nav */}
         <div className="flex items-center space-x-4 md:space-x-6">
-          <button 
+          <button
             onClick={toggleLanguage}
             className="text-xs font-bold px-3 py-1.5 rounded-full border border-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/80 hover:bg-[var(--color-brand-sand)] transition-colors font-sans"
           >
@@ -67,10 +67,10 @@ export const Layout = ({ children }: LayoutProps) => {
               </Link>
             ))}
           </nav>
-          
-          <a 
-            href="https://api.payuni.com.tw/api/uop/receive_info/2/3/NPPA226028039/mgYrU0DqoPbb6vatwL86Z" 
-            target="_blank" 
+
+          <a
+            href="https://api.payuni.com.tw/api/uop/receive_info/2/3/NPPA226028039/mgYrU0DqoPbb6vatwL86Z"
+            target="_blank"
             rel="noreferrer"
             className="hidden md:flex items-center space-x-2 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 font-sans"
           >

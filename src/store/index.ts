@@ -7,6 +7,8 @@ interface AppState {
   toggleSidebar: () => void;
   language: 'zh-TW' | 'en';
   setLanguage: (lang: 'zh-TW' | 'en') => void;
+  activeLuggageId: string | null;
+  setActiveLuggageId: (id: string | null) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -16,4 +18,6 @@ export const useStore = create<AppState>((set) => ({
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
   language: 'zh-TW',
   setLanguage: (lang) => set({ language: lang }),
+  activeLuggageId: null,
+  setActiveLuggageId: (id) => set({ activeLuggageId: id }),
 }));
