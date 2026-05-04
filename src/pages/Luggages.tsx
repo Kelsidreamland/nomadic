@@ -27,7 +27,7 @@ const isValidWeightInput = (value?: string) => {
 export const Luggages = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { currentSeasonFilter, setSeasonFilter, setActiveLuggageId } = useStore();
+  const { currentSeasonFilter, setSeasonFilter, activeLuggageId, setActiveLuggageId } = useStore();
   const allLuggages = useLiveQuery(() => db.luggages.toArray()) || [];
   const allItems = useLiveQuery(() => db.items.toArray()) || [];
 
@@ -58,6 +58,9 @@ export const Luggages = () => {
     await db.luggages.delete(id);
     const relatedItems = await db.items.where('luggageId').equals(id).toArray();
     await Promise.all(relatedItems.map(item => db.items.update(item.id, { luggageId: '' })));
+    if (activeLuggageId === id) {
+      setActiveLuggageId(null);
+    }
   };
 
   const getLuggageWeight = (luggage: Luggage) => {

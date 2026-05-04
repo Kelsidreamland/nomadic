@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Item } from '../db';
 import { v4 as uuidv4 } from 'uuid';
@@ -22,13 +22,20 @@ export const Items = () => {
   const [editingItem, setEditingItem] = useState<Partial<Item> | null>(null);
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualItem, setManualItem] = useState<Partial<Item>>({ ...defaultNewItem });
   const [now] = useState(() => Date.now());
   const expiringCutoff = now + 30 * 24 * 60 * 60 * 1000;
   const activeLuggage = luggages.find((luggage) => luggage.id === activeLuggageId) || null;
-  const visibleItems = activeLuggageId ? items.filter((item) => item.luggageId === activeLuggageId) : items;
+  const visibleItems = activeLuggage ? items.filter((item) => item.luggageId === activeLuggage.id) : items;
+
+  useEffect(() => {
+    if (activeLuggageId && luggages.length > 0 && !activeLuggage) {
+      setActiveLuggageId(null);
+    }
+  }, [activeLuggage, activeLuggageId, luggages.length, setActiveLuggageId]);
 
   const getLuggageTypeLabel = (type: string) => {
     switch (type) {
@@ -42,10 +49,10 @@ export const Items = () => {
 
   const createStickerPreview = async (base64: string): Promise<string> => {
     const image = new Image();
-    image.src = base64;
     await new Promise<void>((resolve, reject) => {
       image.onload = () => resolve();
       image.onerror = () => reject(new Error('Image load failed'));
+      image.src = base64;
     });
     const maxSize = 320;
     const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
@@ -68,38 +75,79 @@ export const Items = () => {
     return canvas.toDataURL('image/png');
   };
 
+  const createAiImagePayload = async (base64: string): Promise<string> => {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('Image load failed'));
+      image.src = base64;
+    });
+
+    const maxSize = 1280;
+    const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+    const imageWidth = Math.max(1, Math.round(image.width * scale));
+    const imageHeight = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = imageWidth;
+    canvas.height = imageHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return base64;
+    ctx.drawImage(image, 0, 0, imageWidth, imageHeight);
+    return canvas.toDataURL('image/jpeg', 0.82);
+  };
+
   const handleImageCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
+    setAnalysisError(null);
+    setIsAnalyzing(true);
     const reader = new FileReader();
     reader.onload = async (ev) => {
-      const base64 = ev.target?.result as string;
-      const sticker = await createStickerPreview(base64);
-      setEditingImage(sticker);
-      setIsAnalyzing(true);
-      setEditingItem({ ...defaultNewItem, image: sticker, luggageId: activeLuggageId || '' });
       try {
-        const result = await analyzeItemWithAI('', base64);
-        setEditingItem(prev => ({
-          ...prev,
-          name: result.name || prev?.name,
-          category: result.category || prev?.category,
-          subCategory: result.subCategory || prev?.subCategory,
-          season: result.season || prev?.season,
-          color: result.color,
-          occasion: result.occasion,
-          wrinkleProne: result.wrinkleProne,
-          tempRange: result.tempRange,
-          notes: result.notes,
-          image: sticker,
-          luggageId: activeLuggageId || prev?.luggageId || '',
-        }));
-        if (result.color || result.occasion || result.wrinkleProne || result.tempRange) {
-          setShowAdvanced(true);
+        const base64 = ev.target?.result as string;
+        const sticker = await createStickerPreview(base64);
+        const aiImage = await createAiImagePayload(base64);
+        setEditingImage(sticker);
+        setEditingItem({ ...defaultNewItem, image: sticker, luggageId: activeLuggage?.id || '' });
+        try {
+          const result = await analyzeItemWithAI('', aiImage);
+          setEditingItem(prev => ({
+            ...prev,
+            name: result.name || prev?.name,
+            category: result.category || prev?.category,
+            subCategory: result.subCategory || prev?.subCategory,
+            season: result.season || prev?.season,
+            color: result.color,
+            occasion: result.occasion,
+            wrinkleProne: result.wrinkleProne,
+            tempRange: result.tempRange,
+            notes: result.notes,
+            image: sticker,
+            luggageId: activeLuggage?.id || prev?.luggageId || '',
+          }));
+          if (result.color || result.occasion || result.wrinkleProne || result.tempRange) {
+            setShowAdvanced(true);
+          }
+        } catch (err) {
+          console.error('AI analysis failed', err);
+          setAnalysisError(t('items.aiFailed'));
+          setEditingItem(prev => ({
+            ...prev,
+            name: prev?.name || t('items.untitledItem'),
+            image: sticker,
+            luggageId: activeLuggage?.id || prev?.luggageId || '',
+          }));
         }
-      } catch (err: any) {
-        console.error('AI analysis failed', err);
+      } catch (err) {
+        console.error('Image processing failed', err);
+        setAnalysisError(t('items.imageReadFailed'));
+      } finally {
+        setIsAnalyzing(false);
       }
+    };
+    reader.onerror = () => {
+      setAnalysisError(t('items.imageReadFailed'));
       setIsAnalyzing(false);
     };
     reader.readAsDataURL(file);
@@ -107,31 +155,50 @@ export const Items = () => {
 
   const handleManualImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
+    setAnalysisError(null);
+    setIsAnalyzing(true);
     const reader = new FileReader();
     reader.onload = async (ev) => {
-      const base64 = ev.target?.result as string;
-      const sticker = await createStickerPreview(base64);
-      setManualItem(prev => ({ ...prev, image: sticker }));
-      setIsAnalyzing(true);
       try {
-        const result = await analyzeItemWithAI(manualItem.name || '', base64);
-        setManualItem(prev => ({
-          ...prev,
-          name: result.name || prev.name,
-          category: result.category || prev.category,
-          subCategory: result.subCategory || prev.subCategory,
-          season: result.season || prev.season,
-          color: result.color,
-          occasion: result.occasion,
-          wrinkleProne: result.wrinkleProne,
-          tempRange: result.tempRange,
-          notes: result.notes,
-          image: sticker,
-        }));
-      } catch (err: any) {
-        console.error('AI analysis failed', err);
+        const base64 = ev.target?.result as string;
+        const sticker = await createStickerPreview(base64);
+        const aiImage = await createAiImagePayload(base64);
+        setManualItem(prev => ({ ...prev, image: sticker }));
+        try {
+          const result = await analyzeItemWithAI(manualItem.name || '', aiImage);
+          setManualItem(prev => ({
+            ...prev,
+            name: result.name || prev.name,
+            category: result.category || prev.category,
+            subCategory: result.subCategory || prev.subCategory,
+            season: result.season || prev.season,
+            color: result.color,
+            occasion: result.occasion,
+            wrinkleProne: result.wrinkleProne,
+            tempRange: result.tempRange,
+            notes: result.notes,
+            image: sticker,
+          }));
+        } catch (err) {
+          console.error('AI analysis failed', err);
+          setAnalysisError(t('items.aiFailed'));
+          setManualItem(prev => ({
+            ...prev,
+            name: prev.name || t('items.untitledItem'),
+            image: sticker,
+          }));
+        }
+      } catch (err) {
+        console.error('Image processing failed', err);
+        setAnalysisError(t('items.imageReadFailed'));
+      } finally {
+        setIsAnalyzing(false);
       }
+    };
+    reader.onerror = () => {
+      setAnalysisError(t('items.imageReadFailed'));
       setIsAnalyzing(false);
     };
     reader.readAsDataURL(file);
@@ -150,6 +217,7 @@ export const Items = () => {
     }
     setEditingItem(null);
     setEditingImage(null);
+    setAnalysisError(null);
     setShowAdvanced(false);
   };
 
@@ -159,9 +227,10 @@ export const Items = () => {
       ...manualItem,
       id: uuidv4(),
       createdAt: Date.now(),
-      luggageId: manualItem.luggageId || activeLuggageId || '',
+      luggageId: manualItem.luggageId || activeLuggage?.id || '',
     } as Item);
-    setManualItem({ ...defaultNewItem, luggageId: activeLuggageId || '' });
+    setManualItem({ ...defaultNewItem, luggageId: activeLuggage?.id || '' });
+    setAnalysisError(null);
     setShowManualForm(false);
   };
 
@@ -174,6 +243,7 @@ export const Items = () => {
   const handleEdit = (item: Item) => {
     setEditingItem({ ...item });
     setEditingImage(item.image || null);
+    setAnalysisError(null);
     setShowAdvanced(!!(item.color || item.occasion || item.wrinkleProne || item.tempRange));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -181,6 +251,7 @@ export const Items = () => {
   const cancelEditing = () => {
     setEditingItem(null);
     setEditingImage(null);
+    setAnalysisError(null);
     setShowAdvanced(false);
   };
 
@@ -300,7 +371,11 @@ export const Items = () => {
           </label>
           <span className="text-[var(--color-brand-espresso)]/20">|</span>
           <button
-            onClick={() => { setShowManualForm(true); setManualItem({ ...defaultNewItem, luggageId: activeLuggageId || '' }); }}
+            onClick={() => {
+              setAnalysisError(null);
+              setShowManualForm(true);
+              setManualItem({ ...defaultNewItem, luggageId: activeLuggage?.id || '' });
+            }}
             className="text-sm font-medium text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-terracotta)] transition-colors"
           >
             {t('items.add')}
@@ -317,6 +392,12 @@ export const Items = () => {
             <div className="w-3 h-3 bg-[var(--color-brand-olive)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
           </div>
           <p className="font-bold text-[var(--color-brand-espresso)]/60">{t('items.analyzing')}</p>
+        </div>
+      )}
+
+      {analysisError && !isAnalyzing && (
+        <div className="rounded-2xl border border-[var(--color-brand-terracotta)]/25 bg-[var(--color-brand-terracotta)]/10 px-4 py-3 text-sm font-medium text-[var(--color-brand-espresso)]/70">
+          {analysisError}
         </div>
       )}
 
@@ -372,7 +453,7 @@ export const Items = () => {
                   {seasonOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
                 <select
-                  value={editingItem.luggageId || activeLuggageId || ''}
+                  value={editingItem.luggageId || activeLuggage?.id || ''}
                   onChange={e => setEditingItem({ ...editingItem, luggageId: e.target.value })}
                   className="px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
                 >
@@ -384,6 +465,19 @@ export const Items = () => {
               </div>
             </div>
           </div>
+
+          <label className="flex items-start gap-3 rounded-2xl bg-[var(--color-brand-sand)]/70 px-3 py-3 text-left">
+            <input
+              type="checkbox"
+              checked={editingItem.isDiscardable || false}
+              onChange={e => setEditingItem({ ...editingItem, isDiscardable: e.target.checked })}
+              className="mt-0.5 h-5 w-5 rounded text-[var(--color-brand-espresso)] focus:ring-[var(--color-brand-espresso)]"
+            />
+            <span>
+              <span className="block text-sm font-medium text-[var(--color-brand-espresso)]/80">{t('items.discardable')}</span>
+              <span className="mt-1 block text-xs leading-relaxed text-[var(--color-brand-espresso)]/45">{t('items.discardableHint')}</span>
+            </span>
+          </label>
 
           {/* Advanced toggle */}
           <button
@@ -473,19 +567,6 @@ export const Items = () => {
                 onChange={e => setEditingItem({ ...editingItem, notes: e.target.value })}
                 className="w-full px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] h-20 resize-none text-sm"
               />
-
-              <label className="flex items-center space-x-2 p-2">
-                <input
-                  type="checkbox"
-                  checked={editingItem.isDiscardable || false}
-                  onChange={e => setEditingItem({ ...editingItem, isDiscardable: e.target.checked })}
-                  className="w-5 h-5 text-[var(--color-brand-espresso)] rounded focus:ring-[var(--color-brand-espresso)]"
-                />
-                <div>
-                  <span className="text-sm font-medium text-[var(--color-brand-espresso)]/80">{t('items.discardable')}</span>
-                  <p className="mt-1 text-xs leading-relaxed text-[var(--color-brand-espresso)]/45">{t('items.discardableHint')}</p>
-                </div>
-              </label>
             </div>
           )}
 
@@ -558,7 +639,7 @@ export const Items = () => {
                 </select>
               </div>
               <select
-                value={manualItem.luggageId || activeLuggageId || ''}
+                value={manualItem.luggageId || activeLuggage?.id || ''}
                 onChange={e => setManualItem({ ...manualItem, luggageId: e.target.value })}
                 className="w-full px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
               >
