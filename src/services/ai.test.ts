@@ -47,27 +47,3 @@ describe('generateSmartInsights', () => {
   });
 });
 
-import { generateOutfitAdvice } from './ai';
-
-describe('generateOutfitAdvice', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.stubEnv('VITE_GEMINI_API_KEY', '');
-    vi.stubEnv('PROD', '');
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it('should return error when no API key is configured', async () => {
-    (db.user_configs.toArray as any).mockResolvedValue([]);
-
-    try {
-      await generateOutfitAdvice('shirt', 'pants', 'Tokyo');
-      expect.fail('Should have thrown');
-    } catch (e: any) {
-      expect(e.message).toContain('未配置 Gemini API Key');
-    }
-  });
-});

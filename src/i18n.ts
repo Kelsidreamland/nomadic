@@ -35,7 +35,17 @@ const resources = {
         currentWeight: '當前重量 (kg)',
         recordPlaceholder: '本次測量 (kg)',
         recordBtn: '記錄重量',
-        lastRecord: '最後一次記錄時間:'
+        lastRecord: '最後記錄',
+        trendTitle: '重量趨勢',
+        trendSubtitle: '最近 {{count}} 筆紀錄',
+        noTrendYet: '尚未有重量趨勢',
+        recordMoreHint: '先記錄幾次重量，就能看出打包是否越來越重。',
+        latestRecord: '最新',
+        changeFromFirst: '相較首次',
+        peakWeight: '最高',
+        stable: '幾乎持平',
+        gain: '增加 {{value}} kg',
+        drop: '減少 {{value}} kg'
       },
       settings: {
         title: '偏好與設定',
@@ -278,7 +288,17 @@ const resources = {
         currentWeight: 'Current Weight (kg)',
         recordPlaceholder: 'Measured (kg)',
         recordBtn: 'Record Weight',
-        lastRecord: 'Last recorded:'
+        lastRecord: 'Last recorded',
+        trendTitle: 'Weight Trend',
+        trendSubtitle: 'Latest {{count}} records',
+        noTrendYet: 'No weight trend yet',
+        recordMoreHint: 'Log a few weigh-ins to see how your packing changes over time.',
+        latestRecord: 'Latest',
+        changeFromFirst: 'Since first',
+        peakWeight: 'Peak',
+        stable: 'Mostly stable',
+        gain: 'Up {{value}} kg',
+        drop: 'Down {{value}} kg'
       },
       settings: {
         title: 'Preferences & Settings',

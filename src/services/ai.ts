@@ -242,44 +242,6 @@ export const generateSmartInsights = async (contextData: any) => {
   }
 };
 
-export const generateOutfitAdvice = async (topName: string, bottomName: string, destination: string) => {
-  const genAI = await getGeminiClient();
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-  const prompt = `使用者正在為前往 ${destination} 打包行李。使用者將上衣 "${topName}" 和下裝 "${bottomName}" 搭配在了一起。
-請給出一句簡短的（20字以內）且有時尚感的點評，說明這套搭配是否適合當地氣候，或者還缺點什麼配飾。`;
-  
-  try {
-    const result = await model.generateContent(prompt);
-    return result.response.text();
-  } catch (err) {
-    console.error('Failed to generate outfit advice', err);
-    throw new Error('AI 生成建議失敗');
-  }
-};
-
-export const generatePackingDecision = async (items: any[], destination: string, days: number) => {
-  const genAI = await getGeminiClient();
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-  const prompt = `使用者有選擇困難症。Ta即將前往 ${destination} 待 ${days} 天。
-以下是Ta的衣櫃（包含多件上衣、下裝等）。
-請挑選出最少的衣物（膠囊衣櫥概念），使得它們能組合出至少 ${days} 套搭配。
-告訴使用者具體應該帶哪些衣服，拋棄哪些衣服。
-衣櫃清單：
-${JSON.stringify(items, null, 2)}
-
-請直接用一小段溫暖、時尚的語言告訴使用者最終決定。`;
-
-  try {
-    const result = await model.generateContent(prompt);
-    return result.response.text();
-  } catch (err) {
-    console.error('Failed to generate packing decision', err);
-    throw new Error('AI 幫你決定失敗');
-  }
-};
-
 export const analyzeTicketWithAI = async (base64Image: string) => {
   const genAI = await getGeminiClient();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });

@@ -6,6 +6,7 @@ import { Plus, Trash2, Briefcase } from 'lucide-react';
 import { useStore } from '../store';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
+import { LuggageWeightChart } from '../components/LuggageWeightChart';
 
 const luggageSizePresets = [
   { label: '30"', length: 78, width: 52, height: 31 },
@@ -15,6 +16,12 @@ const luggageSizePresets = [
   { label: '22"', length: 56, width: 38, height: 24 },
   { label: '20"', length: 55, width: 36, height: 23 },
 ];
+
+const isValidWeightInput = (value?: string) => {
+  if (!value) return false;
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) && parsedValue >= 0;
+};
 
 export const Luggages = () => {
   const { t } = useTranslation();
@@ -73,18 +80,19 @@ export const Luggages = () => {
     }
   };
 
-  const [weightInputs, setWeightInputs] = useState<{[key: string]: number}>({});
+  const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
 
   const handleRecordWeight = async (luggageId: string) => {
     const luggage = await db.luggages.get(luggageId);
-    const inputWeight = weightInputs[luggageId];
-    if (luggage && inputWeight !== undefined) {
+    const inputValue = weightInputs[luggageId];
+    if (luggage && isValidWeightInput(inputValue)) {
+      const inputWeight = Number(inputValue);
       const newHistory = [...(luggage.weightHistory || []), {
         date: new Date().toISOString(),
         weight: inputWeight
       }];
       await db.luggages.update(luggageId, { weightHistory: newHistory });
-      setWeightInputs({...weightInputs, [luggageId]: 0}); // reset input
+      setWeightInputs({ ...weightInputs, [luggageId]: '' });
     }
   };
 
@@ -216,6 +224,7 @@ export const Luggages = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {luggages.map(luggage => {
             const currentWeight = getLuggageWeight(luggage);
+            const canRecordWeight = isValidWeightInput(weightInputs[luggage.id]);
 
             return (
               <div key={luggage.id} className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex flex-col justify-between">
@@ -238,18 +247,28 @@ export const Luggages = () => {
                     <span className="text-sm font-bold text-[var(--color-brand-espresso)]/60">{t('luggages.currentWeight')}</span>
                     <span className="text-2xl font-black text-[var(--color-brand-espresso)]">{currentWeight.toFixed(1)} kg</span>
                   </div>
+
+                  <LuggageWeightChart luggage={luggage} />
                   
                   <div className="flex space-x-2">
                     <input 
                       type="number" 
+                      min="0"
+                      step="0.1"
                       placeholder={t('luggages.recordPlaceholder')} 
                       value={weightInputs[luggage.id] || ''}
-                      onChange={e => setWeightInputs({...weightInputs, [luggage.id]: parseFloat(e.target.value)})}
+                      onChange={e => setWeightInputs({ ...weightInputs, [luggage.id]: e.target.value })}
                       className="w-1/2 px-4 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
                     />
                     <button 
                       onClick={() => handleRecordWeight(luggage.id)}
-                      className="w-1/2 py-2 bg-[var(--color-brand-espresso)] text-white rounded-xl text-sm font-bold shadow-md hover:bg-[var(--color-brand-espresso)] transition-colors"
+                      disabled={!canRecordWeight}
+                      className={clsx(
+                        'w-1/2 py-2 rounded-xl text-sm font-bold shadow-md transition-colors',
+                        canRecordWeight
+                          ? 'bg-[var(--color-brand-espresso)] text-white hover:bg-[var(--color-brand-espresso)]'
+                          : 'bg-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/40 shadow-none cursor-not-allowed'
+                      )}
                     >
                       {t('luggages.recordBtn')}
                     </button>
