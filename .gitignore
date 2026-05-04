@@ -29,3 +29,9 @@ dist-ssr
 # Local browser artifacts
 .playwright-cli/
 output/playwright/
+.vercel
+
+# Local OMX runtime state
+.omx/hud-config.json
+.omx/logs/ledger.json
+.omx/sessions/
