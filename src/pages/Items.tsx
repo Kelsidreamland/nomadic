@@ -27,6 +27,8 @@ export const Items = () => {
   const [manualItem, setManualItem] = useState<Partial<Item>>({ ...defaultNewItem });
   const [now] = useState(() => Date.now());
   const expiringCutoff = now + 30 * 24 * 60 * 60 * 1000;
+  const activeLuggage = luggages.find((luggage) => luggage.id === activeLuggageId) || null;
+  const visibleItems = activeLuggageId ? items.filter((item) => item.luggageId === activeLuggageId) : items;
 
   const getLuggageTypeLabel = (type: string) => {
     switch (type) {
@@ -159,7 +161,7 @@ export const Items = () => {
       createdAt: Date.now(),
       luggageId: manualItem.luggageId || activeLuggageId || '',
     } as Item);
-    setManualItem({ ...defaultNewItem });
+    setManualItem({ ...defaultNewItem, luggageId: activeLuggageId || '' });
     setShowManualForm(false);
   };
 
@@ -220,6 +222,16 @@ export const Items = () => {
       {luggages.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <span className="text-xs font-bold text-[var(--color-brand-espresso)]/40 shrink-0">{t('luggages.title')}:</span>
+          <button
+            onClick={() => setActiveLuggageId(null)}
+            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+              !activeLuggageId
+                ? 'bg-[var(--color-brand-espresso)] text-white'
+                : 'bg-white border border-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/60 hover:border-[var(--color-brand-terracotta)]'
+            }`}
+          >
+            {t('items.allLuggages')} ({items.length})
+          </button>
           {luggages.map(l => (
             <button
               key={l.id}
@@ -236,8 +248,32 @@ export const Items = () => {
         </div>
       )}
 
+      {activeLuggage && (
+        <div className="rounded-3xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] px-5 py-4 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{activeLuggage.name}</p>
+              <p className="mt-1 text-sm text-[var(--color-brand-espresso)]/60">{t('items.assigningTo', { name: activeLuggage.name })}</p>
+              <p className="mt-1 text-xs text-[var(--color-brand-espresso)]/40">{t('items.showingFor')}</p>
+            </div>
+            <button
+              onClick={() => setActiveLuggageId(null)}
+              className="shrink-0 rounded-full border border-[var(--color-brand-stone)] px-3 py-1.5 text-xs font-bold text-[var(--color-brand-espresso)]/70 hover:bg-[var(--color-brand-sand)] transition-colors"
+            >
+              {t('items.viewAll')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Camera capture area */}
       <div className="bg-[var(--color-brand-cream)] rounded-3xl shadow-sm border border-[var(--color-brand-stone)] p-8 text-center space-y-4">
+        {activeLuggage && (
+          <div className="mx-auto max-w-md rounded-2xl bg-[var(--color-brand-sand)] px-4 py-3 text-left border border-[var(--color-brand-stone)]/70">
+            <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-brand-espresso)]/40">{activeLuggage.name}</p>
+            <p className="mt-1 text-sm font-medium text-[var(--color-brand-espresso)]/70">{t('items.assigningTo', { name: activeLuggage.name })}</p>
+          </div>
+        )}
         <label className="flex flex-col items-center justify-center w-full h-40 bg-white rounded-3xl border-2 border-dashed border-[var(--color-brand-stone)] cursor-pointer hover:border-[var(--color-brand-terracotta)] transition-colors">
           <Camera size={48} className="text-[var(--color-brand-espresso)]/25 mb-3" />
           <span className="font-bold text-[var(--color-brand-espresso)]/50 text-lg">{t('items.takePhoto')}</span>
@@ -445,7 +481,10 @@ export const Items = () => {
                   onChange={e => setEditingItem({ ...editingItem, isDiscardable: e.target.checked })}
                   className="w-5 h-5 text-[var(--color-brand-espresso)] rounded focus:ring-[var(--color-brand-espresso)]"
                 />
-                <span className="text-sm font-medium text-[var(--color-brand-espresso)]/80">{t('items.discardable')}</span>
+                <div>
+                  <span className="text-sm font-medium text-[var(--color-brand-espresso)]/80">{t('items.discardable')}</span>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--color-brand-espresso)]/45">{t('items.discardableHint')}</p>
+                </div>
               </label>
             </div>
           )}
@@ -528,6 +567,19 @@ export const Items = () => {
                   <option key={l.id} value={l.id}>{l.name} ({getLuggageTypeLabel(l.type)})</option>
                 ))}
               </select>
+
+              <label className="flex items-start gap-3 rounded-2xl bg-[var(--color-brand-sand)]/70 px-3 py-3 text-left">
+                <input
+                  type="checkbox"
+                  checked={manualItem.isDiscardable || false}
+                  onChange={e => setManualItem({ ...manualItem, isDiscardable: e.target.checked })}
+                  className="mt-0.5 h-5 w-5 rounded text-[var(--color-brand-espresso)] focus:ring-[var(--color-brand-espresso)]"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-[var(--color-brand-espresso)]/80">{t('items.discardable')}</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-[var(--color-brand-espresso)]/45">{t('items.discardableHint')}</span>
+                </span>
+              </label>
             </div>
           </div>
 
@@ -542,14 +594,17 @@ export const Items = () => {
       )}
 
       {/* Item list */}
-      {items.length === 0 ? (
+      {visibleItems.length === 0 ? (
         <div className="text-center py-20 text-[var(--color-brand-espresso)]/40">
           <PackageSearch size={48} className="mx-auto mb-4 opacity-50" />
-          <p>{t('items.empty')}</p>
+          <p>{activeLuggage ? t('items.emptyFiltered') : t('items.empty')}</p>
+          {activeLuggage && (
+            <p className="mt-2 text-sm text-[var(--color-brand-espresso)]/30">{t('items.emptyFilteredDesc', { name: activeLuggage.name })}</p>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {items.map(item => {
+          {visibleItems.map(item => {
             const isExpiring = item.category === '保養品' && item.expirationDate && new Date(item.expirationDate) < new Date(expiringCutoff);
             let i18nCategory: string = item.category;
             switch (item.category) {
@@ -577,6 +632,9 @@ export const Items = () => {
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-[var(--color-brand-espresso)]/70 font-bold">{i18nCategory}</span>
                       {item.subCategory && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-brand-sand)] text-[var(--color-brand-espresso)]/50 font-medium">{item.subCategory}</span>
+                      )}
+                      {item.isDiscardable && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-brand-terracotta)]/10 text-[var(--color-brand-terracotta)] font-bold">{t('items.discardableBadge')}</span>
                       )}
                       <span className="text-[10px] text-[var(--color-brand-espresso)]/40">
                         {item.season === '通用' ? t('items.seasonGeneral') : item.season === '冬季' ? t('items.seasonWinter') : t('items.seasonSummer')}

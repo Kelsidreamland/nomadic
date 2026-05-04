@@ -34,9 +34,11 @@ export const Layout = ({ children }: LayoutProps) => {
       <header className="bg-[var(--color-brand-cream)]/80 backdrop-blur-md px-6 py-4 shadow-sm z-20 flex justify-between items-center sticky top-0 border-b border-[var(--color-brand-stone)]">
         <h1 className="text-2xl font-black tracking-widest text-[var(--color-brand-espresso)] flex items-center gap-2">
           <Link to="/" className="flex items-center space-x-3 group">
-            <div className="w-10 h-10 bg-[var(--color-brand-terracotta)] text-white rounded-xl flex items-center justify-center transform transition-transform group-hover:scale-105 shadow-md shadow-[var(--color-brand-terracotta)]/20">
-              <Briefcase size={22} strokeWidth={2.5} />
-            </div>
+            <img
+              src="/favicon.svg"
+              alt="Nomadic"
+              className="w-10 h-10 rounded-xl transform transition-transform group-hover:scale-105 shadow-md shadow-[var(--color-brand-terracotta)]/20"
+            />
             <div className="flex flex-col">
               <span className="font-serif font-bold text-2xl tracking-tight text-[var(--color-brand-espresso)] leading-none">Nomadic</span>
               <span className="text-[10px] text-[var(--color-brand-olive)] uppercase tracking-widest font-semibold leading-none mt-1">my luggage</span>

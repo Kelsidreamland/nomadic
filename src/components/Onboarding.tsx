@@ -1,8 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Camera, Briefcase, ArrowRight, Plus, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { db } from '../db';
 import { v4 as uuidv4 } from 'uuid';
+import { useNavigate } from 'react-router-dom';
+import { useStore } from '../store';
 
 const luggageSizePresets = [
   { label: '30"', length: 78, width: 52, height: 31 },
@@ -19,16 +21,28 @@ interface OnboardingProps {
 
 export const Onboarding = ({ onComplete }: OnboardingProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { setActiveLuggageId } = useStore();
   const [step, setStep] = useState(0);
   const [luggageName, setLuggageName] = useState('');
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [createdLuggageId, setCreatedLuggageId] = useState<string | null>(null);
+
+  const completeOnboarding = (destination?: string) => {
+    if (createdLuggageId) {
+      setActiveLuggageId(createdLuggageId);
+    }
+
+    onComplete();
+    navigate(destination || (createdLuggageId ? '/items' : '/luggages'));
+  };
 
   const handleCreateLuggage = async () => {
     if (!luggageName.trim()) return;
     const preset = selectedPreset !== null ? luggageSizePresets[selectedPreset] : luggageSizePresets[2];
+    const luggageId = uuidv4();
     await db.luggages.add({
-      id: uuidv4(),
+      id: luggageId,
       name: luggageName.trim(),
       type: preset.label === '20"' || preset.label === '22"' ? '手提' : '托运',
       season: '混合',
@@ -38,6 +52,7 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
       weightHistory: [],
       createdAt: Date.now(),
     });
+    setCreatedLuggageId(luggageId);
     setStep(2);
   };
 
@@ -49,7 +64,7 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
         </div>
         <h1 className="text-5xl font-black tracking-tighter text-[var(--color-brand-espresso)] mb-4">Nomadic</h1>
         <p className="text-lg text-[var(--color-brand-espresso)]/60 max-w-md mb-12 leading-relaxed">
-          拍照盘点你的行李，AI 自动识别归类。<br />为数字游牧者设计的极简行李管家。
+          {t('onboarding.introDesc')}<br />{t('app.tagline')}
         </p>
         <button
           onClick={() => setStep(1)}
@@ -112,7 +127,7 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
           </button>
 
           <button
-            onClick={() => setStep(2)}
+            onClick={() => completeOnboarding('/luggages')}
             className="w-full py-3 text-[var(--color-brand-espresso)]/50 text-sm font-medium hover:text-[var(--color-brand-espresso)] transition-colors"
           >
             {t('onboarding.btnSkip')}
@@ -133,32 +148,25 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
           <p className="text-sm text-[var(--color-brand-espresso)]/60 mt-2">{t('onboarding.step2Desc')}</p>
         </div>
 
-        <label className="flex flex-col items-center justify-center w-full h-48 bg-white rounded-3xl border-2 border-dashed border-[var(--color-brand-stone)] cursor-pointer hover:border-[var(--color-brand-terracotta)] transition-colors">
+        <div className="flex flex-col items-center justify-center w-full h-48 bg-white rounded-3xl border-2 border-dashed border-[var(--color-brand-stone)] transition-colors">
           <Camera size={40} className="text-[var(--color-brand-espresso)]/30 mb-3" />
-          <span className="font-bold text-[var(--color-brand-espresso)]/60">{t('onboarding.tapToPhoto')}</span>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={onComplete}
-          />
-        </label>
+          <span className="font-bold text-[var(--color-brand-espresso)]/60">{t('items.takePhoto')}</span>
+          <span className="mt-2 max-w-xs text-sm text-[var(--color-brand-espresso)]/40">{t('items.assigningTo', { name: luggageName.trim() || 'Nomadic' })}</span>
+        </div>
 
         <button
-          onClick={onComplete}
+          onClick={() => completeOnboarding('/items')}
           className="w-full py-4 bg-[var(--color-brand-espresso)] text-white rounded-2xl font-bold text-lg shadow-lg hover:bg-black transition-colors flex items-center justify-center space-x-2"
         >
           <CheckCircle2 size={20} />
-          <span>{t('onboarding.btnDone')}</span>
+          <span>{t('onboarding.btnGoToItems')}</span>
         </button>
 
         <button
-          onClick={onComplete}
+          onClick={() => completeOnboarding('/luggages')}
           className="w-full py-3 text-[var(--color-brand-espresso)]/50 text-sm font-medium hover:text-[var(--color-brand-espresso)] transition-colors"
         >
-          {t('onboarding.btnSkip')}
+          {t('onboarding.btnLater')}
         </button>
       </div>
     </div>

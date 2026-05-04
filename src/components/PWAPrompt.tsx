@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 export function PWAPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
+  const [showIosHint, setShowIosHint] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const { t } = useTranslation();
 
@@ -22,13 +23,19 @@ export function PWAPrompt() {
   });
 
   useEffect(() => {
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+
+    if (isIosDevice && !isStandalone) {
+      setShowIosHint(true);
+    }
+
     const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent Chrome 67 and earlier from automatically showing the prompt
       e.preventDefault();
-      // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
-      // Update UI to notify the user they can add to home screen
       setShowPrompt(true);
+      setShowIosHint(false);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -57,24 +64,30 @@ export function PWAPrompt() {
     setOfflineReady(false);
     setNeedRefresh(false);
     setShowPrompt(false);
+    setShowIosHint(false);
   };
 
-  if (!showPrompt && !needRefresh && !offlineReady) return null;
+  if (!showPrompt && !showIosHint && !needRefresh) return null;
 
   return (
     <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:bottom-4 md:w-96 bg-[var(--color-brand-cream)] rounded-2xl shadow-xl border border-[var(--color-brand-stone)] p-4 z-50 animate-fade-in">
       <div className="flex items-start justify-between">
         <div className="flex-1 pr-4">
           <h3 className="font-bold text-[var(--color-brand-espresso)] mb-1">
-            {needRefresh ? t('pwa.updateAvailable') : offlineReady ? t('pwa.readyOffline') : t('pwa.installTitle')}
+            {needRefresh ? t('pwa.updateAvailable') : t('pwa.installTitle')}
           </h3>
           <p className="text-sm text-[var(--color-brand-espresso)]/60 mb-3">
             {needRefresh 
               ? t('pwa.updateDesc') 
-              : offlineReady
-              ? t('pwa.offlineDesc')
+              : showIosHint
+              ? t('pwa.installIosDesc')
               : t('pwa.installDesc')}
           </p>
+          {showIosHint && !needRefresh && (
+            <p className="mb-3 rounded-xl bg-[var(--color-brand-sand)] px-3 py-2 text-xs font-bold text-[var(--color-brand-espresso)]/70">
+              {t('pwa.installIosSteps')}
+            </p>
+          )}
           
           <div className="flex space-x-2">
             {needRefresh ? (

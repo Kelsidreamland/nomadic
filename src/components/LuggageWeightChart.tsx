@@ -16,6 +16,11 @@ const formatShortDate = (value: string, language: string) => new Intl.DateTimeFo
   day: 'numeric',
 }).format(new Date(value));
 
+const formatShortTime = (value: string, language: string) => new Intl.DateTimeFormat(language, {
+  hour: '2-digit',
+  minute: '2-digit',
+}).format(new Date(value));
+
 const formatLongDate = (value: string, language: string) => new Intl.DateTimeFormat(language, {
   year: 'numeric',
   month: 'short',
@@ -24,19 +29,27 @@ const formatLongDate = (value: string, language: string) => new Intl.DateTimeFor
   minute: '2-digit',
 }).format(new Date(value));
 
-const normalizeHistory = (history: Luggage['weightHistory'], language: string): WeightPoint[] => (
-  history
+const normalizeHistory = (history: Luggage['weightHistory'], language: string): WeightPoint[] => {
+  const normalized = history
     .filter((entry) => Number.isFinite(entry.weight) && entry.date)
     .map((entry) => ({
       isoDate: entry.date,
-      dateLabel: formatShortDate(entry.date, language),
+      dateLabel: '',
       weight: Number(entry.weight),
       timestamp: new Date(entry.date).getTime(),
     }))
     .filter((entry) => Number.isFinite(entry.timestamp))
     .sort((left, right) => left.timestamp - right.timestamp)
-    .slice(-7)
-);
+    .slice(-7);
+
+  const uniqueDays = new Set(normalized.map((entry) => new Date(entry.isoDate).toDateString()));
+  const useTimeLabel = uniqueDays.size <= 1;
+
+  return normalized.map((entry) => ({
+    ...entry,
+    dateLabel: useTimeLabel ? formatShortTime(entry.isoDate, language) : formatShortDate(entry.isoDate, language),
+  }));
+};
 
 export const LuggageWeightChart = ({ luggage }: { luggage: Luggage }) => {
   const { t, i18n } = useTranslation();
@@ -44,7 +57,7 @@ export const LuggageWeightChart = ({ luggage }: { luggage: Luggage }) => {
 
   if (data.length === 0) {
     return (
-      <div className="rounded-3xl border border-dashed border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)]/70 p-4">
+      <div className="rounded-2xl border border-dashed border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)]/80 p-4 shadow-inner shadow-[var(--color-brand-stone)]/20">
         <div className="mb-2 flex items-center justify-between gap-2">
           <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{t('luggages.trendTitle')}</p>
           <span className="rounded-full bg-[var(--color-brand-cream)] px-2.5 py-1 text-[11px] font-bold text-[var(--color-brand-espresso)]/60">0</span>
@@ -62,10 +75,10 @@ export const LuggageWeightChart = ({ luggage }: { luggage: Luggage }) => {
   const gradientId = `weight-history-${luggage.id}`;
 
   const trendTone = delta > 0.05
-    ? 'text-[var(--color-brand-terracotta)] bg-orange-50'
+    ? 'text-[var(--color-brand-terracotta)]'
     : delta < -0.05
-      ? 'text-[var(--color-brand-olive)] bg-green-50'
-      : 'text-[var(--color-brand-espresso)]/70 bg-[var(--color-brand-cream)]';
+      ? 'text-[var(--color-brand-olive)]'
+      : 'text-[var(--color-brand-espresso)]/60';
 
   const trendIcon = delta > 0.05
     ? <ArrowUpRight size={14} />
@@ -80,28 +93,28 @@ export const LuggageWeightChart = ({ luggage }: { luggage: Luggage }) => {
       : t('luggages.stable');
 
   return (
-    <div className="rounded-3xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)]/70 p-4">
+    <div className="rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)]/80 p-4 shadow-inner shadow-[var(--color-brand-stone)]/20">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{t('luggages.trendTitle')}</p>
           <p className="text-[11px] text-[var(--color-brand-espresso)]/50">{t('luggages.trendSubtitle', { count: data.length })}</p>
         </div>
-        <div className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${trendTone}`}>
+        <div className={`inline-flex items-center gap-1 rounded-full border border-[var(--color-brand-stone)] bg-white/80 px-2.5 py-1 text-[11px] font-bold ${trendTone}`}>
           {trendIcon}
           <span>{trendLabel}</span>
         </div>
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2">
-        <div className="rounded-2xl bg-[var(--color-brand-cream)] px-3 py-2">
+        <div className="rounded-2xl border border-[var(--color-brand-stone)]/70 bg-white/80 px-3 py-2">
           <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-brand-espresso)]/40">{t('luggages.latestRecord')}</p>
           <p className="mt-1 text-sm font-black text-[var(--color-brand-espresso)]">{latestPoint.weight.toFixed(1)} kg</p>
         </div>
-        <div className="rounded-2xl bg-[var(--color-brand-cream)] px-3 py-2">
+        <div className="rounded-2xl border border-[var(--color-brand-stone)]/70 bg-white/80 px-3 py-2">
           <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-brand-espresso)]/40">{t('luggages.changeFromFirst')}</p>
           <p className="mt-1 text-sm font-black text-[var(--color-brand-espresso)]">{delta >= 0 ? '+' : ''}{delta.toFixed(1)} kg</p>
         </div>
-        <div className="rounded-2xl bg-[var(--color-brand-cream)] px-3 py-2">
+        <div className="rounded-2xl border border-[var(--color-brand-stone)]/70 bg-white/80 px-3 py-2">
           <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-brand-espresso)]/40">{t('luggages.peakWeight')}</p>
           <p className="mt-1 text-sm font-black text-[var(--color-brand-espresso)]">{highestWeight.toFixed(1)} kg</p>
         </div>
@@ -116,7 +129,7 @@ export const LuggageWeightChart = ({ luggage }: { luggage: Luggage }) => {
                 <stop offset="95%" stopColor="var(--color-brand-terracotta)" stopOpacity={0.04} />
               </linearGradient>
             </defs>
-            <CartesianGrid vertical={false} stroke="var(--color-brand-stone)" strokeDasharray="4 4" />
+            <CartesianGrid vertical={false} stroke="var(--color-brand-stone)" strokeDasharray="3 4" />
             <XAxis
               dataKey="dateLabel"
               tick={{ fontSize: 11, fill: 'var(--color-brand-espresso)' }}
@@ -148,7 +161,7 @@ export const LuggageWeightChart = ({ luggage }: { luggage: Luggage }) => {
               type="monotone"
               dataKey="weight"
               stroke="var(--color-brand-espresso)"
-              strokeWidth={3}
+              strokeWidth={2.5}
               fill={`url(#${gradientId})`}
               dot={{ r: 4, strokeWidth: 2, fill: 'var(--color-brand-cream)', stroke: 'var(--color-brand-terracotta)' }}
               activeDot={{ r: 5, strokeWidth: 2, fill: 'var(--color-brand-terracotta)', stroke: 'var(--color-brand-cream)' }}

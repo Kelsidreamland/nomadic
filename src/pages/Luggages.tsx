@@ -7,6 +7,7 @@ import { useStore } from '../store';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { LuggageWeightChart } from '../components/LuggageWeightChart';
+import { useNavigate } from 'react-router-dom';
 
 const luggageSizePresets = [
   { label: '30"', length: 78, width: 52, height: 31 },
@@ -25,8 +26,10 @@ const isValidWeightInput = (value?: string) => {
 
 export const Luggages = () => {
   const { t } = useTranslation();
-  const { currentSeasonFilter, setSeasonFilter } = useStore();
+  const navigate = useNavigate();
+  const { currentSeasonFilter, setSeasonFilter, setActiveLuggageId } = useStore();
   const allLuggages = useLiveQuery(() => db.luggages.toArray()) || [];
+  const allItems = useLiveQuery(() => db.items.toArray()) || [];
 
   const luggages = allLuggages.filter(l => 
     currentSeasonFilter === '所有' ? true : l.season === currentSeasonFilter || l.season === '混合'
@@ -39,12 +42,14 @@ export const Luggages = () => {
 
   const handleAdd = async () => {
     if (!newLuggage.name) return;
+    const luggageId = uuidv4();
     await db.luggages.add({
       ...newLuggage,
-      id: uuidv4(),
+      id: luggageId,
       createdAt: Date.now(),
       weightHistory: [],
     } as Luggage);
+    setActiveLuggageId(luggageId);
     setIsAdding(false);
     setNewLuggage({ name: '', type: '托运', season: '混合', length: 0, width: 0, height: 0, weightHistory: [] });
   };
@@ -94,6 +99,13 @@ export const Luggages = () => {
       await db.luggages.update(luggageId, { weightHistory: newHistory });
       setWeightInputs({ ...weightInputs, [luggageId]: '' });
     }
+  };
+
+  const itemCountByLuggage = (luggageId: string) => allItems.filter((item) => item.luggageId === luggageId).length;
+
+  const openItemsForLuggage = (luggageId: string) => {
+    setActiveLuggageId(luggageId);
+    navigate('/items');
   };
 
   return (
@@ -225,6 +237,7 @@ export const Luggages = () => {
           {luggages.map(luggage => {
             const currentWeight = getLuggageWeight(luggage);
             const canRecordWeight = isValidWeightInput(weightInputs[luggage.id]);
+            const packedItemCount = itemCountByLuggage(luggage.id);
 
             return (
               <div key={luggage.id} className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex flex-col justify-between">
@@ -246,6 +259,21 @@ export const Luggages = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-bold text-[var(--color-brand-espresso)]/60">{t('luggages.currentWeight')}</span>
                     <span className="text-2xl font-black text-[var(--color-brand-espresso)]">{currentWeight.toFixed(1)} kg</span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--color-brand-sand)]/85 px-4 py-3 border border-[var(--color-brand-stone)]/70">
+                    <div>
+                      <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{t('luggages.itemsCount', { count: packedItemCount })}</p>
+                      <p className="text-xs text-[var(--color-brand-espresso)]/50 mt-1">
+                        {packedItemCount === 0 ? t('luggages.emptyLuggageHint') : t('luggages.autoAssignHint')}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => openItemsForLuggage(luggage.id)}
+                      className="shrink-0 rounded-xl bg-[var(--color-brand-espresso)] px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-black transition-colors"
+                    >
+                      {t('luggages.addItem')}
+                    </button>
                   </div>
 
                   <LuggageWeightChart luggage={luggage} />
