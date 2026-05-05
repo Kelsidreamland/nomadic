@@ -4,6 +4,7 @@ import { Briefcase, Shirt, Sparkles, Coffee, ClipboardList } from 'lucide-react'
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
+import { APP_VERSION } from '../services/appVersion';
 
 interface LayoutProps {
   children: ReactNode;
@@ -48,6 +49,9 @@ export const Layout = ({ children }: LayoutProps) => {
 
         {/* Desktop Nav */}
         <div className="flex items-center space-x-4 md:space-x-6">
+          <span className="rounded-full border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-2 py-1 text-[10px] font-bold text-[var(--color-brand-espresso)]/55">
+            v{APP_VERSION}
+          </span>
           <button
             onClick={toggleLanguage}
             className="text-xs font-bold px-3 py-1.5 rounded-full border border-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/80 hover:bg-[var(--color-brand-sand)] transition-colors font-sans"

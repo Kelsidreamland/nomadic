@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { Download, RefreshCw, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { APP_VERSION, fetchRemoteAppVersion, shouldPromptForAppUpdate } from '../services/appVersion';
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -23,6 +24,7 @@ export function PWAPrompt() {
   const [showIosHint, setShowIosHint] = useState(shouldShowIosInstallHint);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [remoteVersion, setRemoteVersion] = useState('');
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const { t } = useTranslation();
 
@@ -42,6 +44,8 @@ export function PWAPrompt() {
       console.log('SW registration error', error);
     },
   });
+  const remoteUpdateAvailable = shouldPromptForAppUpdate(APP_VERSION, remoteVersion);
+  const hasAppUpdate = needRefresh || remoteUpdateAvailable;
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -59,16 +63,26 @@ export function PWAPrompt() {
   }, []);
 
   useEffect(() => {
-    const checkForUpdate = () => {
+    const checkForUpdate = async () => {
       if (document.visibilityState === 'visible') {
         swRegistrationRef.current?.update().catch(error => {
           console.log('SW update check failed', error);
         });
+
+        const latestVersion = await fetchRemoteAppVersion().catch(error => {
+          console.log('Version check failed', error);
+          return '';
+        });
+
+        if (shouldPromptForAppUpdate(APP_VERSION, latestVersion)) {
+          setRemoteVersion(latestVersion);
+        }
       }
     };
 
     window.addEventListener('focus', checkForUpdate);
     document.addEventListener('visibilitychange', checkForUpdate);
+    checkForUpdate();
     const intervalId = window.setInterval(checkForUpdate, UPDATE_CHECK_INTERVAL_MS);
 
     return () => {
@@ -95,15 +109,33 @@ export function PWAPrompt() {
 
   const handleUpdateClick = async () => {
     setIsUpdating(true);
+    const nextVersion = remoteVersion || APP_VERSION;
     try {
       await updateServiceWorker(true);
-      window.setTimeout(() => {
-        window.location.reload();
-      }, 1200);
     } catch (error) {
       console.log('SW update failed', error);
-      setIsUpdating(false);
     }
+
+    try {
+      const registrations = await navigator.serviceWorker?.getRegistrations?.() || [];
+      await Promise.all(registrations.map(async registration => {
+        await registration.update().catch(() => undefined);
+        registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+        await registration.unregister().catch(() => false);
+      }));
+
+      if ('caches' in window) {
+        const cacheNames = await window.caches.keys();
+        await Promise.all(cacheNames.map(cacheName => window.caches.delete(cacheName)));
+      }
+    } catch (error) {
+      console.log('Forced app refresh cleanup failed', error);
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('appVersion', nextVersion);
+    url.searchParams.set('refresh', String(Date.now()));
+    window.location.replace(url.toString());
   };
 
   const close = () => {
@@ -113,30 +145,35 @@ export function PWAPrompt() {
     setShowIosHint(false);
   };
 
-  if (!showPrompt && !showIosHint && !needRefresh) return null;
+  if (!showPrompt && !showIosHint && !hasAppUpdate) return null;
 
   return (
     <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:bottom-4 md:w-96 bg-[var(--color-brand-cream)] rounded-2xl shadow-xl border border-[var(--color-brand-stone)] p-4 z-50 animate-fade-in">
       <div className="flex items-start justify-between">
         <div className="flex-1 pr-4">
           <h3 className="font-bold text-[var(--color-brand-espresso)] mb-1">
-            {needRefresh ? t('pwa.updateAvailable') : t('pwa.installTitle')}
+            {hasAppUpdate ? t('pwa.updateAvailable') : t('pwa.installTitle')}
           </h3>
           <p className="text-sm text-[var(--color-brand-espresso)]/60 mb-3">
-            {needRefresh 
+            {hasAppUpdate 
               ? t('pwa.updateDesc') 
               : showIosHint
               ? t('pwa.installIosDesc')
               : t('pwa.installDesc')}
           </p>
-          {showIosHint && !needRefresh && (
+          {hasAppUpdate && (
+            <p className="mb-3 rounded-xl bg-[var(--color-brand-sand)] px-3 py-2 text-xs font-bold text-[var(--color-brand-espresso)]/70">
+              {t('pwa.versionStatus', { current: APP_VERSION, latest: remoteVersion || APP_VERSION })}
+            </p>
+          )}
+          {showIosHint && !hasAppUpdate && (
             <p className="mb-3 rounded-xl bg-[var(--color-brand-sand)] px-3 py-2 text-xs font-bold text-[var(--color-brand-espresso)]/70">
               {t('pwa.installIosSteps')}
             </p>
           )}
           
           <div className="flex space-x-2">
-            {needRefresh ? (
+            {hasAppUpdate ? (
               <button 
                 onClick={handleUpdateClick}
                 disabled={isUpdating}
