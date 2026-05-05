@@ -1,0 +1,17 @@
+{
+  "activePhase": "phase-9-flight-memory",
+  "mode": "deep-interview",
+  "status": "clarifying",
+  "updatedAt": "2026-05-05T21:24:00+08:00",
+  "openQuestions": [
+    "Should the flight memory MVP be a top-level section or a quieter dashboard subview?",
+    "Should the first import path be manual entry, CSV import, or reuse the existing PDF/screenshot parser?"
+  ],
+  "decisionLog": [
+    {
+      "question": "Primary purpose of first version",
+      "decision": "A: private personal joy / visual record of nomadic life"
+    }
+  ],
+  "nextAction": "Propose MVP boundary and ask whether to proceed to implementation planning."
+}
