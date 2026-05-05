@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Item } from '../db';
 import { v4 as uuidv4 } from 'uuid';
-import { Sparkles, Info, TrendingUp, Shirt } from 'lucide-react';
+import { Info, TrendingUp, Shirt } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 
@@ -42,20 +42,20 @@ export const Outfits = () => {
   };
 
   const renderVersatilityBadge = (count: number) => {
-    if (count === 0) return <span className="bg-gray-100 text-[var(--color-brand-espresso)]/60 px-2 py-0.5 rounded-full text-[10px] font-bold">{t('outfits.versatility0')}</span>;
-    if (count >= 3) return <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold">{t('outfits.versatilityHigh', { count })}</span>;
-    return <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold">{t('outfits.versatilityNormal', { count })}</span>;
+    if (count === 0) return <span className="bg-[var(--color-brand-stone)]/60 text-[var(--color-brand-espresso)]/60 px-2 py-0.5 rounded-full text-[10px] font-bold">{t('outfits.versatility0')}</span>;
+    if (count >= 3) return <span className="bg-[var(--color-brand-olive)]/15 text-[var(--color-brand-espresso)] px-2 py-0.5 rounded-full text-[10px] font-bold">{t('outfits.versatilityHigh', { count })}</span>;
+    return <span className="bg-[var(--color-brand-terracotta)]/10 text-[var(--color-brand-terracotta)] px-2 py-0.5 rounded-full text-[10px] font-bold">{t('outfits.versatilityNormal', { count })}</span>;
   };
 
   const renderItemCard = (item: Item, isTop: boolean = false) => {
     const isSelected = selectedTopId === item.id;
     const matchCount = getMatchCount(item.id, isTop);
 
-    let cardStyle = "border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] hover:border-gray-300 hover:shadow-sm";
+    let cardStyle = "border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] hover:border-[var(--color-brand-terracotta)]/40 hover:shadow-sm";
 
     if (isTop) {
       if (isSelected) {
-        cardStyle = "border-[var(--color-brand-espresso)] bg-blue-50/50 shadow-md ring-2 ring-[var(--color-brand-espresso)] ring-offset-2";
+        cardStyle = "border-[var(--color-brand-espresso)] bg-[var(--color-brand-sand)] shadow-md ring-2 ring-[var(--color-brand-espresso)] ring-offset-2";
       } else if (selectedTopId) {
         cardStyle = "border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] opacity-50 grayscale-[50%]";
       }
@@ -63,7 +63,7 @@ export const Outfits = () => {
       if (selectedTopId) {
         const isMatched = matches.some(m => m.topItemId === selectedTopId && m.bottomItemId === item.id);
         if (isMatched) {
-          cardStyle = "border-[var(--color-brand-terracotta)] bg-blue-50 shadow-md ring-2 ring-blue-400 ring-offset-1";
+          cardStyle = "border-[var(--color-brand-terracotta)] bg-[var(--color-brand-terracotta)]/10 shadow-md ring-2 ring-[var(--color-brand-terracotta)]/50 ring-offset-1";
         } else {
           cardStyle = "border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] opacity-60 hover:opacity-100 hover:border-[var(--color-brand-terracotta)] border-dashed border-2";
         }
@@ -84,7 +84,7 @@ export const Outfits = () => {
         </div>
         {item.image && (
           <div className="w-20 h-20 mb-3 flex items-center justify-center">
-            <img src={item.image} alt={item.name} className="max-w-full max-h-full object-contain drop-shadow-sm rounded-lg" />
+            <img src={item.image} alt={item.name} className="max-h-full max-w-full rounded-lg object-contain drop-shadow-sm" />
           </div>
         )}
         <div className="font-bold text-[var(--color-brand-espresso)] text-sm truncate w-full mt-auto">{item.name}</div>
@@ -107,14 +107,8 @@ export const Outfits = () => {
     <div className="space-y-6 animate-fade-in pb-20">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)] tracking-wider">{t('outfits.title')}</h2>
+          <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)]">{t('outfits.title')}</h2>
           <p className="text-sm text-[var(--color-brand-espresso)]/60 font-medium mt-1">{t('outfits.subtitle')}</p>
-        </div>
-        <div className="bg-[var(--color-brand-cream)] px-4 py-2 rounded-2xl shadow-sm border border-[var(--color-brand-stone)] flex items-center space-x-2">
-          <Sparkles size={18} className="text-yellow-500" />
-          <span className="font-bold text-[var(--color-brand-espresso)]">
-            {t('outfits.totalSets', { count: matches.length })}
-          </span>
         </div>
       </div>
 
@@ -126,7 +120,7 @@ export const Outfits = () => {
           </div>
           <div className="bg-[var(--color-brand-cream)] p-4 rounded-2xl border border-[var(--color-brand-stone)] text-center">
             <div className="text-2xl font-black text-[var(--color-brand-terracotta)]">{matches.length}</div>
-            <div className="text-xs text-[var(--color-brand-espresso)]/40 mt-1">{t('outfits.totalSets', { count: 0 }).replace('0', '')}</div>
+            <div className="text-xs text-[var(--color-brand-espresso)]/40 mt-1">{t('outfits.setsCreated')}</div>
           </div>
           <div className="bg-[var(--color-brand-cream)] p-4 rounded-2xl border border-[var(--color-brand-stone)] text-center">
             <div className="text-2xl font-black text-[var(--color-brand-terracotta)]">{clothingItems.length > 0 ? (matches.length / clothingItems.length).toFixed(1) : '0'}</div>
@@ -143,7 +137,7 @@ export const Outfits = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {mostVersatile.length > 0 && (
             <div className="bg-[var(--color-brand-cream)] p-5 rounded-3xl border border-[var(--color-brand-stone)]">
-              <h3 className="font-bold text-sm text-green-700 flex items-center gap-2 mb-3">
+              <h3 className="font-bold text-sm text-[var(--color-brand-olive)] flex items-center gap-2 mb-3">
                 <TrendingUp size={16} />
                 <span>{t('outfits.topVersatile')}</span>
               </h3>
@@ -152,7 +146,7 @@ export const Outfits = () => {
                   <div key={item.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {item.image ? (
-                        <img src={item.image} alt={item.name} className="w-8 h-8 object-cover rounded-lg" />
+                        <img src={item.image} alt={item.name} className="w-8 h-8 object-contain bg-white rounded-lg" />
                       ) : (
                         <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
                           <Shirt size={14} className="text-[var(--color-brand-espresso)]/30" />
@@ -160,7 +154,7 @@ export const Outfits = () => {
                       )}
                       <span className="text-sm font-bold text-[var(--color-brand-espresso)]">{item.name}</span>
                     </div>
-                    <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">{t('outfits.versatilityHigh', { count })}</span>
+                    <span className="text-xs font-bold text-[var(--color-brand-espresso)] bg-[var(--color-brand-olive)]/15 px-2 py-0.5 rounded-full">{t('outfits.versatilityHigh', { count })}</span>
                   </div>
                 ))}
               </div>
@@ -169,7 +163,7 @@ export const Outfits = () => {
 
           {leastVersatile.length > 0 && (
             <div className="bg-[var(--color-brand-cream)] p-5 rounded-3xl border border-[var(--color-brand-stone)]">
-              <h3 className="font-bold text-sm text-orange-600 flex items-center gap-2 mb-3">
+              <h3 className="font-bold text-sm text-[var(--color-brand-terracotta)] flex items-center gap-2 mb-3">
                 <Info size={16} />
                 <span>{t('outfits.lowVersatile')}</span>
               </h3>
@@ -178,7 +172,7 @@ export const Outfits = () => {
                   <div key={item.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {item.image ? (
-                        <img src={item.image} alt={item.name} className="w-8 h-8 object-cover rounded-lg" />
+                        <img src={item.image} alt={item.name} className="w-8 h-8 object-contain bg-white rounded-lg" />
                       ) : (
                         <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
                           <Shirt size={14} className="text-[var(--color-brand-espresso)]/30" />
@@ -186,7 +180,7 @@ export const Outfits = () => {
                       )}
                       <span className="text-sm font-bold text-[var(--color-brand-espresso)]">{item.name}</span>
                     </div>
-                    <span className="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">{t('outfits.versatilityNormal', { count })}</span>
+                    <span className="text-xs font-bold text-[var(--color-brand-terracotta)] bg-[var(--color-brand-terracotta)]/10 px-2 py-0.5 rounded-full">{t('outfits.versatilityNormal', { count })}</span>
                   </div>
                 ))}
               </div>
@@ -204,11 +198,11 @@ export const Outfits = () => {
         <div className="space-y-8">
           <div className="bg-[var(--color-brand-cream)] rounded-3xl shadow-sm border border-[var(--color-brand-stone)] p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-[var(--color-brand-espresso)] tracking-widest">{t('outfits.tops')}</h3>
+              <h3 className="font-bold text-[var(--color-brand-espresso)]">{t('outfits.tops')}</h3>
               {selectedTopId && (
                 <button
                   onClick={() => setSelectedTopId(null)}
-                  className="text-xs font-bold text-[var(--color-brand-terracotta)] bg-blue-50 px-3 py-1 rounded-full hover:bg-[var(--color-brand-stone)]"
+                  className="text-xs font-bold text-[var(--color-brand-terracotta)] bg-[var(--color-brand-terracotta)]/10 px-3 py-1 rounded-full hover:bg-[var(--color-brand-stone)]"
                 >
                   {t('outfits.cancelSelection')}
                 </button>
@@ -226,12 +220,12 @@ export const Outfits = () => {
           <div className="bg-[var(--color-brand-cream)] rounded-3xl shadow-sm border border-[var(--color-brand-stone)] p-6 relative">
             {!selectedTopId && tops.length > 0 && (
               <div className="absolute inset-0 z-20 bg-[var(--color-brand-cream)]/60 backdrop-blur-[1px] rounded-3xl flex items-center justify-center">
-                <div className="bg-gray-800 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg">
+                <div className="bg-[var(--color-brand-espresso)] text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg">
                   {t('outfits.selectTopFirst')}
                 </div>
               </div>
             )}
-            <h3 className="font-bold text-[var(--color-brand-espresso)] tracking-widest mb-4">{t('outfits.bottoms')}</h3>
+            <h3 className="font-bold text-[var(--color-brand-espresso)] mb-4">{t('outfits.bottoms')}</h3>
             {bottoms.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {bottoms.map(bottom => renderItemCard(bottom, false))}

@@ -1,5 +1,5 @@
 {
-  "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["src/*"] },
+  "compilerOptions": { "baseUrl": ".", "ignoreDeprecations": "6.0", "paths": { "@/*": ["src/*"] },
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "target": "es2023",
     "lib": ["ES2023", "DOM"],

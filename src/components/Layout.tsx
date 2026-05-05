@@ -1,6 +1,6 @@
-import { ReactNode, useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Briefcase, Shirt, Sparkles, Globe, Coffee, PlaneTakeoff } from 'lucide-react';
+import { Briefcase, Shirt, Sparkles, Coffee, ClipboardList } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
@@ -23,7 +23,7 @@ export const Layout = ({ children }: LayoutProps) => {
   };
 
   const navItems = [
-    { name: t('app.overview'), path: '/overview', icon: PlaneTakeoff },
+    { name: t('app.overview'), path: '/overview', icon: ClipboardList },
     { name: t('app.items'), path: '/items', icon: Shirt },
     { name: t('app.outfits'), path: '/outfits', icon: Sparkles },
     { name: t('app.luggages'), path: '/luggages', icon: Briefcase },
@@ -32,7 +32,7 @@ export const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="flex flex-col h-screen bg-[var(--color-brand-sand)] text-[var(--color-brand-espresso)] font-sans">
       <header className="bg-[var(--color-brand-cream)]/80 backdrop-blur-md px-6 py-4 shadow-sm z-20 flex justify-between items-center sticky top-0 border-b border-[var(--color-brand-stone)]">
-        <h1 className="text-2xl font-black tracking-widest text-[var(--color-brand-espresso)] flex items-center gap-2">
+        <h1 className="text-2xl font-black text-[var(--color-brand-espresso)] flex items-center gap-2">
           <Link to="/" className="flex items-center space-x-3 group">
             <img
               src="/favicon.svg"
@@ -41,7 +41,7 @@ export const Layout = ({ children }: LayoutProps) => {
             />
             <div className="flex flex-col">
               <span className="font-serif font-bold text-2xl tracking-tight text-[var(--color-brand-espresso)] leading-none">Nomadic</span>
-              <span className="text-[10px] text-[var(--color-brand-olive)] uppercase tracking-widest font-semibold leading-none mt-1">my luggage</span>
+              <span className="text-[10px] text-[var(--color-brand-olive)] uppercase font-semibold leading-none mt-1">my luggage</span>
             </div>
           </Link>
         </h1>
@@ -60,7 +60,7 @@ export const Layout = ({ children }: LayoutProps) => {
                 key={item.path}
                 to={item.path}
                 className={clsx(
-                  'flex items-center space-x-2 text-sm font-semibold tracking-wider transition-colors font-sans',
+                  'flex items-center space-x-2 text-sm font-semibold transition-colors font-sans',
                   location.pathname === item.path ? 'text-[var(--color-brand-espresso)] border-b-2 border-[var(--color-brand-espresso)]' : 'text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)]/80'
                 )}
               >
@@ -74,7 +74,7 @@ export const Layout = ({ children }: LayoutProps) => {
             href="https://api.payuni.com.tw/api/uop/receive_info/2/3/NPPA226028039/mgYrU0DqoPbb6vatwL86Z"
             target="_blank"
             rel="noreferrer"
-            className="hidden md:flex items-center space-x-2 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 font-sans"
+            className="hidden md:flex items-center space-x-2 rounded-full border border-[var(--color-brand-terracotta)]/20 bg-[var(--color-brand-terracotta)]/10 px-4 py-2 text-sm font-bold text-[var(--color-brand-espresso)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--color-brand-terracotta)]/15 font-sans"
           >
             <Coffee size={16} />
             <span>Sponsor / VIP</span>
@@ -103,7 +103,7 @@ export const Layout = ({ children }: LayoutProps) => {
               <div className={clsx("p-2 rounded-xl", location.pathname === item.path ? 'bg-[var(--color-brand-sand)]/80 shadow-inner border border-[var(--color-brand-stone)]/50' : '')}>
                 <item.icon size={22} strokeWidth={location.pathname === item.path ? 2.5 : 2} />
               </div>
-              <span className="text-[10px] font-bold tracking-widest uppercase">{item.name}</span>
+              <span className="text-[10px] font-bold uppercase">{item.name}</span>
             </Link>
           ))}
         </div>

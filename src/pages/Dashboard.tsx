@@ -2,11 +2,46 @@ import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Flight } from '../db';
 import { getGeoIpLocation } from '../services/google';
-import { Plane, Plus, Save, X, FileText, Upload } from 'lucide-react';
+import { Plane, Plus, Save, X, FileText, Upload, Clock, MapPin, ClipboardList } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Onboarding } from '../components/Onboarding';
+
+const defaultFlightData = (): Partial<Flight> => ({
+  airline: '',
+  destination: '',
+  flightNumber: '',
+  departureDate: new Date().toISOString().split('T')[0],
+  departureTime: '',
+  arrivalTime: '',
+  departureAirport: '',
+  arrivalAirport: '',
+  departureTerminal: '',
+  arrivalTerminal: '',
+  returnDepartureDate: '',
+  returnDepartureTime: '',
+  returnArrivalTime: '',
+  returnFlightNumber: '',
+  returnDepartureAirport: '',
+  returnArrivalAirport: '',
+  returnDepartureTerminal: '',
+  returnArrivalTerminal: '',
+  checkedAllowance: 20,
+  carryOnAllowance: 7,
+  personalAllowance: 0
+});
+
+const joinParts = (...parts: Array<string | undefined | null>) => parts.filter(Boolean).join(' · ');
+
+const formatPlace = (place?: string, terminal?: string) => joinParts(place, terminal);
+
+const formatRoute = (departure?: string, departureTerminal?: string, arrival?: string, arrivalTerminal?: string) => {
+  const from = formatPlace(departure, departureTerminal);
+  const to = formatPlace(arrival, arrivalTerminal);
+  if (from && to) return `${from} → ${to}`;
+  return from || to;
+};
 
 export const Dashboard = () => {
   const { t } = useTranslation();
@@ -21,30 +56,12 @@ export const Dashboard = () => {
   const [now] = useState(() => Date.now());
 
   const [showFlightForm, setShowFlightForm] = useState(false);
-  const [flightData, setFlightData] = useState<Partial<Flight>>({
-    airline: '',
-    destination: '',
-    departureDate: '',
-    checkedAllowance: 20,
-    carryOnAllowance: 7,
-    personalAllowance: 0
-  });
+  const [flightData, setFlightData] = useState<Partial<Flight>>(defaultFlightData);
 
-  const upcomingFlight = flights.sort((a, b) => new Date(a.departureDate).getTime() - new Date(b.departureDate).getTime())[0];
+  const upcomingFlight = [...flights].sort((a, b) => new Date(a.departureDate).getTime() - new Date(b.departureDate).getTime())[0];
 
   const handleManualAdd = () => {
-    if (upcomingFlight) {
-      setFlightData(upcomingFlight);
-    } else {
-      setFlightData({
-        airline: '',
-        destination: '',
-        departureDate: new Date().toISOString().split('T')[0],
-        checkedAllowance: 20,
-        carryOnAllowance: 7,
-        personalAllowance: 0
-      });
-    }
+    setFlightData(upcomingFlight ? { ...defaultFlightData(), ...upcomingFlight } : defaultFlightData());
     setShowFlightForm(true);
     requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -57,6 +74,7 @@ export const Dashboard = () => {
       await db.flights.update(upcomingFlight.id, flightData);
     } else {
       await db.flights.add({
+        ...defaultFlightData(),
         ...flightData,
         id: crypto.randomUUID()
       } as Flight);
@@ -87,6 +105,41 @@ export const Dashboard = () => {
     ? Math.ceil((new Date(upcomingFlight.departureDate).getTime() - now) / (1000 * 60 * 60 * 24))
     : null;
 
+  const hasReturnInfo = !!(
+    upcomingFlight?.returnDepartureDate ||
+    upcomingFlight?.returnFlightNumber ||
+    upcomingFlight?.returnDepartureAirport ||
+    upcomingFlight?.returnArrivalAirport
+  );
+
+  const outboundTime = upcomingFlight ? joinParts(
+    upcomingFlight.departureDate,
+    upcomingFlight.departureTime && upcomingFlight.arrivalTime
+      ? `${upcomingFlight.departureTime} - ${upcomingFlight.arrivalTime}`
+      : upcomingFlight.departureTime || upcomingFlight.arrivalTime
+  ) : '';
+
+  const outboundRoute = upcomingFlight ? formatRoute(
+    upcomingFlight.departureAirport,
+    upcomingFlight.departureTerminal,
+    upcomingFlight.arrivalAirport,
+    upcomingFlight.arrivalTerminal
+  ) : '';
+
+  const returnTime = upcomingFlight ? joinParts(
+    upcomingFlight.returnDepartureDate,
+    upcomingFlight.returnDepartureTime && upcomingFlight.returnArrivalTime
+      ? `${upcomingFlight.returnDepartureTime} - ${upcomingFlight.returnArrivalTime}`
+      : upcomingFlight.returnDepartureTime || upcomingFlight.returnArrivalTime
+  ) : '';
+
+  const returnRoute = upcomingFlight ? formatRoute(
+    upcomingFlight.returnDepartureAirport,
+    upcomingFlight.returnDepartureTerminal,
+    upcomingFlight.returnArrivalAirport,
+    upcomingFlight.returnArrivalTerminal
+  ) : '';
+
   if (isFirstTimeUser) {
     return (
       <Onboarding
@@ -100,49 +153,96 @@ export const Dashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)] tracking-wider">{t('app.dashboard')}</h2>
-          <p className="text-[var(--color-brand-espresso)]/60 font-sans font-medium mt-1">{t('dashboard.greeting')} {location}</p>
+          <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)]">{t('app.dashboard')}</h2>
+          <p className="mt-1 text-sm font-medium text-[var(--color-brand-espresso)]/60">{t('dashboard.greeting')} {location}</p>
         </div>
       </div>
 
       {showFlightForm && (
-        <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-bold text-lg text-[var(--color-brand-espresso)]">{t('dashboard.flightInfo')}</h3>
-            <button onClick={() => setShowFlightForm(false)} className="text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)]/80">
+        <div className="rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm md:p-6">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <h3 className="text-lg font-bold text-[var(--color-brand-espresso)]">{t('dashboard.flightInfo')}</h3>
+            <button onClick={() => setShowFlightForm(false)} className="rounded-full p-2 text-[var(--color-brand-espresso)]/40 hover:bg-[var(--color-brand-sand)] hover:text-[var(--color-brand-espresso)]/80">
               <X size={20} />
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">{t('dashboard.dest')}</label>
-              <input type="text" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.destination} onChange={e => setFlightData({...flightData, destination: e.target.value})} placeholder={t('dashboard.destPlaceholder')} />
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.dest')}</label>
+              <input type="text" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.destination || ''} onChange={e => setFlightData({...flightData, destination: e.target.value})} placeholder={t('dashboard.destPlaceholder')} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">{t('dashboard.airline')}</label>
-              <input type="text" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.airline} onChange={e => setFlightData({...flightData, airline: e.target.value})} placeholder={t('dashboard.airlinePlaceholder')} />
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.airline')}</label>
+              <input type="text" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.airline || ''} onChange={e => setFlightData({...flightData, airline: e.target.value})} placeholder={t('dashboard.airlinePlaceholder')} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">{t('dashboard.date')}</label>
-              <input type="date" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.departureDate} onChange={e => setFlightData({...flightData, departureDate: e.target.value})} />
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.flightNumber')}</label>
+              <input type="text" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.flightNumber || ''} onChange={e => setFlightData({...flightData, flightNumber: e.target.value})} placeholder={t('dashboard.flightNumberPlaceholder')} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">{t('dashboard.checkedAllowance')}</label>
-              <input type="number" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.checkedAllowance} onChange={e => setFlightData({...flightData, checkedAllowance: Number(e.target.value)})} />
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.date')}</label>
+              <input type="date" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.departureDate || ''} onChange={e => setFlightData({...flightData, departureDate: e.target.value})} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">{t('dashboard.carryOnAllowance')}</label>
-              <input type="number" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.carryOnAllowance} onChange={e => setFlightData({...flightData, carryOnAllowance: Number(e.target.value)})} />
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.departureTime')}</label>
+              <input type="time" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.departureTime || ''} onChange={e => setFlightData({...flightData, departureTime: e.target.value})} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase tracking-wider mb-1">{t('dashboard.personalAllowance')}</label>
-              <input type="number" className="w-full bg-[var(--color-brand-sand)] border-0 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.personalAllowance} onChange={e => setFlightData({...flightData, personalAllowance: Number(e.target.value)})} />
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.arrivalTime')}</label>
+              <input type="time" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.arrivalTime || ''} onChange={e => setFlightData({...flightData, arrivalTime: e.target.value})} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.departureAirport')}</label>
+              <input type="text" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.departureAirport || ''} onChange={e => setFlightData({...flightData, departureAirport: e.target.value})} placeholder={t('dashboard.departureAirportPlaceholder')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.arrivalAirport')}</label>
+              <input type="text" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.arrivalAirport || ''} onChange={e => setFlightData({...flightData, arrivalAirport: e.target.value})} placeholder={t('dashboard.arrivalAirportPlaceholder')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.departureTerminal')}</label>
+              <input type="text" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.departureTerminal || ''} onChange={e => setFlightData({...flightData, departureTerminal: e.target.value})} placeholder={t('dashboard.departureTerminalPlaceholder')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.arrivalTerminal')}</label>
+              <input type="text" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.arrivalTerminal || ''} onChange={e => setFlightData({...flightData, arrivalTerminal: e.target.value})} placeholder={t('dashboard.arrivalTerminalPlaceholder')} />
             </div>
           </div>
-          <div className="flex justify-end pt-2">
-            <button onClick={handleSaveFlight} className="flex items-center space-x-2 bg-[var(--color-brand-espresso)] text-white px-6 py-2 rounded-xl font-bold shadow-md hover:bg-black transition-colors">
+
+          <div className="mt-5 rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)]/45 p-4">
+            <h4 className="mb-3 text-sm font-bold text-[var(--color-brand-espresso)]/70">{t('dashboard.returnInfo')}</h4>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <input aria-label={t('dashboard.returnFlightNumber')} type="text" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnFlightNumber || ''} onChange={e => setFlightData({...flightData, returnFlightNumber: e.target.value})} placeholder={t('dashboard.returnFlightNumber')} />
+              <input aria-label={t('dashboard.returnDate')} type="date" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnDepartureDate || ''} onChange={e => setFlightData({...flightData, returnDepartureDate: e.target.value})} />
+              <input aria-label={t('dashboard.returnDepartureTime')} type="time" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnDepartureTime || ''} onChange={e => setFlightData({...flightData, returnDepartureTime: e.target.value})} />
+              <input aria-label={t('dashboard.returnArrivalTime')} type="time" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnArrivalTime || ''} onChange={e => setFlightData({...flightData, returnArrivalTime: e.target.value})} />
+              <input aria-label={t('dashboard.returnDepartureAirport')} type="text" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnDepartureAirport || ''} onChange={e => setFlightData({...flightData, returnDepartureAirport: e.target.value})} placeholder={t('dashboard.returnDepartureAirport')} />
+              <input aria-label={t('dashboard.returnArrivalAirport')} type="text" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnArrivalAirport || ''} onChange={e => setFlightData({...flightData, returnArrivalAirport: e.target.value})} placeholder={t('dashboard.returnArrivalAirport')} />
+              <input aria-label={t('dashboard.returnDepartureTerminal')} type="text" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnDepartureTerminal || ''} onChange={e => setFlightData({...flightData, returnDepartureTerminal: e.target.value})} placeholder={t('dashboard.returnDepartureTerminal')} />
+              <input aria-label={t('dashboard.returnArrivalTerminal')} type="text" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnArrivalTerminal || ''} onChange={e => setFlightData({...flightData, returnArrivalTerminal: e.target.value})} placeholder={t('dashboard.returnArrivalTerminal')} />
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.checkedAllowance')}</label>
+              <input type="number" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.checkedAllowance ?? 0} onChange={e => setFlightData({...flightData, checkedAllowance: Number(e.target.value)})} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.carryOnAllowance')}</label>
+              <input type="number" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.carryOnAllowance ?? 0} onChange={e => setFlightData({...flightData, carryOnAllowance: Number(e.target.value)})} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.personalAllowance')}</label>
+              <input type="number" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.personalAllowance ?? 0} onChange={e => setFlightData({...flightData, personalAllowance: Number(e.target.value)})} />
+            </div>
+          </div>
+
+          <div className="mt-5 flex justify-end">
+            <button onClick={handleSaveFlight} className="flex items-center space-x-2 rounded-xl bg-[var(--color-brand-espresso)] px-6 py-3 font-bold text-white shadow-md transition-colors hover:bg-black">
               <Save size={16} />
               <span>{t('dashboard.saveFlight')}</span>
             </button>
@@ -151,36 +251,59 @@ export const Dashboard = () => {
       )}
 
       {upcomingFlight ? (
-        <div className="bg-[var(--color-brand-cream)] p-6 md:p-8 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden group">
-          <div className="absolute -right-12 -top-12 text-[var(--color-brand-espresso)]/5 group-hover:text-[var(--color-brand-olive)]/10 transition-colors duration-500">
-            <Plane size={160} />
+        <div className="relative overflow-hidden rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm md:p-7">
+          <div className="pointer-events-none absolute -right-10 -top-10 text-[var(--color-brand-espresso)]/5">
+            <Plane size={150} />
           </div>
-          <div className="flex items-center space-x-6 z-10 w-full md:w-auto">
-            <div className="w-20 h-20 bg-[var(--color-brand-sand)] text-[var(--color-brand-espresso)] rounded-3xl flex flex-col items-center justify-center font-bold border border-[var(--color-brand-stone)] shadow-sm">
-              <span className="text-sm text-[var(--color-brand-espresso)]/60 mb-1">{t('dashboard.days')}</span>
-              <span className="text-3xl font-serif text-[var(--color-brand-terracotta)]">{daysToFlight}</span>
-            </div>
-            <div>
-              <h3 className="text-3xl font-black text-[var(--color-brand-espresso)] tracking-tight mb-2">{upcomingFlight.destination}</h3>
-              <div className="flex items-center space-x-4 text-sm font-medium text-[var(--color-brand-espresso)]/60">
-                <span className="flex items-center bg-[var(--color-brand-sand)] px-3 py-1 rounded-lg border border-[var(--color-brand-stone)]"><Plane size={14} className="mr-2 text-[var(--color-brand-olive)]" /> {upcomingFlight.airline}</span>
-                <span className="flex items-center bg-[var(--color-brand-sand)] px-3 py-1 rounded-lg border border-[var(--color-brand-stone)]">{upcomingFlight.departureDate}</span>
+          <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+            <div className="flex min-w-0 gap-4">
+              <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-3xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] shadow-sm">
+                <span className="text-xs font-bold text-[var(--color-brand-espresso)]/55">{t('dashboard.days')}</span>
+                <span className="font-serif text-3xl font-bold text-[var(--color-brand-terracotta)]">{daysToFlight}</span>
+              </div>
+              <div className="min-w-0">
+                <p className="mb-1 text-xs font-bold text-[var(--color-brand-olive)]">{joinParts(t('dashboard.outbound'), upcomingFlight.flightNumber || upcomingFlight.airline)}</p>
+                <h3 className="break-words text-3xl font-black leading-tight text-[var(--color-brand-espresso)]">{upcomingFlight.destination}</h3>
+                <div className="mt-3 flex flex-col gap-2 text-sm font-medium text-[var(--color-brand-espresso)]/65">
+                  <span className="inline-flex w-fit max-w-full items-center rounded-xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-3 py-1.5">
+                    <Plane size={14} className="mr-2 shrink-0 text-[var(--color-brand-olive)]" />
+                    <span className="truncate">{upcomingFlight.airline || upcomingFlight.flightNumber || t('dashboard.flightInfo')}</span>
+                  </span>
+                  <span className="inline-flex w-fit max-w-full items-center rounded-xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-3 py-1.5">
+                    <Clock size={14} className="mr-2 shrink-0 text-[var(--color-brand-terracotta)]" />
+                    <span className="truncate">{outboundTime}</span>
+                  </span>
+                  {outboundRoute && (
+                    <span className="inline-flex w-fit max-w-full items-center rounded-xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-3 py-1.5">
+                      <MapPin size={14} className="mr-2 shrink-0 text-[var(--color-brand-espresso)]/45" />
+                      <span className="truncate">{outboundRoute}</span>
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex flex-col md:flex-row gap-2 z-10">
             <button
               onClick={handleManualAdd}
-              className="w-full md:w-auto bg-[var(--color-brand-espresso)] text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-md hover:bg-black transition-all hover:-translate-y-0.5"
+              className="w-full rounded-2xl bg-[var(--color-brand-espresso)] px-6 py-3 text-sm font-bold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-black md:w-auto"
             >
               {t('dashboard.editFlight')}
             </button>
           </div>
+
+          {hasReturnInfo && (
+            <div className="relative z-10 mt-5 rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)]/55 p-4">
+              <p className="mb-2 text-xs font-bold text-[var(--color-brand-espresso)]/55">{joinParts(t('dashboard.returnTrip'), upcomingFlight.returnFlightNumber)}</p>
+              <div className="grid grid-cols-1 gap-2 text-sm font-medium text-[var(--color-brand-espresso)]/70 md:grid-cols-2">
+                {returnTime && <span className="inline-flex items-center"><Clock size={14} className="mr-2 text-[var(--color-brand-terracotta)]" />{returnTime}</span>}
+                {returnRoute && <span className="inline-flex min-w-0 items-center"><MapPin size={14} className="mr-2 shrink-0 text-[var(--color-brand-espresso)]/45" /><span className="truncate">{returnRoute}</span></span>}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] space-y-5">
+        <div className="rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm md:p-6">
           <div className="flex items-center space-x-4">
-            <div className="p-4 bg-[var(--color-brand-sand)] rounded-2xl">
+            <div className="rounded-2xl bg-[var(--color-brand-sand)] p-4">
               <FileText size={24} className="text-[var(--color-brand-terracotta)]" />
             </div>
             <div>
@@ -188,15 +311,15 @@ export const Dashboard = () => {
               <p className="text-sm text-[var(--color-brand-espresso)]/60">{t('dashboard.createTripDesc')}</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
             <button
               onClick={handleManualAdd}
-              className="flex items-center justify-center space-x-2 bg-[var(--color-brand-terracotta)] hover:bg-[var(--color-brand-terracotta-hover)] text-white px-4 py-4 rounded-2xl font-bold transition-all shadow-md hover:shadow-lg text-sm"
+              className="flex items-center justify-center space-x-2 rounded-2xl bg-[var(--color-brand-terracotta)] px-4 py-4 text-sm font-bold text-white shadow-md transition-all hover:bg-[var(--color-brand-terracotta-hover)] hover:shadow-lg"
             >
               <Plus size={16} />
               <span>{t('dashboard.manualInput')}</span>
             </button>
-            <label className="flex items-center justify-center space-x-2 bg-[var(--color-brand-sand)] hover:bg-gray-100 text-[var(--color-brand-espresso)]/80 px-4 py-4 rounded-2xl font-bold transition-all shadow-sm text-sm border border-[var(--color-brand-stone)] cursor-pointer">
+            <label className="flex cursor-pointer items-center justify-center space-x-2 rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-4 py-4 text-sm font-bold text-[var(--color-brand-espresso)]/80 shadow-sm transition-all hover:bg-white">
               <Upload size={16} />
               <span>{t('dashboard.uploadPdfImage')}</span>
               <input type="file" accept=".pdf,image/*" onChange={handleItineraryFileUpload} className="hidden" />
@@ -206,41 +329,41 @@ export const Dashboard = () => {
       )}
 
       {upcomingFlight && (
-        <div className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] space-y-6">
-          <h3 className="font-bold text-sm text-[var(--color-brand-espresso)]/60 uppercase tracking-wider">{t('overview.weightVsLimit')}</h3>
+        <div className="space-y-6 rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm md:p-6">
+          <h3 className="text-sm font-bold text-[var(--color-brand-espresso)]/60">{t('overview.weightVsLimit')}</h3>
           <div className="space-y-2">
-            <div className="flex justify-between items-end">
+            <div className="flex items-end justify-between">
               <div>
-                <p className="text-xs font-bold text-[var(--color-brand-espresso)]/40 tracking-widest uppercase mb-1">{t('dashboard.checked')}</p>
+                <p className="mb-1 text-xs font-bold text-[var(--color-brand-espresso)]/40">{t('dashboard.checked')}</p>
                 <h4 className="text-xl font-black text-[var(--color-brand-espresso)]">{checkedWeight.toFixed(1)} <span className="text-sm text-[var(--color-brand-espresso)]/40">kg</span></h4>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-bold text-[var(--color-brand-espresso)]/40 uppercase">{t('dashboard.limit')}</p>
-                <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{upcomingFlight?.checkedAllowance || 0} kg</p>
+                <p className="text-[10px] font-bold text-[var(--color-brand-espresso)]/40">{t('dashboard.limit')}</p>
+                <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{upcomingFlight.checkedAllowance || 0} kg</p>
               </div>
             </div>
-            <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--color-brand-stone)]/60">
               <div
-                className={clsx("h-full transition-all duration-1000", checkedWeight > (upcomingFlight?.checkedAllowance || 0) ? 'bg-red-500' : 'bg-[var(--color-brand-espresso)]')}
-                style={{ width: `${Math.min(100, (checkedWeight / (upcomingFlight?.checkedAllowance || 1)) * 100)}%` }}
+                className={clsx("h-full transition-all duration-1000", checkedWeight > (upcomingFlight.checkedAllowance || 0) ? 'bg-red-500' : 'bg-[var(--color-brand-espresso)]')}
+                style={{ width: `${Math.min(100, (checkedWeight / (upcomingFlight.checkedAllowance || 1)) * 100)}%` }}
               />
             </div>
           </div>
           <div className="space-y-2">
-            <div className="flex justify-between items-end">
+            <div className="flex items-end justify-between">
               <div>
-                <p className="text-xs font-bold text-[var(--color-brand-espresso)]/40 tracking-widest uppercase mb-1">{t('dashboard.carryOn')}</p>
+                <p className="mb-1 text-xs font-bold text-[var(--color-brand-espresso)]/40">{t('dashboard.carryOn')}</p>
                 <h4 className="text-xl font-black text-[var(--color-brand-espresso)]">{carryOnWeight.toFixed(1)} <span className="text-sm text-[var(--color-brand-espresso)]/40">kg</span></h4>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-bold text-[var(--color-brand-espresso)]/40 uppercase">{t('dashboard.limit')}</p>
-                <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{upcomingFlight?.carryOnAllowance || 0} kg</p>
+                <p className="text-[10px] font-bold text-[var(--color-brand-espresso)]/40">{t('dashboard.limit')}</p>
+                <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{upcomingFlight.carryOnAllowance || 0} kg</p>
               </div>
             </div>
-            <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--color-brand-stone)]/60">
               <div
-                className={clsx("h-full transition-all duration-1000", carryOnWeight > (upcomingFlight?.carryOnAllowance || 0) ? 'bg-red-500' : 'bg-[var(--color-brand-olive)]')}
-                style={{ width: `${Math.min(100, (carryOnWeight / (upcomingFlight?.carryOnAllowance || 1)) * 100)}%` }}
+                className={clsx("h-full transition-all duration-1000", carryOnWeight > (upcomingFlight.carryOnAllowance || 0) ? 'bg-red-500' : 'bg-[var(--color-brand-olive)]')}
+                style={{ width: `${Math.min(100, (carryOnWeight / (upcomingFlight.carryOnAllowance || 1)) * 100)}%` }}
               />
             </div>
           </div>
@@ -249,9 +372,9 @@ export const Dashboard = () => {
 
       <Link
         to="/overview"
-        className="w-full py-5 bg-[var(--color-brand-espresso)] hover:bg-black text-white rounded-3xl font-bold tracking-widest shadow-lg shadow-[var(--color-brand-espresso)]/20 transition-all hover:scale-[1.02] flex justify-center items-center gap-2"
+        className="flex w-full items-center justify-center gap-2 rounded-[28px] bg-[var(--color-brand-espresso)] py-5 font-bold text-white shadow-lg shadow-[var(--color-brand-espresso)]/20 transition-all hover:scale-[1.01] hover:bg-black"
       >
-        <Plane size={20} />
+        <ClipboardList size={20} />
         <span>{t('app.overview')}</span>
       </Link>
     </div>

@@ -3,37 +3,42 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 import { Download, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
+
+const shouldShowIosInstallHint = () => {
+  if (typeof window === 'undefined') return false;
+  const userAgent = window.navigator.userAgent.toLowerCase();
+  const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return isIosDevice && !isStandalone;
+};
+
 export function PWAPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
-  const [showIosHint, setShowIosHint] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showIosHint, setShowIosHint] = useState(shouldShowIosInstallHint);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const { t } = useTranslation();
 
   const {
-    offlineReady: [offlineReady, setOfflineReady],
+    offlineReady: [, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegistered(r) {
+    onRegistered(r: ServiceWorkerRegistration | undefined) {
       console.log('SW Registered: ', r);
     },
-    onRegisterError(error) {
+    onRegisterError(error: Error) {
       console.log('SW registration error', error);
     },
   });
 
   useEffect(() => {
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-
-    if (isIosDevice && !isStandalone) {
-      setShowIosHint(true);
-    }
-
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowPrompt(true);
       setShowIosHint(false);
     };

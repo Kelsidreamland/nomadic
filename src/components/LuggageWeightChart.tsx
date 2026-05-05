@@ -144,7 +144,7 @@ export const LuggageWeightChart = ({ luggage }: { luggage: Luggage }) => {
               ]}
             />
             <Tooltip
-              formatter={(value: number | string) => [`${Number(value).toFixed(1)} kg`, t('luggages.currentWeight')]}
+              formatter={(value) => [`${Number(value || 0).toFixed(1)} kg`, t('luggages.currentWeight')]}
               labelFormatter={(_, payload) => {
                 const entry = payload?.[0]?.payload as WeightPoint | undefined;
                 return entry ? formatLongDate(entry.isoDate, i18n.language) : '';

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Item } from '../db';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Trash2, PackageSearch, Camera, Sparkles, Image as ImageIcon, Edit2, X, ChevronDown } from 'lucide-react';
+import { Trash2, PackageSearch, Camera, Image as ImageIcon, Edit2, X, ChevronDown } from 'lucide-react';
 import { analyzeItemWithAI } from '../services/ai';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
@@ -286,7 +286,7 @@ export const Items = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)] tracking-wider">{t('items.title')}</h2>
+        <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)]">{t('items.title')}</h2>
       </div>
 
       {/* Luggage selector */}
@@ -341,7 +341,7 @@ export const Items = () => {
       <div className="bg-[var(--color-brand-cream)] rounded-3xl shadow-sm border border-[var(--color-brand-stone)] p-8 text-center space-y-4">
         {activeLuggage && (
           <div className="mx-auto max-w-md rounded-2xl bg-[var(--color-brand-sand)] px-4 py-3 text-left border border-[var(--color-brand-stone)]/70">
-            <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-brand-espresso)]/40">{activeLuggage.name}</p>
+            <p className="text-xs font-bold uppercase text-[var(--color-brand-espresso)]/40">{activeLuggage.name}</p>
             <p className="mt-1 text-sm font-medium text-[var(--color-brand-espresso)]/70">{t('items.assigningTo', { name: activeLuggage.name })}</p>
           </div>
         )}
@@ -415,7 +415,7 @@ export const Items = () => {
 
           <div className="flex gap-4">
             {editingImage && (
-              <img src={editingImage} alt="Preview" className="w-24 h-24 object-cover rounded-2xl border border-[var(--color-brand-stone)] shadow-sm shrink-0" />
+              <img src={editingImage} alt="Preview" className="w-24 h-24 object-contain bg-white rounded-2xl border border-[var(--color-brand-stone)] shadow-sm shrink-0" />
             )}
             <div className="flex-1 space-y-2">
               <input
@@ -573,7 +573,7 @@ export const Items = () => {
           <button
             onClick={handleSaveConfirmed}
             disabled={!editingItem.name}
-            className="w-full py-3 bg-[var(--color-brand-espresso)] disabled:opacity-30 text-white rounded-xl font-bold tracking-widest shadow-md hover:bg-black transition-colors"
+            className="w-full py-3 bg-[var(--color-brand-espresso)] disabled:opacity-30 text-white rounded-xl font-bold shadow-md hover:bg-black transition-colors"
           >
             {(editingItem as Item).id ? t('items.update') : t('items.save')}
           </button>
@@ -597,7 +597,7 @@ export const Items = () => {
                 onClick={() => fileInputRef.current?.click()}
               >
                 {manualItem.image ? (
-                  <img src={manualItem.image} alt="Preview" className="w-full h-full object-cover" />
+                  <img src={manualItem.image} alt="Preview" className="w-full h-full object-contain bg-white" />
                 ) : (
                   <>
                     <ImageIcon size={20} className="text-[var(--color-brand-espresso)]/40 mb-1" />
@@ -667,7 +667,7 @@ export const Items = () => {
           <button
             onClick={handleSaveManual}
             disabled={!manualItem.name}
-            className="w-full py-3 bg-[var(--color-brand-espresso)] disabled:opacity-30 text-white rounded-xl font-bold tracking-widest shadow-md hover:bg-black transition-colors"
+            className="w-full py-3 bg-[var(--color-brand-espresso)] disabled:opacity-30 text-white rounded-xl font-bold shadow-md hover:bg-black transition-colors"
           >
             {t('items.save')}
           </button>
@@ -701,7 +701,7 @@ export const Items = () => {
               <div key={item.id} className="bg-[var(--color-brand-cream)] p-4 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex justify-between items-start group hover:border-[var(--color-brand-stone)] transition-colors">
                 <div className="flex space-x-3">
                   {item.image ? (
-                    <img src={item.image} alt={item.name} className="w-14 h-14 object-cover rounded-2xl border border-[var(--color-brand-stone)] shadow-sm" />
+                    <img src={item.image} alt={item.name} className="w-14 h-14 object-contain bg-white rounded-2xl border border-[var(--color-brand-stone)] shadow-sm" />
                   ) : (
                     <div className="w-14 h-14 bg-[var(--color-brand-sand)] rounded-2xl flex items-center justify-center border border-[var(--color-brand-stone)]">
                       <ImageIcon size={20} className="text-[var(--color-brand-espresso)]/30" />

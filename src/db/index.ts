@@ -51,8 +51,23 @@ export interface UserConfig {
 export interface Flight {
   id: string;
   departureDate: string;
+  departureTime?: string;
+  arrivalTime?: string;
   destination: string;
   airline: string;
+  flightNumber?: string;
+  departureAirport?: string;
+  arrivalAirport?: string;
+  departureTerminal?: string;
+  arrivalTerminal?: string;
+  returnDepartureDate?: string;
+  returnDepartureTime?: string;
+  returnArrivalTime?: string;
+  returnFlightNumber?: string;
+  returnDepartureAirport?: string;
+  returnArrivalAirport?: string;
+  returnDepartureTerminal?: string;
+  returnArrivalTerminal?: string;
   checkedAllowance: number;
   carryOnAllowance: number;
   personalAllowance: number;

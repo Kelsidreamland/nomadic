@@ -114,7 +114,7 @@ export const Luggages = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)] tracking-wider">{t('luggages.title')}</h2>
+        <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)]">{t('luggages.title')}</h2>
         <button 
           onClick={() => setIsAdding(!isAdding)}
           className="flex items-center space-x-1 bg-[var(--color-brand-espresso)] text-white px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-[var(--color-brand-espresso)] transition-colors"
@@ -223,7 +223,7 @@ export const Luggages = () => {
 
           <button 
             onClick={handleAdd}
-            className="w-full py-3 bg-[var(--color-brand-espresso)] text-white rounded-xl font-bold tracking-widest shadow-md"
+            className="w-full py-3 bg-[var(--color-brand-espresso)] text-white rounded-xl font-bold shadow-md"
           >
             {t('luggages.save')}
           </button>
@@ -248,7 +248,7 @@ export const Luggages = () => {
                   <div>
                     <h3 className="font-bold text-[var(--color-brand-espresso)] text-xl mb-1">{luggage.name}</h3>
                     <div className="flex space-x-2 mb-2">
-                      <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-[var(--color-brand-terracotta)] font-bold">{getLuggageTypeLabel(luggage.type)}</span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-[var(--color-brand-terracotta)]/10 text-[var(--color-brand-terracotta)] font-bold">{getLuggageTypeLabel(luggage.type)}</span>
                       <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-[var(--color-brand-espresso)]/80 font-bold">{getLuggageSeasonLabel(luggage.season)}</span>
                     </div>
                     <p className="text-xs text-[var(--color-brand-espresso)]/40 font-medium">{t('luggages.size')}: {luggage.length} × {luggage.width} × {luggage.height} cm</p>

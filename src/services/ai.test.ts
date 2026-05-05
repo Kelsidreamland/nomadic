@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { generateSmartInsights } from './ai';
 import { db } from '../db';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 vi.mock('../db', () => ({
   db: {
@@ -28,7 +27,7 @@ describe('generateSmartInsights', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('VITE_GEMINI_API_KEY', '');
-    vi.stubEnv('PROD', '');
+    vi.stubEnv('PROD', false);
   });
 
   afterEach(() => {
@@ -46,4 +45,3 @@ describe('generateSmartInsights', () => {
     }
   });
 });
-
