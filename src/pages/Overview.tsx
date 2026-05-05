@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { generateSmartInsights } from '../services/ai';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Bot, Plane, ChevronDown, ChevronRight, Scale, Sparkles, AlertTriangle, CheckCircle2, X, Clock, MapPin, Plus } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
+import { buildPackingChecklistSummary } from '../services/packingChecklist';
 
 const joinParts = (...parts: Array<string | undefined | null>) => parts.filter(Boolean).join(' · ');
 
@@ -58,10 +59,15 @@ const WeightBar = ({ current, limit, label }: { current: number; limit: number; 
 export const Overview = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { setActiveLuggageId } = useStore();
   const luggages = useLiveQuery(() => db.luggages.toArray()) || [];
   const items = useLiveQuery(() => db.items.toArray()) || [];
   const flights = useLiveQuery(() => db.flights.toArray()) || [];
+  const isPackingMode = searchParams.get('packing') === '1';
+  const didAutoExpandPacking = useRef(false);
+  const packingSummary = buildPackingChecklistSummary(luggages, items);
+  const expandableLuggageKey = packingSummary.expandableLuggageIds.join('|');
 
   const upcomingFlight = [...flights].sort((a, b) => new Date(a.departureDate).getTime() - new Date(b.departureDate).getTime())[0];
   const [now] = useState(() => Date.now());
@@ -73,6 +79,12 @@ export const Overview = () => {
   const [weightInputs, setWeightInputs] = useState<{ [key: string]: number }>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [insights, setInsights] = useState<SmartInsights | null>(null);
+
+  useEffect(() => {
+    if (!isPackingMode || didAutoExpandPacking.current || packingSummary.totalItems === 0) return;
+    setExpandedLuggage(new Set(packingSummary.expandableLuggageIds));
+    didAutoExpandPacking.current = true;
+  }, [expandableLuggageKey, isPackingMode, packingSummary.expandableLuggageIds, packingSummary.totalItems]);
 
   const getLatestWeight = (luggageId: string) => {
     const l = luggages.find(lg => lg.id === luggageId);
@@ -234,6 +246,29 @@ export const Overview = () => {
           <h3 className="text-sm font-bold text-[var(--color-brand-espresso)]/60">{t('overview.weightVsLimit')}</h3>
           <WeightBar current={checkedWeight} limit={upcomingFlight.checkedAllowance || 0} label={t('dashboard.checked')} />
           <WeightBar current={carryOnWeight} limit={upcomingFlight.carryOnAllowance || 7} label={t('dashboard.carryOn')} />
+        </div>
+      )}
+
+      {isPackingMode && (
+        <div className="rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{t('overview.packingGeneratedTitle')}</p>
+              <p className="mt-1 text-xs leading-relaxed text-[var(--color-brand-espresso)]/50">
+                {t('overview.packingGeneratedDesc', {
+                  itemCount: packingSummary.totalItems,
+                  luggageCount: packingSummary.luggagesWithItems,
+                  unassignedCount: packingSummary.unassignedItems,
+                })}
+              </p>
+            </div>
+            <Link
+              to="/items"
+              className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-4 py-3 text-sm font-bold text-[var(--color-brand-espresso)]/65 hover:bg-white"
+            >
+              {t('overview.backToItems')}
+            </Link>
+          </div>
         </div>
       )}
 
