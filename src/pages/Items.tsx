@@ -2,8 +2,9 @@ import { useEffect, useState, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Item } from '../db';
 import { v4 as uuidv4 } from 'uuid';
-import { Trash2, PackageSearch, Camera, Image as ImageIcon, Edit2, X, ChevronDown } from 'lucide-react';
+import { Trash2, PackageSearch, Camera, Image as ImageIcon, Edit2, X, ChevronDown, Crop, RotateCcw, Check } from 'lucide-react';
 import { analyzeItemWithAI } from '../services/ai';
+import { DEFAULT_STICKER_ADJUSTMENT, clampStickerAdjustment, getStickerBackgroundColor, type StickerAdjustment, type StickerBackground } from '../services/imageSticker';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
 
@@ -21,6 +22,10 @@ export const Items = () => {
 
   const [editingItem, setEditingItem] = useState<Partial<Item> | null>(null);
   const [editingImage, setEditingImage] = useState<string | null>(null);
+  const [imageEditSource, setImageEditSource] = useState<string | null>(null);
+  const [showImageEditor, setShowImageEditor] = useState(false);
+  const [isEditingImage, setIsEditingImage] = useState(false);
+  const [stickerAdjustment, setStickerAdjustment] = useState<StickerAdjustment>(DEFAULT_STICKER_ADJUSTMENT);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -47,31 +52,37 @@ export const Items = () => {
     }
   };
 
-  const createStickerPreview = async (base64: string): Promise<string> => {
+  const createStickerPreview = async (base64: string, adjustment: Partial<StickerAdjustment> = DEFAULT_STICKER_ADJUSTMENT): Promise<string> => {
+    const stickerOptions = clampStickerAdjustment(adjustment);
     const image = new Image();
     await new Promise<void>((resolve, reject) => {
       image.onload = () => resolve();
       image.onerror = () => reject(new Error('Image load failed'));
       image.src = base64;
     });
-    const maxSize = 320;
-    const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+    const canvasSize = 360;
+    const imageBoxSize = 292;
+    const scale = Math.min(imageBoxSize / image.width, imageBoxSize / image.height) * stickerOptions.zoom;
     const imageWidth = Math.max(1, Math.round(image.width * scale));
     const imageHeight = Math.max(1, Math.round(image.height * scale));
-    const padding = Math.max(12, Math.round(Math.min(imageWidth, imageHeight) * 0.08));
     const canvas = document.createElement('canvas');
-    canvas.width = imageWidth + padding * 2;
-    canvas.height = imageHeight + padding * 2;
+    canvas.width = canvasSize;
+    canvas.height = canvasSize;
     const ctx = canvas.getContext('2d');
     if (!ctx) return base64;
-    ctx.fillStyle = 'white';
-    ctx.shadowColor = 'rgba(0,0,0,0.12)';
-    ctx.shadowBlur = 12;
-    ctx.beginPath();
-    ctx.roundRect(4, 4, canvas.width - 8, canvas.height - 8, 28);
-    ctx.fill();
-    ctx.shadowColor = 'transparent';
-    ctx.drawImage(image, padding, padding, imageWidth, imageHeight);
+    const backgroundColor = getStickerBackgroundColor(stickerOptions.background);
+    if (backgroundColor !== 'transparent') {
+      ctx.fillStyle = backgroundColor;
+      ctx.shadowColor = 'rgba(0,0,0,0.12)';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.roundRect(6, 6, canvas.width - 12, canvas.height - 12, 32);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+    }
+    const drawX = (canvas.width - imageWidth) / 2 + stickerOptions.offsetX;
+    const drawY = (canvas.height - imageHeight) / 2 + stickerOptions.offsetY;
+    ctx.drawImage(image, drawX, drawY, imageWidth, imageHeight);
     return canvas.toDataURL('image/png');
   };
 
@@ -108,6 +119,9 @@ export const Items = () => {
         const base64 = ev.target?.result as string;
         const sticker = await createStickerPreview(base64);
         const aiImage = await createAiImagePayload(base64);
+        setImageEditSource(base64);
+        setStickerAdjustment(DEFAULT_STICKER_ADJUSTMENT);
+        setShowImageEditor(false);
         setEditingImage(sticker);
         setEditingItem({ ...defaultNewItem, image: sticker, luggageId: activeLuggage?.id || '' });
         try {
@@ -217,8 +231,10 @@ export const Items = () => {
     }
     setEditingItem(null);
     setEditingImage(null);
+    setImageEditSource(null);
     setAnalysisError(null);
     setShowAdvanced(false);
+    setShowImageEditor(false);
   };
 
   const handleSaveManual = async () => {
@@ -243,16 +259,41 @@ export const Items = () => {
   const handleEdit = (item: Item) => {
     setEditingItem({ ...item });
     setEditingImage(item.image || null);
+    setImageEditSource(item.image || null);
+    setStickerAdjustment(DEFAULT_STICKER_ADJUSTMENT);
     setAnalysisError(null);
     setShowAdvanced(!!(item.color || item.occasion || item.wrinkleProne || item.tempRange));
+    setShowImageEditor(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelEditing = () => {
     setEditingItem(null);
     setEditingImage(null);
+    setImageEditSource(null);
     setAnalysisError(null);
     setShowAdvanced(false);
+    setShowImageEditor(false);
+  };
+
+  const updateStickerAdjustment = (patch: Partial<StickerAdjustment>) => {
+    setStickerAdjustment(prev => clampStickerAdjustment({ ...prev, ...patch }));
+  };
+
+  const applyStickerEdit = async () => {
+    if (!imageEditSource) return;
+    setIsEditingImage(true);
+    try {
+      const sticker = await createStickerPreview(imageEditSource, stickerAdjustment);
+      setEditingImage(sticker);
+      setEditingItem(prev => ({ ...prev, image: sticker }));
+      setShowImageEditor(false);
+    } catch (err) {
+      console.error('Image edit failed', err);
+      setAnalysisError(t('items.imageReadFailed'));
+    } finally {
+      setIsEditingImage(false);
+    }
   };
 
   const itemCountByLuggage = (luggageId: string) => items.filter(i => i.luggageId === luggageId).length;
@@ -415,7 +456,18 @@ export const Items = () => {
 
           <div className="flex gap-4">
             {editingImage && (
-              <img src={editingImage} alt="Preview" className="w-24 h-24 object-contain bg-white rounded-2xl border border-[var(--color-brand-stone)] shadow-sm shrink-0" />
+              <div className="shrink-0 space-y-2">
+                <img src={editingImage} alt="Preview" className="w-24 h-24 object-contain bg-white rounded-2xl border border-[var(--color-brand-stone)] shadow-sm" />
+                {imageEditSource && (
+                  <button
+                    onClick={() => setShowImageEditor(!showImageEditor)}
+                    className="flex w-24 items-center justify-center gap-1 rounded-xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-2 py-2 text-[11px] font-bold text-[var(--color-brand-espresso)]/65 hover:bg-white"
+                  >
+                    <Crop size={13} />
+                    <span>{t('items.editImage')}</span>
+                  </button>
+                )}
+              </div>
             )}
             <div className="flex-1 space-y-2">
               <input
@@ -465,6 +517,104 @@ export const Items = () => {
               </div>
             </div>
           </div>
+
+          {showImageEditor && imageEditSource && (
+            <div className="rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)]/55 p-4">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{t('items.imageEditorTitle')}</p>
+                </div>
+                <button
+                  onClick={() => setStickerAdjustment(DEFAULT_STICKER_ADJUSTMENT)}
+                  className="inline-flex items-center gap-1 rounded-xl border border-[var(--color-brand-stone)] bg-white px-3 py-2 text-xs font-bold text-[var(--color-brand-espresso)]/65"
+                >
+                  <RotateCcw size={13} />
+                  <span>{t('items.resetImageEdit')}</span>
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-[140px_1fr]">
+                <div className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-2xl border border-[var(--color-brand-stone)] bg-white">
+                  <img
+                    src={imageEditSource}
+                    alt="Preview"
+                    className="max-h-full max-w-full object-contain"
+                    style={{
+                      transform: `translate(${stickerAdjustment.offsetX / 2}px, ${stickerAdjustment.offsetY / 2}px) scale(${stickerAdjustment.zoom})`,
+                      transformOrigin: 'center',
+                    }}
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="block">
+                    <div className="mb-1 flex items-center justify-between text-xs font-bold text-[var(--color-brand-espresso)]/55">
+                      <span>{t('items.stickerZoom')}</span>
+                      <span>{stickerAdjustment.zoom.toFixed(2)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.65"
+                      max="2"
+                      step="0.05"
+                      value={stickerAdjustment.zoom}
+                      onChange={e => updateStickerAdjustment({ zoom: Number(e.target.value) })}
+                      className="w-full accent-[var(--color-brand-espresso)]"
+                    />
+                  </label>
+                  <label className="block">
+                    <div className="mb-1 text-xs font-bold text-[var(--color-brand-espresso)]/55">{t('items.stickerHorizontal')}</div>
+                    <input
+                      type="range"
+                      min="-48"
+                      max="48"
+                      step="2"
+                      value={stickerAdjustment.offsetX}
+                      onChange={e => updateStickerAdjustment({ offsetX: Number(e.target.value) })}
+                      className="w-full accent-[var(--color-brand-espresso)]"
+                    />
+                  </label>
+                  <label className="block">
+                    <div className="mb-1 text-xs font-bold text-[var(--color-brand-espresso)]/55">{t('items.stickerVertical')}</div>
+                    <input
+                      type="range"
+                      min="-48"
+                      max="48"
+                      step="2"
+                      value={stickerAdjustment.offsetY}
+                      onChange={e => updateStickerAdjustment({ offsetY: Number(e.target.value) })}
+                      className="w-full accent-[var(--color-brand-espresso)]"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(['white', 'cream', 'transparent'] as StickerBackground[]).map(background => (
+                  <button
+                    key={background}
+                    onClick={() => updateStickerAdjustment({ background })}
+                    className={`inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-xs font-bold transition-colors ${
+                      stickerAdjustment.background === background
+                        ? 'border-[var(--color-brand-espresso)] bg-[var(--color-brand-espresso)] text-white'
+                        : 'border-[var(--color-brand-stone)] bg-white text-[var(--color-brand-espresso)]/65'
+                    }`}
+                  >
+                    {stickerAdjustment.background === background && <Check size={13} />}
+                    <span>{t(`items.stickerBackground.${background}`)}</span>
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={applyStickerEdit}
+                disabled={isEditingImage}
+                className="mt-4 w-full rounded-xl bg-[var(--color-brand-espresso)] py-3 text-sm font-bold text-white shadow-md transition-colors hover:bg-black disabled:cursor-wait disabled:opacity-60"
+              >
+                {isEditingImage ? t('items.processingImage') : t('items.applyImageEdit')}
+              </button>
+            </div>
+          )}
 
           <label className="flex items-start gap-3 rounded-2xl bg-[var(--color-brand-sand)]/70 px-3 py-3 text-left">
             <input
