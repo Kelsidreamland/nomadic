@@ -1,5 +1,10 @@
 export type StickerBackground = 'white' | 'cream' | 'transparent';
 
+export interface StickerPoint {
+  x: number;
+  y: number;
+}
+
 export interface StickerAdjustment {
   zoom: number;
   offsetX: number;
@@ -30,3 +35,23 @@ export const getStickerBackgroundColor = (background: StickerBackground) => {
   if (background === 'white') return '#FFFFFF';
   return 'transparent';
 };
+
+export const normalizeStickerCutoutPath = (points: StickerPoint[]): StickerPoint[] => {
+  return points
+    .filter(point => Number.isFinite(point.x) && Number.isFinite(point.y))
+    .map(point => ({
+      x: clamp(point.x, 0, 1),
+      y: clamp(point.y, 0, 1),
+    }));
+};
+
+export const getDefaultStickerCutoutPath = (): StickerPoint[] => [
+  { x: 0.5, y: 0.08 },
+  { x: 0.78, y: 0.16 },
+  { x: 0.92, y: 0.42 },
+  { x: 0.86, y: 0.76 },
+  { x: 0.58, y: 0.92 },
+  { x: 0.24, y: 0.86 },
+  { x: 0.08, y: 0.58 },
+  { x: 0.16, y: 0.22 },
+];

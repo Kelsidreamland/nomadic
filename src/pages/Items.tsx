@@ -2,14 +2,34 @@ import { useEffect, useState, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Item } from '../db';
 import { v4 as uuidv4 } from 'uuid';
-import { Trash2, PackageSearch, Camera, Image as ImageIcon, Edit2, X, ChevronDown, Crop, RotateCcw, Check } from 'lucide-react';
+import { Trash2, PackageSearch, Camera, Image as ImageIcon, Edit2, X, ChevronDown, Crop, RotateCcw, Scissors, Eraser } from 'lucide-react';
 import { analyzeItemWithAI } from '../services/ai';
-import { DEFAULT_STICKER_ADJUSTMENT, clampStickerAdjustment, getStickerBackgroundColor, type StickerAdjustment, type StickerBackground } from '../services/imageSticker';
+import { DEFAULT_STICKER_ADJUSTMENT, clampStickerAdjustment, getDefaultStickerCutoutPath, normalizeStickerCutoutPath, type StickerAdjustment, type StickerPoint } from '../services/imageSticker';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
 
 const defaultNewItem: Partial<Item> = {
   name: '', category: '衣物', subCategory: '上衣', season: '通用', condition: '新', isDiscardable: false, luggageId: '', notes: '', image: ''
+};
+
+const MIN_CUTOUT_POINTS = 3;
+
+const traceCutoutPath = (ctx: CanvasRenderingContext2D, points: StickerPoint[], size: number) => {
+  points.forEach((point, index) => {
+    const x = point.x * size;
+    const y = point.y * size;
+    if (index === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+  ctx.closePath();
+};
+
+const getCutoutSvgPath = (points: StickerPoint[]) => {
+  if (points.length < MIN_CUTOUT_POINTS) return '';
+  return `${points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x * 100} ${point.y * 100}`).join(' ')} Z`;
 };
 
 export const Items = () => {
@@ -26,6 +46,8 @@ export const Items = () => {
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [isEditingImage, setIsEditingImage] = useState(false);
   const [stickerAdjustment, setStickerAdjustment] = useState<StickerAdjustment>(DEFAULT_STICKER_ADJUSTMENT);
+  const [cutoutPath, setCutoutPath] = useState<StickerPoint[]>([]);
+  const [isDrawingCutout, setIsDrawingCutout] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -52,8 +74,14 @@ export const Items = () => {
     }
   };
 
-  const createStickerPreview = async (base64: string, adjustment: Partial<StickerAdjustment> = DEFAULT_STICKER_ADJUSTMENT): Promise<string> => {
+  const createStickerPreview = async (
+    base64: string,
+    adjustment: Partial<StickerAdjustment> = DEFAULT_STICKER_ADJUSTMENT,
+    cutoutPoints: StickerPoint[] = []
+  ): Promise<string> => {
     const stickerOptions = clampStickerAdjustment(adjustment);
+    const normalizedCutout = normalizeStickerCutoutPath(cutoutPoints);
+    const hasCutout = normalizedCutout.length >= MIN_CUTOUT_POINTS;
     const image = new Image();
     await new Promise<void>((resolve, reject) => {
       image.onload = () => resolve();
@@ -70,19 +98,46 @@ export const Items = () => {
     canvas.height = canvasSize;
     const ctx = canvas.getContext('2d');
     if (!ctx) return base64;
-    const backgroundColor = getStickerBackgroundColor(stickerOptions.background);
-    if (backgroundColor !== 'transparent') {
-      ctx.fillStyle = backgroundColor;
+    if (hasCutout) {
+      ctx.save();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.shadowColor = 'rgba(0,0,0,0.12)';
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 8;
+      ctx.beginPath();
+      traceCutoutPath(ctx, normalizedCutout, canvasSize);
+      ctx.fill();
+      ctx.restore();
+    }
+    const drawX = (canvas.width - imageWidth) / 2 + stickerOptions.offsetX;
+    const drawY = (canvas.height - imageHeight) / 2 + stickerOptions.offsetY;
+    if (hasCutout) {
+      ctx.save();
+      ctx.beginPath();
+      traceCutoutPath(ctx, normalizedCutout, canvasSize);
+      ctx.clip();
+      ctx.drawImage(image, drawX, drawY, imageWidth, imageHeight);
+      ctx.restore();
+
+      ctx.save();
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 18;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      traceCutoutPath(ctx, normalizedCutout, canvasSize);
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#FFFFFF';
       ctx.shadowColor = 'rgba(0,0,0,0.12)';
       ctx.shadowBlur = 12;
       ctx.beginPath();
       ctx.roundRect(6, 6, canvas.width - 12, canvas.height - 12, 32);
       ctx.fill();
       ctx.shadowColor = 'transparent';
+      ctx.drawImage(image, drawX, drawY, imageWidth, imageHeight);
     }
-    const drawX = (canvas.width - imageWidth) / 2 + stickerOptions.offsetX;
-    const drawY = (canvas.height - imageHeight) / 2 + stickerOptions.offsetY;
-    ctx.drawImage(image, drawX, drawY, imageWidth, imageHeight);
     return canvas.toDataURL('image/png');
   };
 
@@ -121,6 +176,7 @@ export const Items = () => {
         const aiImage = await createAiImagePayload(base64);
         setImageEditSource(base64);
         setStickerAdjustment(DEFAULT_STICKER_ADJUSTMENT);
+        setCutoutPath([]);
         setShowImageEditor(false);
         setEditingImage(sticker);
         setEditingItem({ ...defaultNewItem, image: sticker, luggageId: activeLuggage?.id || '' });
@@ -232,6 +288,7 @@ export const Items = () => {
     setEditingItem(null);
     setEditingImage(null);
     setImageEditSource(null);
+    setCutoutPath([]);
     setAnalysisError(null);
     setShowAdvanced(false);
     setShowImageEditor(false);
@@ -261,6 +318,7 @@ export const Items = () => {
     setEditingImage(item.image || null);
     setImageEditSource(item.image || null);
     setStickerAdjustment(DEFAULT_STICKER_ADJUSTMENT);
+    setCutoutPath([]);
     setAnalysisError(null);
     setShowAdvanced(!!(item.color || item.occasion || item.wrinkleProne || item.tempRange));
     setShowImageEditor(false);
@@ -271,6 +329,7 @@ export const Items = () => {
     setEditingItem(null);
     setEditingImage(null);
     setImageEditSource(null);
+    setCutoutPath([]);
     setAnalysisError(null);
     setShowAdvanced(false);
     setShowImageEditor(false);
@@ -280,11 +339,50 @@ export const Items = () => {
     setStickerAdjustment(prev => clampStickerAdjustment({ ...prev, ...patch }));
   };
 
+  const getCutoutPointFromEvent = (event: React.PointerEvent<HTMLDivElement>): StickerPoint => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    return {
+      x: (event.clientX - bounds.left) / bounds.width,
+      y: (event.clientY - bounds.top) / bounds.height,
+    };
+  };
+
+  const handleCutoutPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsDrawingCutout(true);
+    setCutoutPath(normalizeStickerCutoutPath([getCutoutPointFromEvent(event)]));
+  };
+
+  const handleCutoutPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDrawingCutout) return;
+    event.preventDefault();
+    const nextPoint = normalizeStickerCutoutPath([getCutoutPointFromEvent(event)])[0];
+    if (!nextPoint) return;
+    setCutoutPath(prev => {
+      const lastPoint = prev[prev.length - 1];
+      if (lastPoint && Math.hypot(nextPoint.x - lastPoint.x, nextPoint.y - lastPoint.y) < 0.01) {
+        return prev;
+      }
+      return [...prev, nextPoint];
+    });
+  };
+
+  const finishCutoutDrawing = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDrawingCutout) return;
+    event.preventDefault();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setIsDrawingCutout(false);
+    setCutoutPath(prev => normalizeStickerCutoutPath(prev));
+  };
+
   const applyStickerEdit = async () => {
     if (!imageEditSource) return;
     setIsEditingImage(true);
     try {
-      const sticker = await createStickerPreview(imageEditSource, stickerAdjustment);
+      const sticker = await createStickerPreview(imageEditSource, stickerAdjustment, cutoutPath);
       setEditingImage(sticker);
       setEditingItem(prev => ({ ...prev, image: sticker }));
       setShowImageEditor(false);
@@ -523,9 +621,13 @@ export const Items = () => {
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{t('items.imageEditorTitle')}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--color-brand-espresso)]/45">{t('items.cutoutHint')}</p>
                 </div>
                 <button
-                  onClick={() => setStickerAdjustment(DEFAULT_STICKER_ADJUSTMENT)}
+                  onClick={() => {
+                    setStickerAdjustment(DEFAULT_STICKER_ADJUSTMENT);
+                    setCutoutPath([]);
+                  }}
                   className="inline-flex items-center gap-1 rounded-xl border border-[var(--color-brand-stone)] bg-white px-3 py-2 text-xs font-bold text-[var(--color-brand-espresso)]/65"
                 >
                   <RotateCcw size={13} />
@@ -533,20 +635,64 @@ export const Items = () => {
                 </button>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-[140px_1fr]">
-                <div className="mx-auto flex h-32 w-32 items-center justify-center overflow-hidden rounded-2xl border border-[var(--color-brand-stone)] bg-white">
+              <div className="grid gap-4 md:grid-cols-[260px_1fr]">
+                <div
+                  onPointerDown={handleCutoutPointerDown}
+                  onPointerMove={handleCutoutPointerMove}
+                  onPointerUp={finishCutoutDrawing}
+                  onPointerCancel={finishCutoutDrawing}
+                  className="relative mx-auto flex aspect-square w-full max-w-[260px] touch-none select-none items-center justify-center overflow-hidden rounded-2xl border border-[var(--color-brand-stone)] bg-white shadow-inner"
+                >
                   <img
                     src={imageEditSource}
                     alt="Preview"
+                    draggable={false}
                     className="max-h-full max-w-full object-contain"
                     style={{
                       transform: `translate(${stickerAdjustment.offsetX / 2}px, ${stickerAdjustment.offsetY / 2}px) scale(${stickerAdjustment.zoom})`,
                       transformOrigin: 'center',
                     }}
                   />
+                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(45deg,rgba(61,51,45,0.04)_25%,transparent_25%,transparent_75%,rgba(61,51,45,0.04)_75%),linear-gradient(45deg,rgba(61,51,45,0.04)_25%,transparent_25%,transparent_75%,rgba(61,51,45,0.04)_75%)] bg-[length:18px_18px] bg-[position:0_0,9px_9px]" />
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
+                    {cutoutPath.length >= MIN_CUTOUT_POINTS && (
+                      <path
+                        d={getCutoutSvgPath(cutoutPath)}
+                        fill="rgba(252,251,249,0.2)"
+                        stroke="#FFFFFF"
+                        strokeWidth="3"
+                        strokeLinejoin="round"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    )}
+                    {cutoutPath.length > 0 && cutoutPath.length < MIN_CUTOUT_POINTS && (
+                      <circle cx={cutoutPath[0].x * 100} cy={cutoutPath[0].y * 100} r="2" fill="#FFFFFF" />
+                    )}
+                  </svg>
+                  <div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-[var(--color-brand-espresso)]/70 px-3 py-1 text-[11px] font-bold text-white shadow-sm">
+                    {cutoutPath.length >= MIN_CUTOUT_POINTS
+                      ? t('items.cutoutPointCount', { count: cutoutPath.length })
+                      : t('items.cutoutDrawHint')}
+                  </div>
                 </div>
 
                 <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setCutoutPath(getDefaultStickerCutoutPath())}
+                      className="inline-flex items-center justify-center gap-1 rounded-xl border border-[var(--color-brand-stone)] bg-white px-3 py-2 text-xs font-bold text-[var(--color-brand-espresso)]/70 hover:border-[var(--color-brand-terracotta)]"
+                    >
+                      <Scissors size={13} />
+                      <span>{t('items.cutoutDefault')}</span>
+                    </button>
+                    <button
+                      onClick={() => setCutoutPath([])}
+                      className="inline-flex items-center justify-center gap-1 rounded-xl border border-[var(--color-brand-stone)] bg-white px-3 py-2 text-xs font-bold text-[var(--color-brand-espresso)]/70 hover:border-[var(--color-brand-terracotta)]"
+                    >
+                      <Eraser size={13} />
+                      <span>{t('items.cutoutClear')}</span>
+                    </button>
+                  </div>
                   <label className="block">
                     <div className="mb-1 flex items-center justify-between text-xs font-bold text-[var(--color-brand-espresso)]/55">
                       <span>{t('items.stickerZoom')}</span>
@@ -587,23 +733,6 @@ export const Items = () => {
                     />
                   </label>
                 </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(['white', 'cream', 'transparent'] as StickerBackground[]).map(background => (
-                  <button
-                    key={background}
-                    onClick={() => updateStickerAdjustment({ background })}
-                    className={`inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-xs font-bold transition-colors ${
-                      stickerAdjustment.background === background
-                        ? 'border-[var(--color-brand-espresso)] bg-[var(--color-brand-espresso)] text-white'
-                        : 'border-[var(--color-brand-stone)] bg-white text-[var(--color-brand-espresso)]/65'
-                    }`}
-                  >
-                    {stickerAdjustment.background === background && <Check size={13} />}
-                    <span>{t(`items.stickerBackground.${background}`)}</span>
-                  </button>
-                ))}
               </div>
 
               <button

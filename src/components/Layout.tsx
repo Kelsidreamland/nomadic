@@ -10,6 +10,8 @@ interface LayoutProps {
   children: ReactNode;
 }
 
+const SPONSOR_URL = 'https://api.payuni.com.tw/api/uop/receive_info/2/3/NPPA226028039/mgYrU0DqoPbb6vatwL86Z';
+
 export const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const { t, i18n } = useTranslation();
@@ -58,6 +60,15 @@ export const Layout = ({ children }: LayoutProps) => {
           >
             {language === 'zh-TW' ? 'EN' : '繁中'}
           </button>
+          <a
+            href={SPONSOR_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Sponsor / VIP"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-brand-terracotta)]/20 bg-[var(--color-brand-terracotta)]/10 text-[var(--color-brand-espresso)] shadow-sm transition-all hover:bg-[var(--color-brand-terracotta)]/15 md:hidden"
+          >
+            <Coffee size={16} />
+          </a>
           <nav className="hidden md:flex space-x-8">
             {navItems.map((item) => (
               <Link
@@ -75,7 +86,7 @@ export const Layout = ({ children }: LayoutProps) => {
           </nav>
 
           <a
-            href="https://api.payuni.com.tw/api/uop/receive_info/2/3/NPPA226028039/mgYrU0DqoPbb6vatwL86Z"
+            href={SPONSOR_URL}
             target="_blank"
             rel="noreferrer"
             className="hidden md:flex items-center space-x-2 rounded-full border border-[var(--color-brand-terracotta)]/20 bg-[var(--color-brand-terracotta)]/10 px-4 py-2 text-sm font-bold text-[var(--color-brand-espresso)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--color-brand-terracotta)]/15 font-sans"
