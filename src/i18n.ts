@@ -6,7 +6,7 @@ const resources = {
     translation: {
       app: {
         dashboard: '準備出發',
-        overview: '打包清單',
+        overview: '總覽',
         luggages: '行李空間',
         items: '物品庫',
         outfits: '搭配統計',
@@ -288,7 +288,7 @@ const resources = {
         versatilityNormal: '{{count}} 搭配'
       },
       overview: {
-        title: '打包清單',
+        title: '總覽',
         subtitle: '按行李箱確認物品、重量與出發前的減量建議',
         weightVsLimit: '重量 vs 限額',
         itemsByLuggage: '行李物品',
@@ -306,7 +306,7 @@ const resources = {
     translation: {
       app: {
         dashboard: 'Next Trip',
-        overview: 'Packing List',
+        overview: 'Overview',
         luggages: 'Luggages',
         items: 'Inventory',
         outfits: 'Outfits',
@@ -588,7 +588,7 @@ const resources = {
         versatilityNormal: '{{count}} Matches'
       },
       overview: {
-        title: 'Packing List',
+        title: 'Overview',
         subtitle: 'Review packed items, luggage weight, and reduction advice by luggage.',
         weightVsLimit: 'Weight vs Limit',
         itemsByLuggage: 'Items by Luggage',
