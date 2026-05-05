@@ -212,20 +212,6 @@ export const Dashboard = () => {
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)]/45 p-4">
-            <h4 className="mb-3 text-sm font-bold text-[var(--color-brand-espresso)]/70">{t('dashboard.returnInfo')}</h4>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <input aria-label={t('dashboard.returnFlightNumber')} type="text" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnFlightNumber || ''} onChange={e => setFlightData({...flightData, returnFlightNumber: e.target.value})} placeholder={t('dashboard.returnFlightNumber')} />
-              <input aria-label={t('dashboard.returnDate')} type="date" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnDepartureDate || ''} onChange={e => setFlightData({...flightData, returnDepartureDate: e.target.value})} />
-              <input aria-label={t('dashboard.returnDepartureTime')} type="time" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnDepartureTime || ''} onChange={e => setFlightData({...flightData, returnDepartureTime: e.target.value})} />
-              <input aria-label={t('dashboard.returnArrivalTime')} type="time" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnArrivalTime || ''} onChange={e => setFlightData({...flightData, returnArrivalTime: e.target.value})} />
-              <input aria-label={t('dashboard.returnDepartureAirport')} type="text" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnDepartureAirport || ''} onChange={e => setFlightData({...flightData, returnDepartureAirport: e.target.value})} placeholder={t('dashboard.returnDepartureAirport')} />
-              <input aria-label={t('dashboard.returnArrivalAirport')} type="text" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnArrivalAirport || ''} onChange={e => setFlightData({...flightData, returnArrivalAirport: e.target.value})} placeholder={t('dashboard.returnArrivalAirport')} />
-              <input aria-label={t('dashboard.returnDepartureTerminal')} type="text" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnDepartureTerminal || ''} onChange={e => setFlightData({...flightData, returnDepartureTerminal: e.target.value})} placeholder={t('dashboard.returnDepartureTerminal')} />
-              <input aria-label={t('dashboard.returnArrivalTerminal')} type="text" className="w-full rounded-xl border border-[var(--color-brand-stone)] bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.returnArrivalTerminal || ''} onChange={e => setFlightData({...flightData, returnArrivalTerminal: e.target.value})} placeholder={t('dashboard.returnArrivalTerminal')} />
-            </div>
-          </div>
-
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.checkedAllowance')}</label>
