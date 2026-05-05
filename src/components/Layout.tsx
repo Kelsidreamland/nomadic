@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Briefcase, Shirt, Sparkles, Coffee, ClipboardList } from 'lucide-react';
+import { Briefcase, Shirt, PackageSearch, Coffee, ClipboardList } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
@@ -25,8 +25,8 @@ export const Layout = ({ children }: LayoutProps) => {
 
   const navItems = [
     { name: t('app.overview'), path: '/overview', icon: ClipboardList },
-    { name: t('app.items'), path: '/items', icon: Shirt },
-    { name: t('app.outfits'), path: '/outfits', icon: Sparkles },
+    { name: t('app.items'), path: '/items', icon: PackageSearch },
+    { name: t('app.outfits'), path: '/outfits', icon: Shirt },
     { name: t('app.luggages'), path: '/luggages', icon: Briefcase },
   ];
 

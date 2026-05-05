@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Luggage } from '../db';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Trash2, Briefcase } from 'lucide-react';
+import { Check, Edit2, Plus, Trash2, Briefcase, X } from 'lucide-react';
 import { useStore } from '../store';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { LuggageWeightChart } from '../components/LuggageWeightChart';
 import { useNavigate } from 'react-router-dom';
+import { createLuggageDraftForSeason } from '../services/luggageForm';
 
 const luggageSizePresets = [
   { label: '30"', length: 78, width: 52, height: 31 },
@@ -36,9 +37,18 @@ export const Luggages = () => {
   );
 
   const [isAdding, setIsAdding] = useState(false);
-  const [newLuggage, setNewLuggage] = useState<Partial<Luggage>>({
-    name: '', type: '托运', season: '混合', length: 0, width: 0, height: 0, weightHistory: []
-  });
+  const [newLuggage, setNewLuggage] = useState<Partial<Luggage>>(createLuggageDraftForSeason('所有'));
+  const [editingLuggageId, setEditingLuggageId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+
+  const toggleAddForm = () => {
+    if (isAdding) {
+      setIsAdding(false);
+      return;
+    }
+    setNewLuggage(createLuggageDraftForSeason(currentSeasonFilter));
+    setIsAdding(true);
+  };
 
   const handleAdd = async () => {
     if (!newLuggage.name) return;
@@ -51,7 +61,23 @@ export const Luggages = () => {
     } as Luggage);
     setActiveLuggageId(luggageId);
     setIsAdding(false);
-    setNewLuggage({ name: '', type: '托运', season: '混合', length: 0, width: 0, height: 0, weightHistory: [] });
+    setNewLuggage(createLuggageDraftForSeason(currentSeasonFilter));
+  };
+
+  const startEditingName = (luggage: Luggage) => {
+    setEditingLuggageId(luggage.id);
+    setEditingName(luggage.name);
+  };
+
+  const cancelEditingName = () => {
+    setEditingLuggageId(null);
+    setEditingName('');
+  };
+
+  const saveEditingName = async () => {
+    if (!editingLuggageId || !editingName.trim()) return;
+    await db.luggages.update(editingLuggageId, { name: editingName.trim() });
+    cancelEditingName();
   };
 
   const handleDelete = async (id: string) => {
@@ -116,7 +142,7 @@ export const Luggages = () => {
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)]">{t('luggages.title')}</h2>
         <button 
-          onClick={() => setIsAdding(!isAdding)}
+          onClick={toggleAddForm}
           className="flex items-center space-x-1 bg-[var(--color-brand-espresso)] text-white px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-[var(--color-brand-espresso)] transition-colors"
         >
           <Plus size={16} />
@@ -245,17 +271,48 @@ export const Luggages = () => {
             return (
               <div key={luggage.id} className="bg-[var(--color-brand-cream)] p-6 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex flex-col justify-between">
                 <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="font-bold text-[var(--color-brand-espresso)] text-xl mb-1">{luggage.name}</h3>
+                  <div className="min-w-0 flex-1 pr-3">
+                    {editingLuggageId === luggage.id ? (
+                      <div className="mb-2 flex items-center gap-2">
+                        <input
+                          value={editingName}
+                          onChange={e => setEditingName(e.target.value)}
+                          className="min-w-0 flex-1 rounded-xl bg-[var(--color-brand-sand)] px-3 py-2 text-lg font-bold text-[var(--color-brand-espresso)] outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
+                          autoFocus
+                        />
+                        <button
+                          onClick={saveEditingName}
+                          disabled={!editingName.trim()}
+                          aria-label={t('luggages.saveName')}
+                          className="rounded-xl bg-[var(--color-brand-espresso)] p-2 text-white disabled:opacity-30"
+                        >
+                          <Check size={16} />
+                        </button>
+                        <button
+                          onClick={cancelEditingName}
+                          aria-label={t('luggages.cancelEdit')}
+                          className="rounded-xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] p-2 text-[var(--color-brand-espresso)]/55"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <h3 className="mb-1 truncate font-bold text-[var(--color-brand-espresso)] text-xl">{luggage.name}</h3>
+                    )}
                     <div className="flex space-x-2 mb-2">
                       <span className="text-xs px-2 py-1 rounded-full bg-[var(--color-brand-terracotta)]/10 text-[var(--color-brand-terracotta)] font-bold">{getLuggageTypeLabel(luggage.type)}</span>
                       <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-[var(--color-brand-espresso)]/80 font-bold">{getLuggageSeasonLabel(luggage.season)}</span>
                     </div>
                     <p className="text-xs text-[var(--color-brand-espresso)]/40 font-medium">{t('luggages.size')}: {luggage.length} × {luggage.width} × {luggage.height} cm</p>
                   </div>
-                  <button onClick={() => handleDelete(luggage.id)} className="p-2 text-[var(--color-brand-espresso)]/30 hover:text-red-500 transition-colors">
-                    <Trash2 size={18} />
-                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button onClick={() => startEditingName(luggage)} aria-label={t('luggages.editName')} className="p-2 text-[var(--color-brand-espresso)]/30 hover:text-[var(--color-brand-espresso)] transition-colors">
+                      <Edit2 size={18} />
+                    </button>
+                    <button onClick={() => handleDelete(luggage.id)} className="p-2 text-[var(--color-brand-espresso)]/30 hover:text-red-500 transition-colors">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="space-y-4 border-t border-gray-50 pt-4">

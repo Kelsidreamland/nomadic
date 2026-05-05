@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Item, Luggage } from '../db';
-import { buildPackingChecklistSummary } from './packingChecklist';
+import { buildPackingChecklistSummary, getPackingChecklistProgress, togglePackedItemId } from './packingChecklist';
 
 const makeLuggage = (id: string, name: string): Luggage => ({
   id,
@@ -37,5 +37,24 @@ describe('buildPackingChecklistSummary', () => {
     expect(summary.unassignedItems).toBe(1);
     expect(summary.luggagesWithItems).toBe(1);
     expect(summary.expandableLuggageIds).toEqual(['checked']);
+  });
+});
+
+describe('togglePackedItemId', () => {
+  it('adds missing item ids and removes existing ones without duplicates', () => {
+    expect(togglePackedItemId(['shirt'], 'pants')).toEqual(['shirt', 'pants']);
+    expect(togglePackedItemId(['shirt', 'pants'], 'shirt')).toEqual(['pants']);
+    expect(togglePackedItemId(['shirt', 'shirt'], 'shirt')).toEqual([]);
+  });
+});
+
+describe('getPackingChecklistProgress', () => {
+  it('counts checked assigned items only', () => {
+    const result = getPackingChecklistProgress(
+      [makeItem('shirt', 'checked'), makeItem('pants', 'checked'), makeItem('adapter', '')],
+      ['shirt', 'adapter'],
+    );
+
+    expect(result).toEqual({ checkedItems: 1, totalCheckableItems: 2 });
   });
 });

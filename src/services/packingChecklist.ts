@@ -36,3 +36,26 @@ export const buildPackingChecklistSummary = (
       .map(luggage => luggage.id),
   };
 };
+
+export const togglePackedItemId = (packedItemIds: string[], itemId: string) => {
+  const packedSet = new Set(packedItemIds);
+  if (packedSet.has(itemId)) {
+    packedSet.delete(itemId);
+  } else {
+    packedSet.add(itemId);
+  }
+  return Array.from(packedSet);
+};
+
+export const getPackingChecklistProgress = (
+  items: Pick<Item, 'id' | 'luggageId'>[],
+  packedItemIds: string[],
+) => {
+  const checkableItemIds = new Set(items.filter(item => item.luggageId).map(item => item.id));
+  const packedSet = new Set(packedItemIds);
+
+  return {
+    checkedItems: Array.from(checkableItemIds).filter(itemId => packedSet.has(itemId)).length,
+    totalCheckableItems: checkableItemIds.size,
+  };
+};

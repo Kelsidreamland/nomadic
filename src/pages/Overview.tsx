@@ -3,11 +3,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { generateSmartInsights } from '../services/ai';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Bot, Plane, ChevronDown, ChevronRight, Scale, Sparkles, AlertTriangle, CheckCircle2, X, Clock, MapPin, Plus } from 'lucide-react';
+import { Bot, Plane, ChevronDown, ChevronRight, Scale, Shirt, AlertTriangle, CheckCircle2, X, Clock, MapPin, Plus, Check, ClipboardList } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
-import { buildPackingChecklistSummary } from '../services/packingChecklist';
+import { buildPackingChecklistSummary, getPackingChecklistProgress, togglePackedItemId } from '../services/packingChecklist';
 
 const joinParts = (...parts: Array<string | undefined | null>) => parts.filter(Boolean).join(' · ');
 
@@ -26,6 +26,20 @@ type SmartInsights = {
     luggage_analysis?: string;
     remove_suggestions?: Array<{ item_id: string; reason: string }>;
   };
+};
+
+const PACKING_CHECKLIST_KEY = 'nomadic_packing_checklist_checked_item_ids';
+
+const loadPackedItemIds = () => {
+  if (typeof window === 'undefined') return [];
+  const raw = window.localStorage.getItem(PACKING_CHECKLIST_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : [];
+  } catch {
+    return [];
+  }
 };
 
 const WeightBar = ({ current, limit, label }: { current: number; limit: number; label: string }) => {
@@ -79,12 +93,18 @@ export const Overview = () => {
   const [weightInputs, setWeightInputs] = useState<{ [key: string]: number }>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [insights, setInsights] = useState<SmartInsights | null>(null);
+  const [packedItemIds, setPackedItemIds] = useState<string[]>(loadPackedItemIds);
+  const packingProgress = getPackingChecklistProgress(items, packedItemIds);
 
   useEffect(() => {
     if (!isPackingMode || didAutoExpandPacking.current || packingSummary.totalItems === 0) return;
     setExpandedLuggage(new Set(packingSummary.expandableLuggageIds));
     didAutoExpandPacking.current = true;
   }, [expandableLuggageKey, isPackingMode, packingSummary.expandableLuggageIds, packingSummary.totalItems]);
+
+  useEffect(() => {
+    window.localStorage.setItem(PACKING_CHECKLIST_KEY, JSON.stringify(packedItemIds));
+  }, [packedItemIds]);
 
   const getLatestWeight = (luggageId: string) => {
     const l = luggages.find(lg => lg.id === luggageId);
@@ -113,6 +133,15 @@ export const Overview = () => {
   const openItemsForLuggage = (luggageId: string) => {
     setActiveLuggageId(luggageId);
     navigate('/items');
+  };
+
+  const startPackingChecklist = () => {
+    setExpandedLuggage(new Set(packingSummary.expandableLuggageIds));
+    navigate('/overview?packing=1');
+  };
+
+  const togglePackedItem = (itemId: string) => {
+    setPackedItemIds(prev => togglePackedItemId(prev, itemId));
   };
 
   const handleRecordWeight = async (luggageId: string) => {
@@ -249,29 +278,6 @@ export const Overview = () => {
         </div>
       )}
 
-      {isPackingMode && (
-        <div className="rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{t('overview.packingGeneratedTitle')}</p>
-              <p className="mt-1 text-xs leading-relaxed text-[var(--color-brand-espresso)]/50">
-                {t('overview.packingGeneratedDesc', {
-                  itemCount: packingSummary.totalItems,
-                  luggageCount: packingSummary.luggagesWithItems,
-                  unassignedCount: packingSummary.unassignedItems,
-                })}
-              </p>
-            </div>
-            <Link
-              to="/items"
-              className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-4 py-3 text-sm font-bold text-[var(--color-brand-espresso)]/65 hover:bg-white"
-            >
-              {t('overview.backToItems')}
-            </Link>
-          </div>
-        </div>
-      )}
-
       <div className="space-y-4">
         <h3 className="text-sm font-bold text-[var(--color-brand-espresso)]/60">{t('overview.itemsByLuggage')}</h3>
 
@@ -327,10 +333,25 @@ export const Overview = () => {
                             ) : (
                               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-[10px] text-[var(--color-brand-espresso)]/30">{getCategoryLabel(item.category)[0]}</div>
                             )}
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <p className="truncate text-xs font-bold text-[var(--color-brand-espresso)]">{item.name}</p>
                               <p className="text-[10px] text-[var(--color-brand-espresso)]/40">{getCategoryLabel(item.category)}</p>
                             </div>
+                            {isPackingMode && (
+                              <button
+                                type="button"
+                                onClick={() => togglePackedItem(item.id)}
+                                aria-label={t('overview.markPacked', { name: item.name })}
+                                className={clsx(
+                                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-colors',
+                                  packedItemIds.includes(item.id)
+                                    ? 'border-[var(--color-brand-olive)] bg-[var(--color-brand-olive)] text-white'
+                                    : 'border-[var(--color-brand-espresso)]/20 bg-white text-transparent hover:border-[var(--color-brand-olive)] hover:text-[var(--color-brand-olive)]/50'
+                                )}
+                              >
+                                <Check size={15} strokeWidth={3} />
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -395,7 +416,7 @@ export const Overview = () => {
           to="/outfits"
           className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[var(--color-brand-stone)] py-3 text-sm font-bold text-[var(--color-brand-espresso)]/60 transition-colors hover:border-[var(--color-brand-terracotta)] hover:text-[var(--color-brand-terracotta)]"
         >
-          <Sparkles size={16} />
+          <Shirt size={16} />
           <span>{t('overview.viewOutfits')}</span>
         </Link>
       </div>
@@ -441,6 +462,25 @@ export const Overview = () => {
           )}
         </div>
       )}
+
+      <div className="flex justify-center pt-2">
+        {isPackingMode ? (
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] px-4 py-2 text-xs font-bold text-[var(--color-brand-espresso)]/55 shadow-sm">
+            <ClipboardList size={14} />
+            <span>{t('overview.packingProgress', { checked: packingProgress.checkedItems, total: packingProgress.totalCheckableItems })}</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={startPackingChecklist}
+            disabled={packingProgress.totalCheckableItems === 0}
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] px-4 py-2 text-xs font-bold text-[var(--color-brand-espresso)]/55 shadow-sm transition-colors hover:bg-white disabled:opacity-35"
+          >
+            <ClipboardList size={14} />
+            <span>{t('overview.generatePackingChecklist')}</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 };

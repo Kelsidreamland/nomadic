@@ -2,12 +2,10 @@ import { useEffect, useState, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Item } from '../db';
 import { v4 as uuidv4 } from 'uuid';
-import { Trash2, PackageSearch, Camera, Image as ImageIcon, Edit2, X, ChevronDown, Crop, RotateCcw, Check, ClipboardList } from 'lucide-react';
+import { Trash2, PackageSearch, Camera, Image as ImageIcon, Edit2, X, ChevronDown, Crop, RotateCcw, Check } from 'lucide-react';
 import { analyzeItemWithAI } from '../services/ai';
 import { DEFAULT_STICKER_ADJUSTMENT, clampStickerAdjustment, getStickerBackgroundColor, type StickerAdjustment, type StickerBackground } from '../services/imageSticker';
-import { buildPackingChecklistSummary } from '../services/packingChecklist';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { useStore } from '../store';
 
 const defaultNewItem: Partial<Item> = {
@@ -37,7 +35,6 @@ export const Items = () => {
   const expiringCutoff = now + 30 * 24 * 60 * 60 * 1000;
   const activeLuggage = luggages.find((luggage) => luggage.id === activeLuggageId) || null;
   const visibleItems = activeLuggage ? items.filter((item) => item.luggageId === activeLuggage.id) : items;
-  const packingSummary = buildPackingChecklistSummary(luggages, items);
 
   useEffect(() => {
     if (activeLuggageId && luggages.length > 0 && !activeLuggage) {
@@ -424,43 +421,6 @@ export const Items = () => {
           >
             {t('items.add')}
           </button>
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)]/70 p-4 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-brand-sand)]">
-              <ClipboardList size={18} className="text-[var(--color-brand-espresso)]/45" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{t('items.packingModeTitle')}</p>
-              <p className="mt-1 text-xs leading-relaxed text-[var(--color-brand-espresso)]/45">
-                {t('items.packingModeSummary', {
-                  itemCount: packingSummary.totalItems,
-                  luggageCount: packingSummary.luggagesWithItems,
-                  unassignedCount: packingSummary.unassignedItems,
-                })}
-              </p>
-            </div>
-          </div>
-          {packingSummary.totalItems > 0 ? (
-            <Link
-              to="/overview?packing=1"
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-4 py-3 text-sm font-bold text-[var(--color-brand-espresso)]/70 transition-colors hover:bg-white"
-            >
-              <ClipboardList size={16} />
-              <span>{t('items.generatePackingChecklist')}</span>
-            </Link>
-          ) : (
-            <button
-              disabled
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-4 py-3 text-sm font-bold text-[var(--color-brand-espresso)]/30"
-            >
-              <ClipboardList size={16} />
-              <span>{t('items.generatePackingChecklist')}</span>
-            </button>
-          )}
         </div>
       </div>
 
