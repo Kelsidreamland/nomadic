@@ -39,3 +39,5 @@
 - Playwright local smoke on `/`: Dashboard showed the quiet `旅居足跡` entry and did not treat the saved historical flight as upcoming.
 - Playwright local smoke on `/overview`: historical flight did not appear as upcoming; quiet `旅居足跡` entry rendered.
 - Playwright mobile smoke at `390x844` on `/memory`: bottom navigation remained four items.
+- Production `https://nomadic-rust.vercel.app/version.json?ts=202605060046`: returned `a745cc1`.
+- Production Playwright smoke on `https://nomadic-rust.vercel.app/memory?ts=202605060046`: `/memory` rendered with header version `va745cc1`.
