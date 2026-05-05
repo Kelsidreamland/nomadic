@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Flight } from '../db';
 import { getGeoIpLocation } from '../services/google';
+import { analyzeTicketWithAI } from '../services/ai';
 import { Plane, Plus, Save, X, FileText, Upload, Clock, MapPin, ClipboardList } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +44,34 @@ const formatRoute = (departure?: string, departureTerminal?: string, arrival?: s
   return from || to;
 };
 
+const readFileAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result || ''));
+  reader.onerror = () => reject(new Error('File read failed'));
+  reader.readAsDataURL(file);
+});
+
+const getSupportedUploadMimeType = (file: File) => {
+  const fileType = file.type.toLowerCase();
+  if (fileType === 'application/pdf' || fileType.startsWith('image/')) return fileType;
+
+  const fileName = file.name.toLowerCase();
+  if (fileName.endsWith('.pdf')) return 'application/pdf';
+  if (fileName.endsWith('.png')) return 'image/png';
+  if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) return 'image/jpeg';
+  if (fileName.endsWith('.webp')) return 'image/webp';
+  if (fileName.endsWith('.heic')) return 'image/heic';
+  if (fileName.endsWith('.heif')) return 'image/heif';
+  return '';
+};
+
+const normalizeFlightData = (data: Partial<Flight>): Partial<Flight> => ({
+  ...data,
+  checkedAllowance: Number(data.checkedAllowance ?? 20),
+  carryOnAllowance: Number(data.carryOnAllowance ?? 7),
+  personalAllowance: Number(data.personalAllowance ?? 0),
+});
+
 export const Dashboard = () => {
   const { t } = useTranslation();
   const luggages = useLiveQuery(() => db.luggages.toArray()) || [];
@@ -57,6 +86,9 @@ export const Dashboard = () => {
 
   const [showFlightForm, setShowFlightForm] = useState(false);
   const [flightData, setFlightData] = useState<Partial<Flight>>(defaultFlightData);
+  const [isParsingItinerary, setIsParsingItinerary] = useState(false);
+  const [itineraryMessage, setItineraryMessage] = useState<string | null>(null);
+  const [itineraryError, setItineraryError] = useState<string | null>(null);
 
   const upcomingFlight = [...flights].sort((a, b) => new Date(a.departureDate).getTime() - new Date(b.departureDate).getTime())[0];
 
@@ -71,22 +103,56 @@ export const Dashboard = () => {
   const handleSaveFlight = async () => {
     if (!flightData.destination || !flightData.departureDate) return;
     if (upcomingFlight) {
-      await db.flights.update(upcomingFlight.id, flightData);
+      await db.flights.update(upcomingFlight.id, normalizeFlightData(flightData));
     } else {
       await db.flights.add({
         ...defaultFlightData(),
-        ...flightData,
+        ...normalizeFlightData(flightData),
         id: crypto.randomUUID()
       } as Flight);
     }
     setShowFlightForm(false);
   };
 
-  const handleItineraryFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleItineraryFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    alert(t('dashboard.uploadComingSoon', { fileName: file.name }));
+    const mimeType = getSupportedUploadMimeType(file);
+    if (!mimeType) {
+      setItineraryError(t('dashboard.uploadUnsupported'));
+      setItineraryMessage(null);
+      return;
+    }
+    setIsParsingItinerary(true);
+    setItineraryError(null);
+    setItineraryMessage(t('dashboard.uploadParsing', { fileName: file.name }));
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const parsed = normalizeFlightData(await analyzeTicketWithAI(dataUrl, mimeType));
+      if (!parsed.destination || !parsed.departureDate) {
+        throw new Error(t('dashboard.uploadParseMissing'));
+      }
+      const nextFlight = {
+        ...defaultFlightData(),
+        ...parsed,
+        id: upcomingFlight?.id || crypto.randomUUID(),
+      } as Flight;
+      if (upcomingFlight) {
+        await db.flights.update(upcomingFlight.id, nextFlight);
+      } else {
+        await db.flights.add(nextFlight);
+      }
+      setFlightData(nextFlight);
+      setShowFlightForm(false);
+      setItineraryMessage(t('dashboard.uploadParsed', { fileName: file.name }));
+    } catch (error) {
+      console.error('Ticket parsing failed', error);
+      setItineraryError(error instanceof Error ? error.message : t('dashboard.uploadParseFailed'));
+      setItineraryMessage(null);
+    } finally {
+      setIsParsingItinerary(false);
+    }
   };
 
   const checkedWeight = luggages.filter(l => l.type === '托运').reduce((sum, l) => {
@@ -307,10 +373,15 @@ export const Dashboard = () => {
             </button>
             <label className="flex cursor-pointer items-center justify-center space-x-2 rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-4 py-4 text-sm font-bold text-[var(--color-brand-espresso)]/80 shadow-sm transition-all hover:bg-white">
               <Upload size={16} />
-              <span>{t('dashboard.uploadPdfImage')}</span>
-              <input type="file" accept=".pdf,image/*" onChange={handleItineraryFileUpload} className="hidden" />
+              <span>{isParsingItinerary ? t('dashboard.uploadParsingShort') : t('dashboard.uploadPdfImage')}</span>
+              <input type="file" accept=".pdf,application/pdf,image/*" onChange={handleItineraryFileUpload} disabled={isParsingItinerary} className="hidden" />
             </label>
           </div>
+          {(itineraryMessage || itineraryError) && (
+            <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm font-medium ${itineraryError ? 'border-[var(--color-brand-terracotta)]/25 bg-[var(--color-brand-terracotta)]/10 text-[var(--color-brand-espresso)]' : 'border-[var(--color-brand-olive)]/20 bg-[var(--color-brand-olive)]/10 text-[var(--color-brand-espresso)]/75'}`}>
+              {itineraryError || itineraryMessage}
+            </div>
+          )}
         </div>
       )}
 

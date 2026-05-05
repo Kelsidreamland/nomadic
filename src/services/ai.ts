@@ -106,6 +106,26 @@ const normalizeItemAnalysis = (value: any) => {
   };
 };
 
+const parseWeightKg = (value: unknown, fallback: number) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  if (typeof value === 'string') {
+    const match = value.match(/\d+(?:\.\d+)?/);
+    return match ? Number(match[0]) : fallback;
+  }
+
+  return fallback;
+};
+
+const normalizeFlightAnalysis = (value: any) => ({
+  ...value,
+  checkedAllowance: parseWeightKg(value?.checkedAllowance, 20),
+  carryOnAllowance: parseWeightKg(value?.carryOnAllowance, 7),
+  personalAllowance: parseWeightKg(value?.personalAllowance, 0),
+});
+
 export const generateSmartInsights = async (contextData: any) => {
   // Always use the backend agent pipeline for this specific feature in production
   if (import.meta.env.PROD) {
@@ -242,14 +262,15 @@ export const generateSmartInsights = async (contextData: any) => {
   }
 };
 
-export const analyzeTicketWithAI = async (base64Image: string) => {
+export const analyzeTicketWithAI = async (base64File: string, mimeTypeOverride?: string) => {
   const genAI = await getGeminiClient();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   const airlinesContext = AIRLINE_RULES.map(r => `- ${r.name}: 預設託運 ${r.defaultCheckedAllowance}kg, 手提 ${r.defaultCarryOnAllowance}kg`).join('\n');
 
-  const prompt = `作為一個智能航班助手，請解析使用者提供的電子機票或行程單截圖。
-請比對截圖中的行李額度和以下我們原生資料庫的各航司基礎行李規範：
+  const prompt = `作為一個智能航班助手，請解析使用者提供的電子機票、行程單 PDF 或截圖。
+請找出最接近未來的一趟去程；如果同一份檔案裡有回程，也請一併填入回程欄位。若檔案只有單程，回程欄位請留空。
+請比對檔案中的行李額度和以下我們原生資料庫的各航司基礎行李規範：
 ${airlinesContext}
 
 提取以下資訊，並嚴格返回JSON格式：
@@ -279,8 +300,9 @@ ${airlinesContext}
 只返回純JSON字串，不要任何Markdown格式。`;
 
   try {
-    const base64Data = base64Image.split(',')[1] || base64Image;
-    const mimeType = base64Image.includes('png') ? 'image/png' : 'image/jpeg';
+    const base64Data = base64File.split(',')[1] || base64File;
+    const mimeMatch = base64File.match(/^data:([^;]+);base64,/);
+    const mimeType = mimeTypeOverride || mimeMatch?.[1] || (base64File.includes('png') ? 'image/png' : 'image/jpeg');
     
     const imageParts = [
       {
@@ -293,10 +315,10 @@ ${airlinesContext}
 
     const result = await model.generateContent([prompt, ...imageParts]);
     const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(text);
+    return normalizeFlightAnalysis(JSON.parse(text));
   } catch (error) {
     console.error('AI Analysis failed:', error);
-    throw new Error('航班截圖解析失敗');
+    throw new Error('航班檔案解析失敗');
   }
 };
 
@@ -350,7 +372,7 @@ ${airlinesContext}
       return { noFlight: true, reason: parsed.reason || '找不到航班資訊' };
     }
 
-    return parsed;
+    return normalizeFlightAnalysis(parsed);
   } catch (error) {
     console.error('AI Text Analysis failed:', error);
     const err = error as any;

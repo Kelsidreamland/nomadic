@@ -131,7 +131,8 @@ export default async function handler(req, res) {
     // 處理單次圖片解析 (機票 / 物品圖片)
     if (imageBase64) {
       const base64Data = imageBase64.split(',')[1] || imageBase64;
-      const mimeType = imageBase64.includes('png') ? 'image/png' : 'image/jpeg';
+      const mimeMatch = imageBase64.match(/^data:([^;]+);base64,/);
+      const mimeType = mimeMatch?.[1] || (imageBase64.includes('png') ? 'image/png' : 'image/jpeg');
       
       const imageParts = [
         {

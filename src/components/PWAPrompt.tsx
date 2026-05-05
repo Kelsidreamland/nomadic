@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { Download, X } from 'lucide-react';
+import { Download, RefreshCw, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 type BeforeInstallPromptEvent = Event & {
@@ -16,10 +16,14 @@ const shouldShowIosInstallHint = () => {
   return isIosDevice && !isStandalone;
 };
 
+const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+
 export function PWAPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [showIosHint, setShowIosHint] = useState(shouldShowIosInstallHint);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const { t } = useTranslation();
 
   const {
@@ -27,7 +31,11 @@ export function PWAPrompt() {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegistered(r: ServiceWorkerRegistration | undefined) {
+    onRegisteredSW(_swScriptUrl: string, r: ServiceWorkerRegistration | undefined) {
+      swRegistrationRef.current = r ?? null;
+      r?.update().catch(error => {
+        console.log('SW update check failed', error);
+      });
       console.log('SW Registered: ', r);
     },
     onRegisterError(error: Error) {
@@ -50,6 +58,26 @@ export function PWAPrompt() {
     };
   }, []);
 
+  useEffect(() => {
+    const checkForUpdate = () => {
+      if (document.visibilityState === 'visible') {
+        swRegistrationRef.current?.update().catch(error => {
+          console.log('SW update check failed', error);
+        });
+      }
+    };
+
+    window.addEventListener('focus', checkForUpdate);
+    document.addEventListener('visibilitychange', checkForUpdate);
+    const intervalId = window.setInterval(checkForUpdate, UPDATE_CHECK_INTERVAL_MS);
+
+    return () => {
+      window.removeEventListener('focus', checkForUpdate);
+      document.removeEventListener('visibilitychange', checkForUpdate);
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
     
@@ -63,6 +91,19 @@ export function PWAPrompt() {
     // We've used the prompt, and can't use it again, throw it away
     setDeferredPrompt(null);
     setShowPrompt(false);
+  };
+
+  const handleUpdateClick = async () => {
+    setIsUpdating(true);
+    try {
+      await updateServiceWorker(true);
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 1200);
+    } catch (error) {
+      console.log('SW update failed', error);
+      setIsUpdating(false);
+    }
   };
 
   const close = () => {
@@ -97,10 +138,12 @@ export function PWAPrompt() {
           <div className="flex space-x-2">
             {needRefresh ? (
               <button 
-                onClick={() => updateServiceWorker(true)}
-                className="bg-[var(--color-brand-espresso)] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-[var(--color-brand-espresso)] transition-colors"
+                onClick={handleUpdateClick}
+                disabled={isUpdating}
+                className="flex items-center space-x-1 rounded-xl bg-[var(--color-brand-espresso)] px-4 py-2 text-sm font-bold text-white shadow-md transition-colors hover:bg-black disabled:cursor-wait disabled:opacity-70"
               >
-                {t('pwa.btnUpdate')}
+                <RefreshCw size={16} className={isUpdating ? 'animate-spin' : ''} />
+                <span>{isUpdating ? t('pwa.btnUpdating') : t('pwa.btnUpdate')}</span>
               </button>
             ) : showPrompt ? (
               <button 
