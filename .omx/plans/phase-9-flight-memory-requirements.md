@@ -22,10 +22,11 @@ The first version serves private personal joy: "this is the visual record of my 
 In scope:
 
 - Historical flight route map for personal memory.
-- Past flight data import from simple formats first.
+- Past flight data entry through a simple manual form first.
 - Manual correction of imported flights when data is incomplete.
 - Flight summary stats only if they support memory: routes, countries/cities, years, distance, most visited places.
 - Quiet archive-style timeline or list so the map is not the only way to inspect data.
+- Quiet entry from Dashboard or Overview in the first version; do not add a bottom navigation item until the feature proves frequent use.
 
 Out of scope:
 
@@ -37,12 +38,11 @@ Out of scope:
 - Competing with dedicated flight apps.
 - Monetization-driven gating in the first version.
 - Share poster / passport export in the first implementation slice.
+- CSV import in the first implementation slice.
+- AI batch import from old tickets in the first implementation slice.
 
 ## Open Decisions
 
-- Whether this feature is a top-level section, a dashboard subview, or a hidden memory/export tool.
-- Whether this feature should be a top-level "足跡 / Memory" section or live under the existing flight/dashboard area.
-- Whether import should support CSV first, manual entry first, or existing PDF/screenshot parsing first.
 - Which map library should be used without making the app heavy.
 
 ## Acceptance Criteria For Planning
@@ -52,3 +52,5 @@ Out of scope:
 - The feature must reuse existing flight data where possible.
 - The feature must have explicit non-goals before implementation starts.
 - The first implementation must still be useful even if poster sharing and monetization are not present.
+- The first implementation must not add a fifth bottom navigation item.
+- The first data entry path is manual past-flight entry. CSV and AI ticket import stay as later extensions.
