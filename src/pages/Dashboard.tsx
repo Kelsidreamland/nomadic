@@ -8,6 +8,7 @@ import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Onboarding } from '../components/Onboarding';
+import { getUpcomingFlight } from '../services/flightMemory';
 
 const defaultFlightData = (): Partial<Flight> => ({
   airline: '',
@@ -90,7 +91,7 @@ export const Dashboard = () => {
   const [itineraryMessage, setItineraryMessage] = useState<string | null>(null);
   const [itineraryError, setItineraryError] = useState<string | null>(null);
 
-  const upcomingFlight = [...flights].sort((a, b) => new Date(a.departureDate).getTime() - new Date(b.departureDate).getTime())[0];
+  const upcomingFlight = getUpcomingFlight(flights, now);
 
   const handleManualAdd = () => {
     setFlightData(upcomingFlight ? { ...defaultFlightData(), ...upcomingFlight } : defaultFlightData());
@@ -224,6 +225,13 @@ export const Dashboard = () => {
           <h2 className="text-3xl font-serif font-bold text-[var(--color-brand-espresso)]">{t('app.dashboard')}</h2>
           <p className="mt-1 text-sm font-medium text-[var(--color-brand-espresso)]/60">{t('dashboard.greeting')} {location}</p>
         </div>
+        <Link
+          to="/memory"
+          className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] px-4 py-2 text-xs font-bold text-[var(--color-brand-espresso)]/60 shadow-sm transition-colors hover:bg-white hover:text-[var(--color-brand-espresso)]"
+        >
+          <Plane size={14} />
+          <span>{t('flightMemory.entry')}</span>
+        </Link>
       </div>
 
       {showFlightForm && (

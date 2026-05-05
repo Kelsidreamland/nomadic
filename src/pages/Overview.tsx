@@ -8,6 +8,7 @@ import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
 import { buildPackingChecklistSummary, getPackingChecklistProgress, togglePackedItemId } from '../services/packingChecklist';
+import { getUpcomingFlight } from '../services/flightMemory';
 
 const joinParts = (...parts: Array<string | undefined | null>) => parts.filter(Boolean).join(' · ');
 
@@ -83,8 +84,8 @@ export const Overview = () => {
   const packingSummary = buildPackingChecklistSummary(luggages, items);
   const expandableLuggageKey = packingSummary.expandableLuggageIds.join('|');
 
-  const upcomingFlight = [...flights].sort((a, b) => new Date(a.departureDate).getTime() - new Date(b.departureDate).getTime())[0];
   const [now] = useState(() => Date.now());
+  const upcomingFlight = getUpcomingFlight(flights, now);
   const daysToFlight = upcomingFlight
     ? Math.ceil((new Date(upcomingFlight.departureDate).getTime() - now) / (1000 * 60 * 60 * 24))
     : null;
@@ -480,6 +481,16 @@ export const Overview = () => {
             <span>{t('overview.generatePackingChecklist')}</span>
           </button>
         )}
+      </div>
+
+      <div className="flex justify-center">
+        <Link
+          to="/memory"
+          className="inline-flex items-center gap-2 text-xs font-bold text-[var(--color-brand-espresso)]/45 transition-colors hover:text-[var(--color-brand-terracotta)]"
+        >
+          <Plane size={14} />
+          <span>{t('flightMemory.entry')}</span>
+        </Link>
       </div>
     </div>
   );
