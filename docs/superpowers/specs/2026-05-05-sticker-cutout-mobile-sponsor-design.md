@@ -2,7 +2,7 @@
 
 ## Goal
 
-Replace the low-impact sticker background picker with a local manual cutout workflow, and keep the Sponsor / VIP call to action visible on mobile without adding noise to the bottom navigation.
+Replace the low-impact sticker background picker with a local manual cutout workflow, and keep the Sponsor call to action visible on mobile without adding noise to the bottom navigation.
 
 ## Image Editing
 
@@ -12,7 +12,7 @@ If the user does not draw a shape, the editor keeps the existing fast sticker ge
 
 ## Mobile Sponsor CTA
 
-Desktop keeps the existing text CTA in the top navigation. Mobile gets a small icon-only Sponsor / VIP button in the header, next to language and version controls. The bottom navigation remains limited to core app sections.
+Desktop keeps the existing text CTA in the top navigation. Mobile gets a small icon-only Sponsor button in the header, next to language and version controls. The bottom navigation remains limited to core app sections.
 
 ## Verification
 

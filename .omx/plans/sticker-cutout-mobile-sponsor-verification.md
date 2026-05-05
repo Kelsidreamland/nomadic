@@ -5,7 +5,7 @@ Date: 2026-05-05
 ## Scope
 
 - Replace sticker background controls with local manual cutout editing.
-- Add mobile Sponsor / VIP header CTA while keeping desktop CTA unchanged.
+- Add mobile Sponsor header CTA while keeping desktop CTA unchanged.
 
 ## Verification
 
@@ -20,7 +20,7 @@ Date: 2026-05-05
 - `npm run build`
   - Passed with existing large chunk warning.
 - Playwright local preview smoke at `http://127.0.0.1:4175/items`
-  - Mobile width 390px: one visible Sponsor / VIP header link.
+  - Mobile width 390px: one visible Sponsor header link.
   - Image upload fallback opened the item confirmation card.
   - New image editor rendered title, cutout hint, default cutout, clear cutout, and apply sticker controls.
   - Default cutout plus apply closed the editor and produced a PNG preview.

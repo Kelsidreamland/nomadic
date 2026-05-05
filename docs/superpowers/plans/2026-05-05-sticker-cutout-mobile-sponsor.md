@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add local manual sticker cutout editing and restore mobile visibility for the Sponsor / VIP CTA.
+**Goal:** Add local manual sticker cutout editing and restore mobile visibility for the Sponsor CTA.
 
 **Architecture:** Keep image math in `src/services/imageSticker.ts` so it is testable. Keep pointer drawing state inside `src/pages/Items.tsx` because it is transient UI state. Add the mobile CTA directly in `src/components/Layout.tsx` beside the existing header controls.
 
@@ -38,7 +38,7 @@
 - Modify: `src/components/Layout.tsx`
 - Create: `src/components/Layout.test.tsx`
 
-- [x] Add a failing jsdom test that expects desktop and mobile Sponsor / VIP entry points.
+- [x] Add a failing jsdom test that expects desktop and mobile Sponsor entry points.
 - [x] Add the mobile icon-only CTA to the header.
 - [x] Run `./node_modules/.bin/vitest run src/components/Layout.test.tsx`.
 

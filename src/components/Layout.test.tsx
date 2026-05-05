@@ -18,7 +18,7 @@ vi.mock('react-i18next', () => ({
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 describe('Layout sponsor entry points', () => {
-  it('keeps Sponsor / VIP available on desktop and mobile headers', () => {
+  it('keeps Sponsor available on desktop and mobile headers', () => {
     const container = document.createElement('div');
     const root = createRoot(container);
 
@@ -33,7 +33,7 @@ describe('Layout sponsor entry points', () => {
     });
 
     const sponsorLinks = Array.from(container.querySelectorAll<HTMLAnchorElement>('a'))
-      .filter(link => link.textContent?.includes('Sponsor / VIP') || link.getAttribute('aria-label') === 'Sponsor / VIP');
+      .filter(link => link.textContent?.trim() === 'Sponsor' || link.getAttribute('aria-label') === 'Sponsor');
 
     expect(sponsorLinks).toHaveLength(2);
     expect(sponsorLinks.every(link => link.getAttribute('href') === SPONSOR_URL)).toBe(true);

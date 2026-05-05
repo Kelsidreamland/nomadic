@@ -64,7 +64,7 @@ export const Layout = ({ children }: LayoutProps) => {
             href={SPONSOR_URL}
             target="_blank"
             rel="noreferrer"
-            aria-label="Sponsor / VIP"
+            aria-label="Sponsor"
             className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-brand-terracotta)]/20 bg-[var(--color-brand-terracotta)]/10 text-[var(--color-brand-espresso)] shadow-sm transition-all hover:bg-[var(--color-brand-terracotta)]/15 md:hidden"
           >
             <Coffee size={16} />
@@ -92,7 +92,7 @@ export const Layout = ({ children }: LayoutProps) => {
             className="hidden md:flex items-center space-x-2 rounded-full border border-[var(--color-brand-terracotta)]/20 bg-[var(--color-brand-terracotta)]/10 px-4 py-2 text-sm font-bold text-[var(--color-brand-espresso)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--color-brand-terracotta)]/15 font-sans"
           >
             <Coffee size={16} />
-            <span>Sponsor / VIP</span>
+            <span>Sponsor</span>
           </a>
         </div>
       </header>
