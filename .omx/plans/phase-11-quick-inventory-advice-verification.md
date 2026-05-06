@@ -16,3 +16,7 @@
 - `npm run build`: passed, with existing Vite chunk-size warning.
 - `npm run lint`: failed on existing repo-wide lint debt outside this slice, including `src/services/ai.ts`, `src/pages/Items.tsx`, `src/pages/Luggages.tsx`, `src/pages/Outfits.tsx`, `src/hooks/useRetry.ts`, and `src/services/google.ts`.
 - Playwright local preview smoke on `/overview`: seeded `襪子 × 7`, `內褲 × 6`, `上衣 × 7`, and a 10-day round trip; clicking `AI 斷捨離` displayed local quick-count advice for shortage, day-5 laundry timing, and missing essentials when the API route was unavailable.
+- GitHub push: `986e893 feat: add quick inventory packing advice` pushed to `origin/main`.
+- Vercel production deploy: `https://nomadic-rust.vercel.app` aliased to deployment `nomadic-zvhhjbx14-kelsidreamlands-projects.vercel.app`.
+- Production `version.json`: `986e893`, built at `2026-05-06T16:56:39.490Z`.
+- Playwright production smoke on `/overview`: page showed `v986e893`; seeded the same quick-count trip data and confirmed `AI 斷捨離` rendered `打包與備品建議`, socks/underwear shortage, day-5 laundry timing, and missing essentials. Production API returned the existing missing Gemini API key error, and the local fallback advice handled it.
