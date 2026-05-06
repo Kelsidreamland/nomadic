@@ -36,3 +36,10 @@ Simplify `旅居足跡` into a quiet MVP dashboard: fewer stats, no year timelin
 - `npm run build`: passed, with existing Vite chunk-size warning.
 - `npm run lint`: still fails on existing repo-wide errors in `src/hooks/useRetry.ts`, `src/pages/Items.tsx`, `src/pages/Luggages.tsx`, `src/pages/Outfits.tsx`, `src/services/ai.test.ts`, `src/services/ai.ts`, and `src/services/google.ts`. This slice removed its own `FlightMemory.tsx` warning.
 - Playwright local preview on `127.0.0.1:4176/memory`: seeded demo flight memory data and confirmed the simplified stats, CSV/PDF import entry, route map, and manual fallback order on desktop and mobile.
+
+## Production Verification Evidence
+
+- GitHub push: `412e586 feat: simplify flight memory MVP` pushed to `origin/main`.
+- Vercel production deploy: `https://nomadic-rust.vercel.app` aliased to deployment `nomadic-hdgpg1l1n-kelsidreamlands-projects.vercel.app`.
+- Production `version.json`: `412e586`, built at `2026-05-06T19:13:58.016Z`.
+- Playwright production smoke on `/memory`: page showed `v412e586`; seeded demo flight records and confirmed `今年航程`, `去過國家`, `最常去`, `匯入 CSV`, `上傳 PDF`, `飛行路線圖`, and manual fallback appear in the intended order.
