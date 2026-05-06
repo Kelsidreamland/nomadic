@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
 import { buildPackingChecklistSummary, getItemQuantity, getPackingChecklistProgress, togglePackedItemId } from '../services/packingChecklist';
 import { getUpcomingFlight } from '../services/flightMemory';
+import { buildQuickInventoryInsights, mergeQuickInventoryInsights } from '../services/quickInventoryAdvice';
 
 const joinParts = (...parts: Array<string | undefined | null>) => parts.filter(Boolean).join(' · ');
 
@@ -26,6 +27,7 @@ type SmartInsights = {
     weight_status?: 'Safe' | 'Warning' | 'Overweight' | string;
     luggage_analysis?: string;
     remove_suggestions?: Array<{ item_id: string; reason: string }>;
+    packing_advice?: string[];
   };
 };
 
@@ -72,7 +74,7 @@ const WeightBar = ({ current, limit, label }: { current: number; limit: number; 
 };
 
 export const Overview = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { setActiveLuggageId } = useStore();
@@ -160,11 +162,13 @@ export const Overview = () => {
     if (items.length === 0) return;
     setIsAnalyzing(true);
     setInsights(null);
+    const quickInsights = buildQuickInventoryInsights({ upcomingFlight, items, language: i18n.language });
     try {
       const result = await generateSmartInsights({ upcomingFlight, items, location: 'Global', luggages });
-      setInsights(result);
+      setInsights(mergeQuickInventoryInsights(result, quickInsights));
     } catch (e) {
       console.error('AI reduce failed', e);
+      setInsights(quickInsights);
     }
     setIsAnalyzing(false);
   };
@@ -224,6 +228,7 @@ export const Overview = () => {
   ) : '';
 
   const removeSuggestions = insights?.optimization?.remove_suggestions ?? [];
+  const packingAdvice = insights?.optimization?.packing_advice ?? [];
 
   return (
     <div className="space-y-6 pb-20 animate-fade-in">
@@ -484,6 +489,20 @@ export const Overview = () => {
                   <li key={i} className="flex items-start gap-2 text-sm text-[var(--color-brand-espresso)]/70">
                     <X size={14} className="mt-0.5 shrink-0 text-[var(--color-brand-terracotta)]" />
                     <span><strong>{items.find(inv => inv.id === s.item_id)?.name || s.item_id}</strong> - {s.reason}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {packingAdvice.length > 0 && (
+            <div className="rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5">
+              <h4 className="mb-3 text-sm font-bold text-[var(--color-brand-olive)]">{t('dashboard.packingAdvice')}</h4>
+              <ul className="space-y-2">
+                {packingAdvice.map((advice, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-[var(--color-brand-espresso)]/70">
+                    <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[var(--color-brand-olive)]" />
+                    <span>{advice}</span>
                   </li>
                 ))}
               </ul>
