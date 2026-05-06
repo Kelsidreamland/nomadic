@@ -112,32 +112,40 @@ describe('getFlightMemorySegments', () => {
 });
 
 describe('getFlightMemoryStats', () => {
-  it('summarizes segments, airports, destinations, and airlines', () => {
+  it('summarizes segments, countries, and most visited country for the MVP dashboard', () => {
     const stats = getFlightMemoryStats(getFlightMemorySegments([
       makeFlight({
         id: 'one',
-        departureDate: '2025-11-02',
+        departureDate: '2026-11-02',
         departureAirport: 'TPE',
         arrivalAirport: 'NRT',
         destination: 'Tokyo',
         airline: 'EVA Air',
+        returnDepartureDate: '2026-11-10',
+        returnDepartureAirport: 'NRT',
+        returnArrivalAirport: 'TPE',
       }),
       makeFlight({
         id: 'two',
-        departureDate: '2024-04-20',
-        departureAirport: 'NRT',
-        arrivalAirport: 'LHR',
-        destination: 'London',
-        airline: 'British Airways',
+        departureDate: '2026-04-20',
+        departureAirport: 'TPE',
+        arrivalAirport: 'SIN',
+        destination: 'Singapore',
+        airline: 'EVA Air',
       }),
-    ]));
+    ]), 2026);
 
-    expect(stats).toEqual({
-      totalSegments: 2,
-      uniqueAirports: 3,
-      uniqueDestinations: 2,
-      uniqueAirlines: 2,
-      yearRange: '2024-2025',
+    expect(stats).toMatchObject({
+      totalSegments: 3,
+      currentYearSegments: 3,
+      countryCount: 2,
+      topCountry: {
+        code: 'JP',
+        flag: '🇯🇵',
+        name: '日本',
+        visits: 2,
+      },
     });
+    expect(stats.countries.map(country => country.flag)).toEqual(['🇯🇵', '🇸🇬']);
   });
 });

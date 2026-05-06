@@ -1,16 +1,17 @@
 import type { ChangeEvent, FormEvent } from 'react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CalendarDays, Clock, MapPin, Plane, Plus, Save, Trash2 } from 'lucide-react';
+import { ArrowRight, FileText, Plus, Save, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { db, type Flight } from '../db';
 import {
   getFlightMemoryEntries,
   getFlightMemorySegments,
   getFlightMemoryStats,
-  type FlightMemorySegment,
 } from '../services/flightMemory';
+import { parseFlightMemoryCsv } from '../services/flightMemoryImport';
+import { FlightRouteMap } from '../components/FlightRouteMap';
 
 type MemoryFlightFormState = {
   departureDate: string;
@@ -44,33 +45,20 @@ const createDefaultFormState = (): MemoryFlightFormState => ({
 const normalizeText = (value: string) => value.trim().replace(/\s+/g, ' ');
 const normalizeAirport = (value: string) => normalizeText(value).toUpperCase();
 
-const getSegmentRoute = (segment: FlightMemorySegment) => {
-  if (segment.from && segment.to) return `${segment.from} → ${segment.to}`;
-  return segment.from || segment.to || '';
-};
-
-const getSegmentYear = (segment: FlightMemorySegment) => segment.departureDate.slice(0, 4) || '----';
-
 export const FlightMemory = () => {
   const { t } = useTranslation();
-  const flights = useLiveQuery(() => db.flights.toArray()) || [];
+  const liveFlights = useLiveQuery(() => db.flights.toArray());
+  const flights = useMemo(() => liveFlights || [], [liveFlights]);
   const [now] = useState(() => Date.now());
   const [formState, setFormState] = useState(createDefaultFormState);
+  const [importStatus, setImportStatus] = useState('');
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const memoryEntries = useMemo(() => getFlightMemoryEntries(flights, now), [flights, now]);
   const segments = useMemo(() => getFlightMemorySegments(memoryEntries), [memoryEntries]);
-  const stats = useMemo(() => getFlightMemoryStats(segments), [segments]);
-
-  const groupedSegments = useMemo(() => {
-    return segments.reduce<Record<string, FlightMemorySegment[]>>((groups, segment) => {
-      const year = getSegmentYear(segment);
-      groups[year] = [...(groups[year] || []), segment];
-      return groups;
-    }, {});
-  }, [segments]);
-
-  const yearGroups = Object.entries(groupedSegments).sort(([a], [b]) => b.localeCompare(a));
-  const routePreviewSegments = segments.filter(segment => segment.from || segment.to).slice(0, 6);
+  const currentYear = useMemo(() => new Date(now).getFullYear(), [now]);
+  const stats = useMemo(() => getFlightMemoryStats(segments, currentYear), [segments, currentYear]);
 
   const updateField = (field: keyof MemoryFlightFormState) => (event: ChangeEvent<HTMLInputElement>) => {
     setFormState(prev => ({ ...prev, [field]: event.target.value }));
@@ -104,9 +92,32 @@ export const FlightMemory = () => {
     setFormState(createDefaultFormState());
   };
 
-  const handleDeleteFlight = async (flightId: string) => {
-    if (!window.confirm(t('flightMemory.deleteConfirm'))) return;
-    await db.flights.delete(flightId);
+  const handleCsvImport = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const result = parseFlightMemoryCsv(text);
+      if (result.flights.length > 0) {
+        await db.flights.bulkPut(result.flights);
+      }
+      setImportStatus(t('flightMemory.csvImported', {
+        count: result.flights.length,
+        errors: result.errors.length,
+      }));
+    } catch {
+      setImportStatus(t('flightMemory.csvImportFailed'));
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const handlePdfImport = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setImportStatus(t('flightMemory.pdfImportComingSoon', { fileName: file.name }));
+    event.target.value = '';
   };
 
   return (
@@ -126,24 +137,67 @@ export const FlightMemory = () => {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm">
-          <p className="text-xs font-bold text-[var(--color-brand-espresso)]/45">{t('flightMemory.statsSegments')}</p>
-          <p className="mt-2 font-serif text-3xl font-bold text-[var(--color-brand-terracotta)]">{stats.totalSegments}</p>
+          <p className="text-xs font-bold text-[var(--color-brand-espresso)]/45">{t('flightMemory.statsThisYear')}</p>
+          <p className="mt-2 font-serif text-3xl font-bold text-[var(--color-brand-terracotta)]">{stats.currentYearSegments}</p>
+          <p className="mt-1 text-xs font-medium text-[var(--color-brand-espresso)]/35">{currentYear}</p>
         </div>
         <div className="rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm">
-          <p className="text-xs font-bold text-[var(--color-brand-espresso)]/45">{t('flightMemory.statsAirports')}</p>
-          <p className="mt-2 font-serif text-3xl font-bold text-[var(--color-brand-espresso)]">{stats.uniqueAirports}</p>
+          <p className="text-xs font-bold text-[var(--color-brand-espresso)]/45">{t('flightMemory.statsCountries')}</p>
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <p className="font-serif text-3xl font-bold text-[var(--color-brand-espresso)]">{stats.countryCount}</p>
+            <p className="truncate text-xl leading-none">{stats.countries.slice(0, 7).map(country => country.flag).join(' ') || '—'}</p>
+          </div>
         </div>
         <div className="rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm">
-          <p className="text-xs font-bold text-[var(--color-brand-espresso)]/45">{t('flightMemory.statsDestinations')}</p>
-          <p className="mt-2 font-serif text-3xl font-bold text-[var(--color-brand-espresso)]">{stats.uniqueDestinations}</p>
-        </div>
-        <div className="rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm">
-          <p className="text-xs font-bold text-[var(--color-brand-espresso)]/45">{t('flightMemory.statsYears')}</p>
-          <p className="mt-2 font-serif text-2xl font-bold text-[var(--color-brand-olive)]">{stats.yearRange || '-'}</p>
+          <p className="text-xs font-bold text-[var(--color-brand-espresso)]/45">{t('flightMemory.statsTopCountry')}</p>
+          <p className="mt-2 truncate font-serif text-2xl font-bold text-[var(--color-brand-olive)]">
+            {stats.topCountry ? `${stats.topCountry.flag} ${stats.topCountry.name}` : t('flightMemory.noTopCountry')}
+          </p>
+          {stats.topCountry && (
+            <p className="mt-1 text-xs font-medium text-[var(--color-brand-espresso)]/35">
+              {t('flightMemory.countryVisits', { count: stats.topCountry.visits })}
+            </p>
+          )}
         </div>
       </div>
+
+      <div className="rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm md:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-[var(--color-brand-espresso)]">{t('flightMemory.importTitle')}</h3>
+            <p className="mt-1 text-sm text-[var(--color-brand-espresso)]/50">{t('flightMemory.importSubtitle')}</p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => csvInputRef.current?.click()}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--color-brand-espresso)] px-4 py-3 text-sm font-bold text-white shadow-md transition-colors hover:bg-black"
+            >
+              <Upload size={16} />
+              <span>{t('flightMemory.importCsv')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => pdfInputRef.current?.click()}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-4 py-3 text-sm font-bold text-[var(--color-brand-espresso)]/70 transition-colors hover:bg-white"
+            >
+              <FileText size={16} />
+              <span>{t('flightMemory.importPdf')}</span>
+            </button>
+          </div>
+        </div>
+        <input ref={csvInputRef} type="file" accept=".csv,text/csv" onChange={handleCsvImport} className="hidden" />
+        <input ref={pdfInputRef} type="file" accept=".pdf,image/*" onChange={handlePdfImport} className="hidden" />
+        {importStatus && (
+          <p className="mt-3 rounded-2xl bg-[var(--color-brand-sand)] px-4 py-3 text-sm font-medium text-[var(--color-brand-espresso)]/60">
+            {importStatus}
+          </p>
+        )}
+      </div>
+
+      <FlightRouteMap segments={segments} />
 
       <form onSubmit={handleAddFlight} className="rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm md:p-6">
         <div className="mb-5 flex items-center justify-between gap-4">
@@ -240,88 +294,6 @@ export const FlightMemory = () => {
           </button>
         </div>
       </form>
-
-      <div className="rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm md:p-6">
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-bold text-[var(--color-brand-espresso)]">{t('flightMemory.routePreviewTitle')}</h3>
-            <p className="mt-1 text-sm text-[var(--color-brand-espresso)]/50">{t('flightMemory.routePreviewSubtitle')}</p>
-          </div>
-          <Plane size={22} className="shrink-0 text-[var(--color-brand-espresso)]/25" />
-        </div>
-
-        {routePreviewSegments.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            {routePreviewSegments.map(segment => (
-              <div key={segment.id} className="flex min-w-0 items-center gap-3 rounded-2xl bg-[var(--color-brand-sand)] px-4 py-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand-cream)] text-[var(--color-brand-terracotta)]">
-                  <MapPin size={16} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-[var(--color-brand-espresso)]">{getSegmentRoute(segment)}</p>
-                  <p className="mt-0.5 truncate text-xs text-[var(--color-brand-espresso)]/45">{segment.departureDate} · {segment.airline || t('flightMemory.unknownAirline')}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)]/45 p-6 text-center">
-            <p className="text-sm font-bold text-[var(--color-brand-espresso)]/45">{t('flightMemory.noRoutes')}</p>
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-sm font-bold text-[var(--color-brand-espresso)]/60">{t('flightMemory.timelineTitle')}</h3>
-        {segments.length === 0 ? (
-          <div className="rounded-[28px] border border-dashed border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-8 text-center shadow-sm">
-            <Plane size={34} className="mx-auto mb-3 text-[var(--color-brand-espresso)]/20" />
-            <p className="font-bold text-[var(--color-brand-espresso)]/55">{t('flightMemory.emptyTitle')}</p>
-            <p className="mt-2 text-sm text-[var(--color-brand-espresso)]/45">{t('flightMemory.emptySubtitle')}</p>
-          </div>
-        ) : (
-          yearGroups.map(([year, yearSegments]) => (
-            <div key={year} className="space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] px-3 py-1 text-xs font-bold text-[var(--color-brand-espresso)]/55">
-                <CalendarDays size={13} />
-                <span>{year}</span>
-              </div>
-              {yearSegments.map(segment => (
-                <div key={segment.id} className="rounded-[24px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-[var(--color-brand-olive)]">
-                        {segment.kind === 'return' ? t('flightMemory.returnSegment') : t('flightMemory.outboundSegment')}
-                      </p>
-                      <h4 className="mt-1 truncate text-lg font-bold text-[var(--color-brand-espresso)]">
-                        {getSegmentRoute(segment) || segment.destination}
-                      </h4>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteFlight(segment.flightId)}
-                      aria-label={t('flightMemory.deleteFlight')}
-                      className="rounded-xl p-2 text-[var(--color-brand-espresso)]/30 transition-colors hover:bg-[var(--color-brand-sand)] hover:text-red-500"
-                    >
-                      <Trash2 size={17} />
-                    </button>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-[var(--color-brand-espresso)]/55">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-brand-sand)] px-3 py-1.5">
-                      <Clock size={13} className="text-[var(--color-brand-terracotta)]" />
-                      <span>{segment.departureDate}{segment.departureTime ? ` · ${segment.departureTime}` : ''}</span>
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-brand-sand)] px-3 py-1.5">
-                      <Plane size={13} className="text-[var(--color-brand-espresso)]/35" />
-                      <span>{segment.flightNumber || segment.airline || t('flightMemory.unknownAirline')}</span>
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))
-        )}
-      </div>
     </div>
   );
 };

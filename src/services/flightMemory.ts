@@ -1,4 +1,5 @@
 import type { Flight } from '../db';
+import { getCountryVisits, type CountryVisit } from './flightMemoryGeo';
 
 export interface FlightMemorySegment {
   id: string;
@@ -20,6 +21,10 @@ export interface FlightMemoryStats {
   uniqueDestinations: number;
   uniqueAirlines: number;
   yearRange: string;
+  currentYearSegments: number;
+  countryCount: number;
+  countries: CountryVisit[];
+  topCountry?: CountryVisit;
 }
 
 const toDateKey = (date: Date) => {
@@ -104,11 +109,12 @@ export const getFlightMemorySegments = (flights: Flight[]): FlightMemorySegment[
   return segments.sort(sortSegmentsDescending);
 };
 
-export const getFlightMemoryStats = (segments: FlightMemorySegment[]): FlightMemoryStats => {
+export const getFlightMemoryStats = (segments: FlightMemorySegment[], currentYear = new Date().getFullYear()): FlightMemoryStats => {
   const airports = new Set<string>();
   const destinations = new Set<string>();
   const airlines = new Set<string>();
   const years = new Set<string>();
+  const countries = getCountryVisits(segments);
 
   for (const segment of segments) {
     if (segment.from) airports.add(segment.from.trim());
@@ -125,6 +131,10 @@ export const getFlightMemoryStats = (segments: FlightMemorySegment[]): FlightMem
     uniqueAirports: airports.size,
     uniqueDestinations: destinations.size,
     uniqueAirlines: airlines.size,
+    currentYearSegments: segments.filter(segment => segment.departureDate.slice(0, 4) === String(currentYear)).length,
+    countryCount: countries.length,
+    countries,
+    topCountry: countries[0],
     yearRange: sortedYears.length === 0
       ? ''
       : sortedYears[0] === sortedYears[sortedYears.length - 1]
