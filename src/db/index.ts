@@ -31,6 +31,9 @@ export interface Item {
   occasion?: '商務' | '休閒' | '運動' | '正式' | '其他';
   wrinkleProne?: '易皺' | '適中' | '抗皺';
   tempRange?: string;
+  quantity?: number;
+  inventoryMode?: 'quick' | 'detail';
+  outfitEligible?: boolean;
 }
 
 export interface OutfitMatch {

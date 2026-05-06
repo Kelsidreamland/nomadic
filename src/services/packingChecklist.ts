@@ -8,9 +8,13 @@ export interface PackingChecklistSummary {
   expandableLuggageIds: string[];
 }
 
+export const getItemQuantity = (item: Pick<Item, 'quantity'>) => {
+  return item.quantity && item.quantity > 0 ? item.quantity : 1;
+};
+
 export const buildPackingChecklistSummary = (
   luggages: Pick<Luggage, 'id'>[],
-  items: Pick<Item, 'luggageId'>[],
+  items: Pick<Item, 'luggageId' | 'quantity'>[],
 ): PackingChecklistSummary => {
   const luggageIds = new Set(luggages.map(luggage => luggage.id));
   const itemCountByLuggage = new Map<string, number>();
@@ -18,16 +22,17 @@ export const buildPackingChecklistSummary = (
   let unassignedItems = 0;
 
   for (const item of items) {
+    const quantity = getItemQuantity(item);
     if (item.luggageId && luggageIds.has(item.luggageId)) {
-      assignedItems += 1;
-      itemCountByLuggage.set(item.luggageId, (itemCountByLuggage.get(item.luggageId) || 0) + 1);
+      assignedItems += quantity;
+      itemCountByLuggage.set(item.luggageId, (itemCountByLuggage.get(item.luggageId) || 0) + quantity);
     } else {
-      unassignedItems += 1;
+      unassignedItems += quantity;
     }
   }
 
   return {
-    totalItems: items.length,
+    totalItems: assignedItems + unassignedItems,
     assignedItems,
     unassignedItems,
     luggagesWithItems: itemCountByLuggage.size,
@@ -48,14 +53,19 @@ export const togglePackedItemId = (packedItemIds: string[], itemId: string) => {
 };
 
 export const getPackingChecklistProgress = (
-  items: Pick<Item, 'id' | 'luggageId'>[],
+  items: Pick<Item, 'id' | 'luggageId' | 'quantity'>[],
   packedItemIds: string[],
 ) => {
-  const checkableItemIds = new Set(items.filter(item => item.luggageId).map(item => item.id));
   const packedSet = new Set(packedItemIds);
+  const checkableItems = items.filter(item => item.luggageId);
 
   return {
-    checkedItems: Array.from(checkableItemIds).filter(itemId => packedSet.has(itemId)).length,
-    totalCheckableItems: checkableItemIds.size,
+    checkedItems: checkableItems.reduce((sum, item) => {
+      if (!packedSet.has(item.id)) return sum;
+      return sum + getItemQuantity(item);
+    }, 0),
+    totalCheckableItems: checkableItems.reduce((sum, item) => {
+      return sum + getItemQuantity(item);
+    }, 0),
   };
 };

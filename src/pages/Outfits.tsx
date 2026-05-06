@@ -5,13 +5,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { Info, TrendingUp, Shirt } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
+import { getOutfitEligibleItems } from '../services/outfitEligibility';
 
 export const Outfits = () => {
   const { t } = useTranslation();
   const items = useLiveQuery(() => db.items.toArray()) || [];
   const matches = useLiveQuery(() => db.outfit_matches.toArray()) || [];
 
-  const clothingItems = items.filter(i => i.category === '衣物');
+  const clothingItems = getOutfitEligibleItems(items);
   const tops = clothingItems.filter(i => ['上衣', '內搭', '外套', '連身裙'].includes(i.subCategory || ''));
   const bottoms = clothingItems.filter(i => ['下裝', '鞋子', '配飾'].includes(i.subCategory || ''));
 

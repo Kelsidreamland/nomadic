@@ -2,11 +2,14 @@ import { useEffect, useState, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Item } from '../db';
 import { v4 as uuidv4 } from 'uuid';
-import { Trash2, PackageSearch, Camera, Image as ImageIcon, Edit2, X, ChevronDown, Crop, RotateCcw, Scissors, Eraser } from 'lucide-react';
+import { Trash2, PackageSearch, Camera, Image as ImageIcon, Edit2, X, ChevronDown, Crop, RotateCcw, Scissors, Eraser, ClipboardList, Plus, Minus } from 'lucide-react';
 import { analyzeItemWithAI } from '../services/ai';
 import { DEFAULT_STICKER_ADJUSTMENT, clampStickerAdjustment, getDefaultStickerCutoutPath, normalizeStickerCutoutPath, type StickerAdjustment, type StickerPoint } from '../services/imageSticker';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
+import { useSearchParams } from 'react-router-dom';
+import { clampQuickInventoryQuantity, createQuickInventoryItemDraft, getQuickInventoryTemplate, quickInventoryTemplates } from '../services/quickInventory';
+import { getItemQuantity } from '../services/packingChecklist';
 
 const defaultNewItem: Partial<Item> = {
   name: '', category: '衣物', subCategory: '上衣', season: '通用', condition: '新', isDiscardable: false, luggageId: '', notes: '', image: ''
@@ -34,6 +37,7 @@ const getCutoutSvgPath = (points: StickerPoint[]) => {
 
 export const Items = () => {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const items = useLiveQuery(() => db.items.toArray()) || [];
   const luggages = useLiveQuery(() => db.luggages.toArray()) || [];
   const { activeLuggageId, setActiveLuggageId } = useStore();
@@ -53,16 +57,28 @@ export const Items = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualItem, setManualItem] = useState<Partial<Item>>({ ...defaultNewItem });
+  const [inventoryMode, setInventoryMode] = useState<'quick' | 'detail'>(() => searchParams.get('mode') === 'quick' ? 'quick' : 'detail');
+  const [quickQuantities, setQuickQuantities] = useState<Record<string, number>>(() => {
+    return Object.fromEntries(quickInventoryTemplates.map(template => [template.id, template.defaultQuantity]));
+  });
   const [now] = useState(() => Date.now());
   const expiringCutoff = now + 30 * 24 * 60 * 60 * 1000;
   const activeLuggage = luggages.find((luggage) => luggage.id === activeLuggageId) || null;
   const visibleItems = activeLuggage ? items.filter((item) => item.luggageId === activeLuggage.id) : items;
+  const totalVisibleItemQuantity = visibleItems.reduce((sum, item) => sum + getItemQuantity(item), 0);
 
   useEffect(() => {
     if (activeLuggageId && luggages.length > 0 && !activeLuggage) {
       setActiveLuggageId(null);
     }
   }, [activeLuggage, activeLuggageId, luggages.length, setActiveLuggageId]);
+
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    if (mode === 'quick' || mode === 'detail') {
+      setInventoryMode(mode);
+    }
+  }, [searchParams]);
 
   const getLuggageTypeLabel = (type: string) => {
     switch (type) {
@@ -283,6 +299,8 @@ export const Items = () => {
         ...editingItem,
         id: uuidv4(),
         createdAt: Date.now(),
+        inventoryMode: 'detail',
+        outfitEligible: editingItem.category === '衣物',
       } as Item);
     }
     setEditingItem(null);
@@ -301,10 +319,46 @@ export const Items = () => {
       id: uuidv4(),
       createdAt: Date.now(),
       luggageId: manualItem.luggageId || activeLuggage?.id || '',
+      inventoryMode: 'detail',
+      outfitEligible: manualItem.category === '衣物',
     } as Item);
     setManualItem({ ...defaultNewItem, luggageId: activeLuggage?.id || '' });
     setAnalysisError(null);
     setShowManualForm(false);
+  };
+
+  const selectInventoryMode = (mode: 'quick' | 'detail') => {
+    setInventoryMode(mode);
+    setSearchParams(mode === 'quick' ? { mode: 'quick' } : { mode: 'detail' });
+  };
+
+  const updateQuickQuantity = (templateId: string, delta: number) => {
+    setQuickQuantities(prev => ({
+      ...prev,
+      [templateId]: clampQuickInventoryQuantity((prev[templateId] || getQuickInventoryTemplate(templateId).defaultQuantity) + delta),
+    }));
+  };
+
+  const handleQuickAdd = async (templateId: string) => {
+    const template = getQuickInventoryTemplate(templateId);
+    const luggageId = activeLuggage?.id || '';
+    const quantity = quickQuantities[templateId] || template.defaultQuantity;
+    const existing = await db.items
+      .filter(item => item.inventoryMode === 'quick' && item.name === template.name && (item.luggageId || '') === luggageId)
+      .first();
+
+    if (existing) {
+      await db.items.update(existing.id, {
+        quantity: clampQuickInventoryQuantity((existing.quantity || 1) + quantity),
+      });
+      return;
+    }
+
+    await db.items.add({
+      ...createQuickInventoryItemDraft(template, quantity, luggageId),
+      id: uuidv4(),
+      createdAt: Date.now(),
+    } as Item);
   };
 
   const handleDelete = async (id: string) => {
@@ -394,7 +448,9 @@ export const Items = () => {
     }
   };
 
-  const itemCountByLuggage = (luggageId: string) => items.filter(i => i.luggageId === luggageId).length;
+  const itemCountByLuggage = (luggageId: string) => {
+    return items.filter(i => i.luggageId === luggageId).reduce((sum, item) => sum + getItemQuantity(item), 0);
+  };
 
   const subCategoryOptions = [
     { value: '上衣', label: t('items.subTop') },
@@ -440,7 +496,7 @@ export const Items = () => {
                 : 'bg-white border border-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/60 hover:border-[var(--color-brand-terracotta)]'
             }`}
           >
-            {t('items.allLuggages')} ({items.length})
+            {t('items.allLuggages')} ({items.reduce((sum, item) => sum + getItemQuantity(item), 0)})
           </button>
           {luggages.map(l => (
             <button
@@ -476,8 +532,89 @@ export const Items = () => {
         </div>
       )}
 
+      <div className="rounded-3xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm">
+        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[var(--color-brand-sand)] p-1">
+          <button
+            type="button"
+            onClick={() => selectInventoryMode('quick')}
+            className={`rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
+              inventoryMode === 'quick'
+                ? 'bg-[var(--color-brand-espresso)] text-white shadow-sm'
+                : 'text-[var(--color-brand-espresso)]/55 hover:bg-white/60'
+            }`}
+          >
+            {t('items.quickInventory')}
+          </button>
+          <button
+            type="button"
+            onClick={() => selectInventoryMode('detail')}
+            className={`rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
+              inventoryMode === 'detail'
+                ? 'bg-[var(--color-brand-espresso)] text-white shadow-sm'
+                : 'text-[var(--color-brand-espresso)]/55 hover:bg-white/60'
+            }`}
+          >
+            {t('items.detailInventory')}
+          </button>
+        </div>
+      </div>
+
+      {inventoryMode === 'quick' && (
+        <div className="rounded-3xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-brand-sand)] text-[var(--color-brand-terracotta)]">
+              <ClipboardList size={21} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-[var(--color-brand-espresso)]">{t('items.quickInventoryTitle')}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-[var(--color-brand-espresso)]/55">{t('items.quickInventoryDesc')}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {quickInventoryTemplates.map(template => {
+              const quantity = quickQuantities[template.id] || template.defaultQuantity;
+              return (
+                <div key={template.id} className="flex items-center gap-3 rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)]/55 p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-[var(--color-brand-espresso)]">{template.name}</p>
+                    <p className="mt-0.5 text-[11px] text-[var(--color-brand-espresso)]/40">{template.category}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1 rounded-full bg-white px-1.5 py-1 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => updateQuickQuantity(template.id, -1)}
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-brand-espresso)]/45 hover:bg-[var(--color-brand-sand)]"
+                      aria-label={t('items.decreaseQuantity', { name: template.name })}
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <span className="w-7 text-center text-sm font-black text-[var(--color-brand-espresso)]">{quantity}</span>
+                    <button
+                      type="button"
+                      onClick={() => updateQuickQuantity(template.id, 1)}
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-brand-espresso)]/60 hover:bg-[var(--color-brand-sand)]"
+                      aria-label={t('items.increaseQuantity', { name: template.name })}
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickAdd(template.id)}
+                    className="shrink-0 rounded-xl bg-[var(--color-brand-espresso)] px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-black"
+                  >
+                    {t('items.quickAdd')}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Camera capture area */}
-      <div className="bg-[var(--color-brand-cream)] rounded-3xl shadow-sm border border-[var(--color-brand-stone)] p-8 text-center space-y-4">
+      <div className={`${inventoryMode === 'detail' ? 'block' : 'hidden'} bg-[var(--color-brand-cream)] rounded-3xl shadow-sm border border-[var(--color-brand-stone)] p-8 text-center space-y-4`}>
         {activeLuggage && (
           <div className="mx-auto max-w-md rounded-2xl bg-[var(--color-brand-sand)] px-4 py-3 text-left border border-[var(--color-brand-stone)]/70">
             <p className="text-xs font-bold uppercase text-[var(--color-brand-espresso)]/40">{activeLuggage.name}</p>
@@ -963,8 +1100,10 @@ export const Items = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {visibleItems.map(item => {
+        <div className="space-y-3">
+          <p className="px-1 text-xs font-bold text-[var(--color-brand-espresso)]/45">{t('items.totalQuantity', { count: totalVisibleItemQuantity })}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {visibleItems.map(item => {
             const isExpiring = item.category === '保養品' && item.expirationDate && new Date(item.expirationDate) < new Date(expiringCutoff);
             let i18nCategory: string = item.category;
             switch (item.category) {
@@ -976,7 +1115,7 @@ export const Items = () => {
 
             const luggage = luggages.find(l => l.id === item.luggageId);
 
-            return (
+              return (
               <div key={item.id} className="bg-[var(--color-brand-cream)] p-4 rounded-3xl shadow-sm border border-[var(--color-brand-stone)] flex justify-between items-start group hover:border-[var(--color-brand-stone)] transition-colors">
                 <div className="flex space-x-3">
                   {item.image ? (
@@ -987,9 +1126,15 @@ export const Items = () => {
                     </div>
                   )}
                   <div className="space-y-0.5">
-                    <h3 className="font-bold text-[var(--color-brand-espresso)]">{item.name}</h3>
+                    <h3 className="font-bold text-[var(--color-brand-espresso)]">
+                      {item.name}
+                      {(item.quantity || 1) > 1 && <span className="ml-1 text-sm text-[var(--color-brand-terracotta)]">× {item.quantity}</span>}
+                    </h3>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-[var(--color-brand-espresso)]/70 font-bold">{i18nCategory}</span>
+                      {item.inventoryMode === 'quick' && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-brand-olive)]/15 text-[var(--color-brand-espresso)] font-bold">{t('items.quickInventory')}</span>
+                      )}
                       {item.subCategory && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-brand-sand)] text-[var(--color-brand-espresso)]/50 font-medium">{item.subCategory}</span>
                       )}
@@ -1017,8 +1162,9 @@ export const Items = () => {
                   </button>
                 </div>
               </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

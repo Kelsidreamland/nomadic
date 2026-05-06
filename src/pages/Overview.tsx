@@ -7,7 +7,7 @@ import { Bot, Plane, ChevronDown, ChevronRight, Scale, AlertTriangle, CheckCircl
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
-import { buildPackingChecklistSummary, getPackingChecklistProgress, togglePackedItemId } from '../services/packingChecklist';
+import { buildPackingChecklistSummary, getItemQuantity, getPackingChecklistProgress, togglePackedItemId } from '../services/packingChecklist';
 import { getUpcomingFlight } from '../services/flightMemory';
 
 const joinParts = (...parts: Array<string | undefined | null>) => parts.filter(Boolean).join(' · ');
@@ -117,6 +117,7 @@ export const Overview = () => {
   const carryOnWeight = luggages.filter(l => l.type === '手提').reduce((sum, l) => sum + getLatestWeight(l.id), 0);
 
   const itemsByLuggage = (luggageId: string) => items.filter(i => i.luggageId === luggageId);
+  const getItemQuantityTotal = (targetItems: typeof items) => targetItems.reduce((sum, item) => sum + getItemQuantity(item), 0);
   const unassignedItems = items.filter(i => !i.luggageId || !luggages.find(l => l.id === i.luggageId));
 
   const toggleLuggage = (id: string) => {
@@ -302,7 +303,7 @@ export const Overview = () => {
                       <h4 className="truncate font-bold text-[var(--color-brand-espresso)]">{luggage.name}</h4>
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-brand-espresso)]/45">
                         <span>{getTypeLabel(luggage.type)}</span>
-                        <span>{luggageItems.length} {t('overview.items')}</span>
+                        <span>{getItemQuantityTotal(luggageItems)} {t('overview.items')}</span>
                         {weight > 0 && <span>{weight.toFixed(1)} kg</span>}
                       </div>
                     </div>
@@ -335,7 +336,10 @@ export const Overview = () => {
                               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-[10px] text-[var(--color-brand-espresso)]/30">{getCategoryLabel(item.category)[0]}</div>
                             )}
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-xs font-bold text-[var(--color-brand-espresso)]">{item.name}</p>
+                              <p className="truncate text-xs font-bold text-[var(--color-brand-espresso)]">
+                                {item.name}
+                                {getItemQuantity(item) > 1 && <span className="ml-1 text-[var(--color-brand-terracotta)]">× {getItemQuantity(item)}</span>}
+                              </p>
                               <p className="text-[10px] text-[var(--color-brand-espresso)]/40">{getCategoryLabel(item.category)}</p>
                             </div>
                             {isPackingMode && (
@@ -396,7 +400,7 @@ export const Overview = () => {
               </div>
               <div>
                 <h4 className="font-bold text-[var(--color-brand-espresso)]/50">{t('items.unassigned')}</h4>
-                <p className="text-xs text-[var(--color-brand-espresso)]/30">{unassignedItems.length} {t('overview.items')}</p>
+                <p className="text-xs text-[var(--color-brand-espresso)]/30">{getItemQuantityTotal(unassignedItems)} {t('overview.items')}</p>
               </div>
             </div>
           </div>

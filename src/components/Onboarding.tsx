@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Camera, Briefcase, ArrowRight, Plus, CheckCircle2 } from 'lucide-react';
+import { Camera, Briefcase, ArrowRight, Plus, CheckCircle2, ClipboardList, PackageSearch } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { db } from '../db';
 import { v4 as uuidv4 } from 'uuid';
@@ -148,18 +148,44 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
           <p className="text-sm text-[var(--color-brand-espresso)]/60 mt-2">{t('onboarding.step2Desc')}</p>
         </div>
 
-        <div className="flex flex-col items-center justify-center w-full h-48 bg-white rounded-3xl border-2 border-dashed border-[var(--color-brand-stone)] transition-colors">
-          <Camera size={40} className="text-[var(--color-brand-espresso)]/30 mb-3" />
-          <span className="font-bold text-[var(--color-brand-espresso)]/60">{t('items.takePhoto')}</span>
-          <span className="mt-2 max-w-xs text-sm text-[var(--color-brand-espresso)]/40">{t('items.assigningTo', { name: luggageName.trim() || 'Nomadic' })}</span>
+        <div className="grid gap-3">
+          <button
+            onClick={() => completeOnboarding('/items?mode=quick')}
+            className="w-full rounded-3xl border border-[var(--color-brand-stone)] bg-white p-5 text-left shadow-sm transition-colors hover:border-[var(--color-brand-terracotta)]"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-brand-sand)] text-[var(--color-brand-terracotta)]">
+                <ClipboardList size={24} />
+              </div>
+              <div>
+                <p className="font-bold text-[var(--color-brand-espresso)]">{t('onboarding.quickInventoryTitle')}</p>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--color-brand-espresso)]/55">{t('onboarding.quickInventoryDesc')}</p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => completeOnboarding('/items?mode=detail')}
+            className="w-full rounded-3xl border border-[var(--color-brand-stone)] bg-white p-5 text-left shadow-sm transition-colors hover:border-[var(--color-brand-terracotta)]"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-brand-sand)] text-[var(--color-brand-espresso)]/55">
+                <PackageSearch size={24} />
+              </div>
+              <div>
+                <p className="font-bold text-[var(--color-brand-espresso)]">{t('onboarding.detailInventoryTitle')}</p>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--color-brand-espresso)]/55">{t('onboarding.detailInventoryDesc')}</p>
+              </div>
+            </div>
+          </button>
         </div>
 
         <button
           onClick={() => completeOnboarding('/items')}
-          className="w-full py-4 bg-[var(--color-brand-espresso)] text-white rounded-2xl font-bold text-lg shadow-lg hover:bg-black transition-colors flex items-center justify-center space-x-2"
+          className="w-full py-3 bg-[var(--color-brand-espresso)] text-white rounded-2xl font-bold shadow-lg hover:bg-black transition-colors flex items-center justify-center space-x-2"
         >
           <CheckCircle2 size={20} />
-          <span>{t('onboarding.btnGoToItems')}</span>
+          <span>{t('onboarding.btnDone')}</span>
         </button>
 
         <button

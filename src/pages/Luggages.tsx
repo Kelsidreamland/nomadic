@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { LuggageWeightChart } from '../components/LuggageWeightChart';
 import { useNavigate } from 'react-router-dom';
 import { createLuggageDraftForSeason } from '../services/luggageForm';
+import { getItemQuantity } from '../services/packingChecklist';
 
 const luggageSizePresets = [
   { label: '30"', length: 78, width: 52, height: 31 },
@@ -130,7 +131,9 @@ export const Luggages = () => {
     }
   };
 
-  const itemCountByLuggage = (luggageId: string) => allItems.filter((item) => item.luggageId === luggageId).length;
+  const itemCountByLuggage = (luggageId: string) => {
+    return allItems.filter((item) => item.luggageId === luggageId).reduce((sum, item) => sum + getItemQuantity(item), 0);
+  };
 
   const openItemsForLuggage = (luggageId: string) => {
     setActiveLuggageId(luggageId);

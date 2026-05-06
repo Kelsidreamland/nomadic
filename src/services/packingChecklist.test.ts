@@ -14,7 +14,7 @@ const makeLuggage = (id: string, name: string): Luggage => ({
   createdAt: Date.now(),
 });
 
-const makeItem = (id: string, luggageId: string): Item => ({
+const makeItem = (id: string, luggageId: string, overrides: Partial<Item> = {}): Item => ({
   id,
   luggageId,
   name: id,
@@ -23,6 +23,7 @@ const makeItem = (id: string, luggageId: string): Item => ({
   condition: '新',
   isDiscardable: false,
   createdAt: Date.now(),
+  ...overrides,
 });
 
 describe('buildPackingChecklistSummary', () => {
@@ -37,6 +38,19 @@ describe('buildPackingChecklistSummary', () => {
     expect(summary.unassignedItems).toBe(1);
     expect(summary.luggagesWithItems).toBe(1);
     expect(summary.expandableLuggageIds).toEqual(['checked']);
+  });
+
+  it('counts quick inventory quantities in totals', () => {
+    const summary = buildPackingChecklistSummary(
+      [makeLuggage('checked', '托運箱')],
+      [
+        makeItem('socks', 'checked', { inventoryMode: 'quick', quantity: 7 }),
+        makeItem('passport', 'checked', { inventoryMode: 'quick', quantity: 1 }),
+      ],
+    );
+
+    expect(summary.totalItems).toBe(8);
+    expect(summary.assignedItems).toBe(8);
   });
 });
 
@@ -56,5 +70,14 @@ describe('getPackingChecklistProgress', () => {
     );
 
     expect(result).toEqual({ checkedItems: 1, totalCheckableItems: 2 });
+  });
+
+  it('counts checked quick inventory groups by quantity', () => {
+    const result = getPackingChecklistProgress(
+      [makeItem('socks', 'checked', { inventoryMode: 'quick', quantity: 7 })],
+      ['socks'],
+    );
+
+    expect(result).toEqual({ checkedItems: 7, totalCheckableItems: 7 });
   });
 });
