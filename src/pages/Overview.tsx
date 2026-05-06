@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { generateSmartInsights } from '../services/ai';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Bot, Plane, ChevronDown, ChevronRight, Scale, Shirt, AlertTriangle, CheckCircle2, X, Clock, MapPin, Plus, Check, ClipboardList } from 'lucide-react';
+import { Bot, Plane, ChevronDown, ChevronRight, Scale, AlertTriangle, CheckCircle2, X, Clock, MapPin, Plus, Check, ClipboardList } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
@@ -403,22 +403,46 @@ export const Overview = () => {
         )}
       </div>
 
-      <div className="space-y-4">
-        <button
-          onClick={handleAiReduce}
-          disabled={isAnalyzing || items.length === 0}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--color-brand-espresso)] py-4 font-bold text-white shadow-lg transition-colors hover:bg-black disabled:opacity-30"
-        >
-          <Bot size={20} />
-          <span>{isAnalyzing ? t('overview.aiAnalyzing') : t('overview.aiReduce')}</span>
-        </button>
+      <div className="space-y-3 rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm">
+        <div>
+          <h3 className="text-sm font-bold text-[var(--color-brand-espresso)]/65">{t('overview.preDepartureTools')}</h3>
+          <p className="mt-1 text-xs font-medium text-[var(--color-brand-espresso)]/45">{t('overview.preDepartureToolsSubtitle')}</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={handleAiReduce}
+            disabled={isAnalyzing || items.length === 0}
+            className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[var(--color-brand-espresso)] px-3 py-3 text-sm font-bold text-white shadow-md transition-colors hover:bg-black disabled:opacity-30"
+          >
+            <Bot size={18} />
+            <span>{isAnalyzing ? t('overview.aiAnalyzing') : t('overview.aiReduce')}</span>
+          </button>
+
+          {isPackingMode ? (
+            <div className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-3 py-3 text-sm font-bold text-[var(--color-brand-espresso)]/65 shadow-sm">
+              <ClipboardList size={18} />
+              <span>{t('overview.packingProgress', { checked: packingProgress.checkedItems, total: packingProgress.totalCheckableItems })}</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={startPackingChecklist}
+              disabled={packingProgress.totalCheckableItems === 0}
+              className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-3 py-3 text-sm font-bold text-[var(--color-brand-espresso)]/70 shadow-sm transition-colors hover:bg-white disabled:opacity-35"
+            >
+              <ClipboardList size={18} />
+              <span>{t('overview.generatePackingChecklist')}</span>
+            </button>
+          )}
+        </div>
 
         <Link
-          to="/outfits"
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[var(--color-brand-stone)] py-3 text-sm font-bold text-[var(--color-brand-espresso)]/60 transition-colors hover:border-[var(--color-brand-terracotta)] hover:text-[var(--color-brand-terracotta)]"
+          to="/memory"
+          className="flex items-center justify-center gap-2 rounded-2xl border border-transparent py-2 text-xs font-bold text-[var(--color-brand-espresso)]/45 transition-colors hover:border-[var(--color-brand-stone)] hover:bg-[var(--color-brand-sand)] hover:text-[var(--color-brand-terracotta)]"
         >
-          <Shirt size={16} />
-          <span>{t('overview.viewOutfits')}</span>
+          <Plane size={14} />
+          <span>{t('flightMemory.entry')}</span>
         </Link>
       </div>
 
@@ -464,34 +488,6 @@ export const Overview = () => {
         </div>
       )}
 
-      <div className="flex justify-center pt-2">
-        {isPackingMode ? (
-          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] px-4 py-2 text-xs font-bold text-[var(--color-brand-espresso)]/55 shadow-sm">
-            <ClipboardList size={14} />
-            <span>{t('overview.packingProgress', { checked: packingProgress.checkedItems, total: packingProgress.totalCheckableItems })}</span>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={startPackingChecklist}
-            disabled={packingProgress.totalCheckableItems === 0}
-            className="inline-flex items-center gap-2 rounded-full border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] px-4 py-2 text-xs font-bold text-[var(--color-brand-espresso)]/55 shadow-sm transition-colors hover:bg-white disabled:opacity-35"
-          >
-            <ClipboardList size={14} />
-            <span>{t('overview.generatePackingChecklist')}</span>
-          </button>
-        )}
-      </div>
-
-      <div className="flex justify-center">
-        <Link
-          to="/memory"
-          className="inline-flex items-center gap-2 text-xs font-bold text-[var(--color-brand-espresso)]/45 transition-colors hover:text-[var(--color-brand-terracotta)]"
-        >
-          <Plane size={14} />
-          <span>{t('flightMemory.entry')}</span>
-        </Link>
-      </div>
     </div>
   );
 };

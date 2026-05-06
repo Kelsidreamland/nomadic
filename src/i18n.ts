@@ -320,7 +320,9 @@ const resources = {
       overview: {
         title: '總覽',
         subtitle: '按行李箱確認物品、重量與出發前的減量建議',
-        generatePackingChecklist: '幫我生成打包清單',
+        preDepartureTools: '出發前工具',
+        preDepartureToolsSubtitle: '整理重量、確認物品，其他主題維持在底部導覽。',
+        generatePackingChecklist: '打包模式',
         packingProgress: '已確認 {{checked}} / {{total}} 件',
         markPacked: '確認已放入 {{name}}',
         weightVsLimit: '重量 vs 限額',
@@ -329,7 +331,7 @@ const resources = {
         noItems: '尚無物品',
         addFirstItem: '新增第一件物品',
         addItemToLuggage: '新增物品',
-        aiReduce: 'AI 幫我做減法',
+        aiReduce: 'AI 斷捨離',
         aiAnalyzing: 'AI 分析中...',
         viewOutfits: '查看搭配統計'
       },
@@ -691,7 +693,9 @@ const resources = {
       overview: {
         title: 'Overview',
         subtitle: 'Review packed items, luggage weight, and reduction advice by luggage.',
-        generatePackingChecklist: 'Generate Packing Checklist',
+        preDepartureTools: 'Pre-departure Tools',
+        preDepartureToolsSubtitle: 'Reduce weight and confirm packed items. Other themes stay in the bottom tabs.',
+        generatePackingChecklist: 'Packing Mode',
         packingProgress: '{{checked}} / {{total}} checked',
         markPacked: 'Mark {{name}} as packed',
         weightVsLimit: 'Weight vs Limit',
@@ -700,7 +704,7 @@ const resources = {
         noItems: 'No items yet',
         addFirstItem: 'Add first item',
         addItemToLuggage: 'Add item',
-        aiReduce: 'AI Help Me Reduce',
+        aiReduce: 'AI Declutter',
         aiAnalyzing: 'AI analyzing...',
         viewOutfits: 'View Outfit Stats'
       },
