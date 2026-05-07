@@ -10,6 +10,8 @@ export interface CountryInfo {
 export interface RouteMapPoint {
   code: string;
   label: string;
+  lat: number;
+  lon: number;
   x: number;
   y: number;
 }
@@ -139,6 +141,8 @@ export const getRouteMapPoint = (value?: string): RouteMapPoint | undefined => {
   return {
     code: airport.code,
     label: airport.label,
+    lat: airport.lat,
+    lon: airport.lon,
     x: ((airport.lon + 180) / 360) * 100,
     y: ((90 - airport.lat) / 180) * 100,
   };
