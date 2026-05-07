@@ -386,11 +386,29 @@ ${airlinesContext}
   }
 };
 
-export const analyzeItemWithAI = async (name: string, base64Image?: string) => {
+interface ItemAnalysisContext {
+  areaLabel?: string;
+  areaExamples?: string;
+  preferredCategory?: string;
+}
+
+const buildItemAnalysisContextPrompt = (context?: ItemAnalysisContext) => {
+  if (!context?.areaLabel) return '';
+
+  return `
+目前正在記錄的打包區域：${context.areaLabel}
+這個區域常見物品：${context.areaExamples || '未提供'}
+優先考慮分類：${context.preferredCategory || '依圖片判斷'}
+請把這個區域當成辨識上下文，但如果圖片明顯屬於其他分類，仍以圖片內容為準。`;
+};
+
+export const analyzeItemWithAI = async (name: string, base64Image?: string, context?: ItemAnalysisContext) => {
   const genAI = await getGeminiClient();
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  const contextPrompt = buildItemAnalysisContextPrompt(context);
 
   const prompt = `作為一個行李收納助手，請根據使用者提供的物品名稱${base64Image ? '或圖片' : ''} "${name}"，自動推斷出其分類和建議。
+${contextPrompt}
 請嚴格返回以下格式的JSON：
 {
   "name": "修正後的物品名稱，比如根據圖片補充顏色款式",

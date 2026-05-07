@@ -34,6 +34,7 @@ export interface Item {
   quantity?: number;
   inventoryMode?: 'quick' | 'detail';
   outfitEligible?: boolean;
+  packingArea?: 'toiletries' | 'makeup' | 'skincare' | 'clothing' | 'tech' | 'documents' | 'medicine' | 'other';
 }
 
 export interface OutfitMatch {

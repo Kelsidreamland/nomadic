@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Item } from '../db';
 import { v4 as uuidv4 } from 'uuid';
-import { Trash2, PackageSearch, Camera, Image as ImageIcon, Edit2, X, ChevronDown, Crop, RotateCcw, Scissors, Eraser, ClipboardList, Plus, Minus } from 'lucide-react';
+import { Trash2, PackageSearch, Camera, Image as ImageIcon, Edit2, X, ChevronDown, Crop, RotateCcw, Scissors, Eraser, ClipboardList, Plus, Minus, Bath, Sparkles, Droplets, Shirt, Laptop, FileText, Pill } from 'lucide-react';
 import { analyzeItemWithAI } from '../services/ai';
 import { DEFAULT_STICKER_ADJUSTMENT, clampStickerAdjustment, getDefaultStickerCutoutPath, normalizeStickerCutoutPath, type StickerAdjustment, type StickerPoint } from '../services/imageSticker';
 import { useTranslation } from 'react-i18next';
@@ -10,12 +10,33 @@ import { useStore } from '../store';
 import { useSearchParams } from 'react-router-dom';
 import { clampQuickInventoryQuantity, createQuickInventoryItemDraft, getQuickInventoryTemplate, quickInventoryTemplates } from '../services/quickInventory';
 import { getItemQuantity } from '../services/packingChecklist';
+import {
+  DEFAULT_DETAIL_INVENTORY_AREA_ID,
+  buildDetailInventoryAiContext,
+  createDetailInventoryItemDraft,
+  detailInventoryAreas,
+  getDetailInventoryArea,
+  getDetailInventoryAreaExamples,
+  getDetailInventoryAreaLabel,
+  type DetailInventoryAreaId,
+} from '../services/detailInventoryAreas';
 
 const defaultNewItem: Partial<Item> = {
   name: '', category: '衣物', subCategory: '上衣', season: '通用', condition: '新', isDiscardable: false, luggageId: '', notes: '', image: ''
 };
 
 const MIN_CUTOUT_POINTS = 3;
+
+const detailAreaIcons = {
+  toiletries: Bath,
+  makeup: Sparkles,
+  skincare: Droplets,
+  clothing: Shirt,
+  tech: Laptop,
+  documents: FileText,
+  medicine: Pill,
+  other: PackageSearch,
+};
 
 const traceCutoutPath = (ctx: CanvasRenderingContext2D, points: StickerPoint[], size: number) => {
   points.forEach((point, index) => {
@@ -36,7 +57,7 @@ const getCutoutSvgPath = (points: StickerPoint[]) => {
 };
 
 export const Items = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const items = useLiveQuery(() => db.items.toArray()) || [];
   const luggages = useLiveQuery(() => db.luggages.toArray()) || [];
@@ -58,6 +79,9 @@ export const Items = () => {
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualItem, setManualItem] = useState<Partial<Item>>({ ...defaultNewItem });
   const [inventoryMode, setInventoryMode] = useState<'quick' | 'detail'>(() => searchParams.get('mode') === 'quick' ? 'quick' : 'detail');
+  const [selectedDetailAreaId, setSelectedDetailAreaId] = useState<DetailInventoryAreaId>(() => {
+    return getDetailInventoryArea(searchParams.get('area') || DEFAULT_DETAIL_INVENTORY_AREA_ID).id;
+  });
   const [quickQuantities, setQuickQuantities] = useState<Record<string, number>>(() => {
     return Object.fromEntries(quickInventoryTemplates.map(template => [template.id, template.defaultQuantity]));
   });
@@ -66,6 +90,7 @@ export const Items = () => {
   const activeLuggage = luggages.find((luggage) => luggage.id === activeLuggageId) || null;
   const visibleItems = activeLuggage ? items.filter((item) => item.luggageId === activeLuggage.id) : items;
   const totalVisibleItemQuantity = visibleItems.reduce((sum, item) => sum + getItemQuantity(item), 0);
+  const selectedDetailArea = getDetailInventoryArea(selectedDetailAreaId);
 
   useEffect(() => {
     if (activeLuggageId && luggages.length > 0 && !activeLuggage) {
@@ -78,6 +103,10 @@ export const Items = () => {
     if (mode === 'quick' || mode === 'detail') {
       setInventoryMode(mode);
     }
+    const area = searchParams.get('area');
+    if (area) {
+      setSelectedDetailAreaId(getDetailInventoryArea(area).id);
+    }
   }, [searchParams]);
 
   const getLuggageTypeLabel = (type: string) => {
@@ -88,6 +117,17 @@ export const Items = () => {
       case '特殊': return t('luggages.typeSpecial');
       default: return type;
     }
+  };
+
+  const getAreaLabel = (areaId: string) => getDetailInventoryAreaLabel(getDetailInventoryArea(areaId), i18n.language);
+  const getAreaExamples = (areaId: string) => getDetailInventoryAreaExamples(getDetailInventoryArea(areaId), i18n.language);
+  const getAreaDraft = (areaId: string) => ({
+    ...defaultNewItem,
+    ...createDetailInventoryItemDraft(areaId),
+    luggageId: activeLuggage?.id || '',
+  });
+  const getAreaAiContext = (areaId: string) => {
+    return buildDetailInventoryAiContext(getDetailInventoryArea(areaId), i18n.language);
   };
 
   const createStickerPreview = async (
@@ -182,6 +222,9 @@ export const Items = () => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    const captureAreaId = selectedDetailAreaId;
+    const areaDraft = getAreaDraft(captureAreaId);
+    const areaContext = getAreaAiContext(captureAreaId);
     setAnalysisError(null);
     setIsAnalyzing(true);
     const reader = new FileReader();
@@ -195,9 +238,9 @@ export const Items = () => {
         setCutoutPath([]);
         setShowImageEditor(false);
         setEditingImage(sticker);
-        setEditingItem({ ...defaultNewItem, image: sticker, luggageId: activeLuggage?.id || '' });
+        setEditingItem({ ...areaDraft, image: sticker });
         try {
-          const result = await analyzeItemWithAI('', aiImage);
+          const result = await analyzeItemWithAI('', aiImage, areaContext);
           setEditingItem(prev => ({
             ...prev,
             name: result.name || prev?.name,
@@ -211,6 +254,7 @@ export const Items = () => {
             notes: result.notes,
             image: sticker,
             luggageId: activeLuggage?.id || prev?.luggageId || '',
+            packingArea: areaDraft.packingArea,
           }));
           if (result.color || result.occasion || result.wrinkleProne || result.tempRange) {
             setShowAdvanced(true);
@@ -223,6 +267,7 @@ export const Items = () => {
             name: prev?.name || t('items.untitledItem'),
             image: sticker,
             luggageId: activeLuggage?.id || prev?.luggageId || '',
+            packingArea: areaDraft.packingArea,
           }));
         }
       } catch (err) {
@@ -243,6 +288,8 @@ export const Items = () => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    const manualAreaId = manualItem.packingArea || selectedDetailAreaId;
+    const areaContext = getAreaAiContext(manualAreaId);
     setAnalysisError(null);
     setIsAnalyzing(true);
     const reader = new FileReader();
@@ -253,7 +300,7 @@ export const Items = () => {
         const aiImage = await createAiImagePayload(base64);
         setManualItem(prev => ({ ...prev, image: sticker }));
         try {
-          const result = await analyzeItemWithAI(manualItem.name || '', aiImage);
+          const result = await analyzeItemWithAI(manualItem.name || '', aiImage, areaContext);
           setManualItem(prev => ({
             ...prev,
             name: result.name || prev.name,
@@ -266,6 +313,7 @@ export const Items = () => {
             tempRange: result.tempRange,
             notes: result.notes,
             image: sticker,
+            packingArea: getDetailInventoryArea(manualAreaId).id,
           }));
         } catch (err) {
           console.error('AI analysis failed', err);
@@ -274,6 +322,7 @@ export const Items = () => {
             ...prev,
             name: prev.name || t('items.untitledItem'),
             image: sticker,
+            packingArea: getDetailInventoryArea(manualAreaId).id,
           }));
         }
       } catch (err) {
@@ -322,14 +371,22 @@ export const Items = () => {
       inventoryMode: 'detail',
       outfitEligible: manualItem.category === '衣物',
     } as Item);
-    setManualItem({ ...defaultNewItem, luggageId: activeLuggage?.id || '' });
+    setManualItem(getAreaDraft(selectedDetailAreaId));
     setAnalysisError(null);
     setShowManualForm(false);
   };
 
   const selectInventoryMode = (mode: 'quick' | 'detail') => {
     setInventoryMode(mode);
-    setSearchParams(mode === 'quick' ? { mode: 'quick' } : { mode: 'detail' });
+    setSearchParams(mode === 'quick' ? { mode: 'quick' } : { mode: 'detail', area: selectedDetailAreaId });
+  };
+
+  const selectDetailArea = (areaId: DetailInventoryAreaId) => {
+    setSelectedDetailAreaId(areaId);
+    setSearchParams({ mode: 'detail', area: areaId });
+    if (showManualForm && !manualItem.name && !manualItem.image) {
+      setManualItem(getAreaDraft(areaId));
+    }
   };
 
   const updateQuickQuantity = (templateId: string, delta: number) => {
@@ -613,51 +670,99 @@ export const Items = () => {
         </div>
       )}
 
-      {/* Camera capture area */}
-      <div className={`${inventoryMode === 'detail' ? 'block' : 'hidden'} bg-[var(--color-brand-cream)] rounded-3xl shadow-sm border border-[var(--color-brand-stone)] p-8 text-center space-y-4`}>
-        {activeLuggage && (
-          <div className="mx-auto max-w-md rounded-2xl bg-[var(--color-brand-sand)] px-4 py-3 text-left border border-[var(--color-brand-stone)]/70">
-            <p className="text-xs font-bold uppercase text-[var(--color-brand-espresso)]/40">{activeLuggage.name}</p>
-            <p className="mt-1 text-sm font-medium text-[var(--color-brand-espresso)]/70">{t('items.assigningTo', { name: activeLuggage.name })}</p>
+      {inventoryMode === 'detail' && (
+        <>
+          <div className="rounded-3xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-[var(--color-brand-espresso)]">{t('items.detailAreaTitle')}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--color-brand-espresso)]/55">{t('items.detailAreaDesc')}</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-[var(--color-brand-sand)] px-3 py-1.5 text-xs font-bold text-[var(--color-brand-espresso)]/55">
+                {t('items.detailCurrentArea', { area: getAreaLabel(selectedDetailArea.id) })}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              {detailInventoryAreas.map(area => {
+                const Icon = detailAreaIcons[area.id];
+                const selected = selectedDetailAreaId === area.id;
+                return (
+                  <button
+                    key={area.id}
+                    type="button"
+                    onClick={() => selectDetailArea(area.id)}
+                    className={`min-h-24 rounded-2xl border p-3 text-left transition-colors ${
+                      selected
+                        ? 'border-[var(--color-brand-espresso)] bg-[var(--color-brand-sand)] shadow-sm'
+                        : 'border-[var(--color-brand-stone)] bg-white/65 hover:border-[var(--color-brand-terracotta)]'
+                    }`}
+                  >
+                    <span className={`mb-2 flex h-9 w-9 items-center justify-center rounded-xl ${
+                      selected
+                        ? 'bg-[var(--color-brand-espresso)] text-white'
+                        : 'bg-[var(--color-brand-sand)] text-[var(--color-brand-espresso)]/45'
+                    }`}>
+                      <Icon size={18} />
+                    </span>
+                    <span className="block text-sm font-bold text-[var(--color-brand-espresso)]">{getAreaLabel(area.id)}</span>
+                    <span className="mt-1 block text-[11px] leading-snug text-[var(--color-brand-espresso)]/42">{getAreaExamples(area.id)}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        )}
-        <label className="flex flex-col items-center justify-center w-full h-40 bg-white rounded-3xl border-2 border-dashed border-[var(--color-brand-stone)] cursor-pointer hover:border-[var(--color-brand-terracotta)] transition-colors">
-          <Camera size={48} className="text-[var(--color-brand-espresso)]/25 mb-3" />
-          <span className="font-bold text-[var(--color-brand-espresso)]/50 text-lg">{t('items.takePhoto')}</span>
-          <span className="text-xs text-[var(--color-brand-espresso)]/30 mt-1">AI {t('items.aiAutoFill')}</span>
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleImageCapture}
-          />
-        </label>
-        <div className="flex items-center justify-center gap-4">
-          <label className="text-sm font-medium text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-terracotta)] cursor-pointer transition-colors">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageCapture}
-            />
-            {t('items.uploadImage')}
-          </label>
-          <span className="text-[var(--color-brand-espresso)]/20">|</span>
-          <button
-            onClick={() => {
-              setAnalysisError(null);
-              setShowManualForm(true);
-              setManualItem({ ...defaultNewItem, luggageId: activeLuggage?.id || '' });
-            }}
-            className="text-sm font-medium text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-terracotta)] transition-colors"
-          >
-            {t('items.add')}
-          </button>
-        </div>
-      </div>
+
+          <div className="space-y-4 rounded-3xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-8 text-center shadow-sm">
+            {activeLuggage && (
+              <div className="mx-auto max-w-md rounded-2xl bg-[var(--color-brand-sand)] px-4 py-3 text-left border border-[var(--color-brand-stone)]/70">
+                <p className="text-xs font-bold uppercase text-[var(--color-brand-espresso)]/40">{activeLuggage.name}</p>
+                <p className="mt-1 text-sm font-medium text-[var(--color-brand-espresso)]/70">{t('items.assigningTo', { name: activeLuggage.name })}</p>
+              </div>
+            )}
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full bg-[var(--color-brand-sand)] px-4 py-2 text-sm font-bold text-[var(--color-brand-espresso)]/65">
+              <Camera size={16} />
+              <span>{t('items.detailCurrentArea', { area: getAreaLabel(selectedDetailArea.id) })}</span>
+            </div>
+            <label className="flex flex-col items-center justify-center w-full h-40 bg-white rounded-3xl border-2 border-dashed border-[var(--color-brand-stone)] cursor-pointer hover:border-[var(--color-brand-terracotta)] transition-colors">
+              <Camera size={48} className="text-[var(--color-brand-espresso)]/25 mb-3" />
+              <span className="font-bold text-[var(--color-brand-espresso)]/50 text-lg">{t('items.takePhoto')}</span>
+              <span className="text-xs text-[var(--color-brand-espresso)]/30 mt-1">AI {t('items.aiAutoFill')}</span>
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleImageCapture}
+              />
+            </label>
+            <div className="flex items-center justify-center gap-4">
+              <label className="text-sm font-medium text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-terracotta)] cursor-pointer transition-colors">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageCapture}
+                />
+                {t('items.uploadImage')}
+              </label>
+              <span className="text-[var(--color-brand-espresso)]/20">|</span>
+              <button
+                onClick={() => {
+                  setAnalysisError(null);
+                  setShowManualForm(true);
+                  setManualItem(getAreaDraft(selectedDetailAreaId));
+                }}
+                className="text-sm font-medium text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-terracotta)] transition-colors"
+              >
+                {t('items.add')}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* AI analyzing overlay */}
       {isAnalyzing && (

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { analyzeTicketWithAI, generateSmartInsights } from './ai';
+import { analyzeItemWithAI, analyzeTicketWithAI, generateSmartInsights } from './ai';
 import { db } from '../db';
 
 const { generateContentMock } = vi.hoisted(() => ({
@@ -85,5 +85,40 @@ describe('analyzeTicketWithAI', () => {
     expect(result.checkedAllowance).toBe(23);
     expect(result.carryOnAllowance).toBe(7);
     expect(result.personalAllowance).toBe(0);
+  });
+});
+
+describe('analyzeItemWithAI', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv('VITE_GEMINI_API_KEY', 'test-key');
+    vi.stubEnv('PROD', false);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('includes detailed packing zone context in item recognition prompts', async () => {
+    generateContentMock.mockResolvedValue({
+      response: {
+        text: () => JSON.stringify({
+          name: '牙刷',
+          category: '保養品',
+          season: '通用',
+        }),
+      },
+    });
+
+    await analyzeItemWithAI('', 'data:image/jpeg;base64,QUJD', {
+      areaLabel: '盥洗',
+      areaExamples: '牙刷、牙膏、洗面奶',
+      preferredCategory: '保養品',
+    });
+
+    const requestParts = generateContentMock.mock.calls[0][0];
+    expect(requestParts[0]).toContain('目前正在記錄的打包區域：盥洗');
+    expect(requestParts[0]).toContain('牙刷、牙膏、洗面奶');
+    expect(requestParts[0]).toContain('優先考慮分類：保養品');
   });
 });
