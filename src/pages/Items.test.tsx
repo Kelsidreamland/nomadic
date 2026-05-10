@@ -31,8 +31,21 @@ describe('Items inventory modes', () => {
     });
 
     expect(container.textContent).toContain('快速清點');
+    expect(container.textContent).toContain('衣物');
+    expect(container.textContent).toContain('科技');
     expect(container.textContent).toContain('襪子');
+    expect(container.textContent).not.toContain('護照');
+
+    const documentsButton = Array.from(container.querySelectorAll('button'))
+      .find(button => button.textContent?.includes('證件'));
+    expect(documentsButton).toBeTruthy();
+
+    act(() => {
+      documentsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
     expect(container.textContent).toContain('護照');
+    expect(container.textContent).not.toContain('襪子');
 
     act(() => {
       root.unmount();

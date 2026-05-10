@@ -8,7 +8,14 @@ import { DEFAULT_STICKER_ADJUSTMENT, clampStickerAdjustment, getDefaultStickerCu
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
 import { useSearchParams } from 'react-router-dom';
-import { clampQuickInventoryQuantity, createQuickInventoryItemDraft, getQuickInventoryTemplate, quickInventoryTemplates } from '../services/quickInventory';
+import {
+  clampQuickInventoryQuantity,
+  createQuickInventoryItemDraft,
+  getQuickInventoryTemplate,
+  quickInventoryGroups,
+  quickInventoryTemplates,
+  type QuickInventoryGroupId,
+} from '../services/quickInventory';
 import { getItemQuantity } from '../services/packingChecklist';
 import {
   DEFAULT_DETAIL_INVENTORY_AREA_ID,
@@ -79,6 +86,7 @@ export const Items = () => {
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualItem, setManualItem] = useState<Partial<Item>>({ ...defaultNewItem });
   const [inventoryMode, setInventoryMode] = useState<'quick' | 'detail'>(() => searchParams.get('mode') === 'quick' ? 'quick' : 'detail');
+  const [selectedQuickGroupId, setSelectedQuickGroupId] = useState<QuickInventoryGroupId>('clothing');
   const [selectedDetailAreaId, setSelectedDetailAreaId] = useState<DetailInventoryAreaId>(() => {
     return getDetailInventoryArea(searchParams.get('area') || DEFAULT_DETAIL_INVENTORY_AREA_ID).id;
   });
@@ -91,6 +99,7 @@ export const Items = () => {
   const visibleItems = activeLuggage ? items.filter((item) => item.luggageId === activeLuggage.id) : items;
   const totalVisibleItemQuantity = visibleItems.reduce((sum, item) => sum + getItemQuantity(item), 0);
   const selectedDetailArea = getDetailInventoryArea(selectedDetailAreaId);
+  const selectedQuickTemplates = quickInventoryTemplates.filter(template => template.groupId === selectedQuickGroupId);
 
   useEffect(() => {
     if (activeLuggageId && luggages.length > 0 && !activeLuggage) {
@@ -628,8 +637,29 @@ export const Items = () => {
             </div>
           </div>
 
+          <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+            {quickInventoryGroups.map(group => {
+              const selected = selectedQuickGroupId === group.id;
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => setSelectedQuickGroupId(group.id)}
+                  aria-pressed={selected}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
+                    selected
+                      ? 'border-[var(--color-brand-espresso)] bg-[var(--color-brand-espresso)] text-white shadow-sm'
+                      : 'border-[var(--color-brand-stone)] bg-white/70 text-[var(--color-brand-espresso)]/58 hover:border-[var(--color-brand-terracotta)] hover:bg-white'
+                  }`}
+                >
+                  {i18n.language.startsWith('en') ? group.nameEn : group.name}
+                </button>
+              );
+            })}
+          </div>
+
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {quickInventoryTemplates.map(template => {
+            {selectedQuickTemplates.map(template => {
               const quantity = quickQuantities[template.id] || template.defaultQuantity;
               return (
                 <div key={template.id} className="flex items-center gap-3 rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)]/55 p-3">

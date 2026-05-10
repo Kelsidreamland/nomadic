@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createQuickInventoryItemDraft, getQuickInventoryTemplate, quickInventoryTemplates } from './quickInventory';
+import {
+  createQuickInventoryItemDraft,
+  getQuickInventoryGroup,
+  getQuickInventoryTemplate,
+  quickInventoryGroups,
+  quickInventoryTemplates,
+} from './quickInventory';
 
 describe('quickInventoryTemplates', () => {
   it('includes quantity-friendly clothing and travel essentials', () => {
@@ -13,6 +19,17 @@ describe('quickInventoryTemplates', () => {
         'laptop-charger',
       ]),
     );
+  });
+
+  it('groups templates behind simple quick-count category tags', () => {
+    expect(quickInventoryGroups.map(group => group.id)).toEqual(['clothing', 'toiletries', 'tech', 'documents', 'other']);
+    expect(getQuickInventoryGroup('tech')).toMatchObject({ name: '科技' });
+    expect(quickInventoryTemplates.filter(template => template.groupId === 'clothing').map(template => template.id)).toEqual(
+      expect.arrayContaining(['tops', 'socks', 'underpants']),
+    );
+    expect(quickInventoryTemplates.find(template => template.id === 'passport')).toMatchObject({
+      groupId: 'documents',
+    });
   });
 });
 
