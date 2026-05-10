@@ -32,3 +32,18 @@ Verification:
 - `npm run build`: passed, with existing Vite chunk-size warning.
 - `npm run lint`: still blocked by existing repo-wide lint debt in `useRetry`, `Items`, `Luggages`, `Outfits`, `ai`, and `google`; this slice did not add a new lint pattern.
 - Playwright local mobile smoke at `390x844` on `/items?mode=quick`: default `衣物` tag shows clothing templates; selecting `證件` switches the list to `護照`.
+
+## 2026-05-10 Item Card Delete Guard
+
+- Item cards now keep the edit action visible on mobile with a larger tap target.
+- The delete action is two-step: first tap opens `取消` / `確認刪除`; only the confirm button deletes the item and related outfit matches.
+- Added localized accessible labels for edit/delete actions.
+
+Verification:
+
+- `./node_modules/.bin/vitest run src/pages/Items.test.tsx`: 1 file, 3 tests passed.
+- `./node_modules/.bin/vitest run src/services/quickInventory.test.ts src/services/outfitEligibility.test.ts src/services/packingChecklist.test.ts src/pages/Items.test.tsx src/pages/Overview.test.tsx src/services/flightMemory.test.ts src/components/Layout.test.tsx`: 7 files, 21 tests passed.
+- `./node_modules/.bin/tsc -b`: passed.
+- `npm run build`: passed, with existing Vite chunk-size warning.
+- `npm run lint`: still blocked by existing repo-wide lint debt in `useRetry`, `Items`, `Luggages`, `Outfits`, `ai`, and `google`.
+- Playwright local mobile smoke at `390x844`: adding a quick-count item shows the item card; tapping delete opens `確認刪除` instead of deleting immediately.

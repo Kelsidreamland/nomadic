@@ -87,6 +87,7 @@ export const Items = () => {
   const [manualItem, setManualItem] = useState<Partial<Item>>({ ...defaultNewItem });
   const [inventoryMode, setInventoryMode] = useState<'quick' | 'detail'>(() => searchParams.get('mode') === 'quick' ? 'quick' : 'detail');
   const [selectedQuickGroupId, setSelectedQuickGroupId] = useState<QuickInventoryGroupId>('clothing');
+  const [pendingDeleteItemId, setPendingDeleteItemId] = useState<string | null>(null);
   const [selectedDetailAreaId, setSelectedDetailAreaId] = useState<DetailInventoryAreaId>(() => {
     return getDetailInventoryArea(searchParams.get('area') || DEFAULT_DETAIL_INVENTORY_AREA_ID).id;
   });
@@ -431,9 +432,11 @@ export const Items = () => {
     await db.items.delete(id);
     const matches = await db.outfit_matches.filter(m => m.topItemId === id || m.bottomItemId === id).toArray();
     await Promise.all(matches.map(m => db.outfit_matches.delete(m.id)));
+    setPendingDeleteItemId(null);
   };
 
   const handleEdit = (item: Item) => {
+    setPendingDeleteItemId(null);
     setEditingItem({ ...item });
     setEditingImage(item.image || null);
     setImageEditSource(item.image || null);
@@ -1288,13 +1291,43 @@ export const Items = () => {
                     )}
                   </div>
                 </div>
-                <div className="flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <button onClick={() => handleEdit(item)} className="p-1.5 text-[var(--color-brand-espresso)]/30 hover:text-[var(--color-brand-espresso)] transition-colors bg-[var(--color-brand-sand)] rounded-xl hover:bg-gray-100">
-                    <Edit2 size={14} />
+                <div className="flex shrink-0 flex-col items-end gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(item)}
+                    aria-label={t('items.editItemLabel', { name: item.name })}
+                    className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--color-brand-sand)] text-[var(--color-brand-espresso)]/55 transition-colors hover:bg-white hover:text-[var(--color-brand-espresso)]"
+                  >
+                    <Edit2 size={15} />
                   </button>
-                  <button onClick={() => handleDelete(item.id)} className="p-1.5 text-[var(--color-brand-espresso)]/30 hover:text-red-500 transition-colors bg-red-50 rounded-xl hover:bg-red-100">
-                    <Trash2 size={14} />
-                  </button>
+                  {pendingDeleteItemId === item.id ? (
+                    <div className="flex items-center gap-1 rounded-2xl border border-[var(--color-brand-terracotta)]/25 bg-[var(--color-brand-terracotta)]/10 p-1">
+                      <button
+                        type="button"
+                        onClick={() => setPendingDeleteItemId(null)}
+                        aria-label={t('items.cancelDeleteItem', { name: item.name })}
+                        className="flex h-8 w-8 items-center justify-center rounded-xl text-[var(--color-brand-espresso)]/45 transition-colors hover:bg-white"
+                      >
+                        <X size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        className="rounded-xl bg-[var(--color-brand-terracotta)] px-3 py-2 text-[11px] font-bold text-white shadow-sm"
+                      >
+                        {t('items.confirmDeleteItem')}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setPendingDeleteItemId(item.id)}
+                      aria-label={t('items.deleteItemLabel', { name: item.name })}
+                      className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[var(--color-brand-terracotta)]/50 transition-colors hover:bg-[var(--color-brand-terracotta)]/10 hover:text-[var(--color-brand-terracotta)]"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
               </div>
               );
