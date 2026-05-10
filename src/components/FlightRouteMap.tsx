@@ -339,24 +339,12 @@ export const FlightRouteMap = ({ segments }: FlightRouteMapProps) => {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 border-t border-[rgba(232,226,214,0.16)] px-4 py-3 sm:px-5">
-              {passport.routes.slice(0, 8).map(route => (
-                <span key={route.id} className="rounded-full border border-[rgba(244,239,230,0.22)] bg-[rgba(244,239,230,0.08)] px-2.5 py-1 text-[10px] font-bold text-[rgba(244,239,230,0.82)]">
-                  {route.fromCode} &gt; {route.toCode}
-                </span>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-3 border-y border-[rgba(232,226,214,0.18)]">
+            <div className="grid grid-cols-2 border-y border-[rgba(232,226,214,0.18)]">
               <div className="px-4 py-3">
                 <p className="text-[10px] font-bold uppercase text-[rgba(232,226,214,0.72)]">FLIGHTS</p>
                 <p className="mt-1 text-2xl font-bold text-[#FCFBF9]">{passport.stats.flights}</p>
               </div>
-              <div className="border-x border-[rgba(232,226,214,0.18)] px-4 py-3">
-                <p className="text-[10px] font-bold uppercase text-[rgba(232,226,214,0.72)]">COUNTRIES</p>
-                <p className="mt-1 text-2xl font-bold text-[#FCFBF9]">{passport.stats.countries}</p>
-              </div>
-              <div className="px-4 py-3">
+              <div className="border-l border-[rgba(232,226,214,0.18)] px-4 py-3">
                 <p className="text-[10px] font-bold uppercase text-[rgba(232,226,214,0.72)]">TOP</p>
                 <p className="mt-1 truncate text-sm font-bold text-[#FCFBF9]">{passport.stats.topCountry || t('flightMemory.noTopCountry')}</p>
               </div>

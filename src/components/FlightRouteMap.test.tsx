@@ -25,7 +25,7 @@ const makeSegment = (overrides: Partial<FlightMemorySegment>): FlightMemorySegme
 });
 
 describe('FlightRouteMap', () => {
-  it('renders a dark flight passport card with stats, map shell, and export control', () => {
+  it('renders a simplified flight passport card with map, key stats, and export control', () => {
     const container = document.createElement('div');
     const root = createRoot(container);
 
@@ -43,7 +43,9 @@ describe('FlightRouteMap', () => {
     expect(container.querySelector('[data-testid="flight-passport-card"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="flight-passport-map"]')).toBeTruthy();
     expect(container.textContent).toContain('FLIGHTS');
-    expect(container.textContent).toContain('COUNTRIES');
+    expect(container.textContent).toContain('TOP');
+    expect(container.textContent).not.toContain('COUNTRIES');
+    expect(container.textContent).not.toContain('TPE > SIN');
     expect(container.textContent).toContain('NOMADIC<<');
     expect(container.textContent).toContain('匯出護照圖');
 

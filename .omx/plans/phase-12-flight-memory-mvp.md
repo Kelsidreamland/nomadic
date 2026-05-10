@@ -70,3 +70,14 @@ Simplify `旅居足跡` into a quiet MVP dashboard: fewer stats, no year timelin
   - `npm run build`: passed with the existing large chunk warning.
   - `npm run lint`: still fails on existing repo-wide lint debt in `useRetry`, `Items`, `Luggages`, `Outfits`, `ai`, and `google`; no new lint errors from this map revision.
   - Playwright local preview on `127.0.0.1:4177/memory`: seeded eight demo flights, confirmed nine airport labels (`TPE/SIN/IST/LHR/JFK/CDG/NRT/HND/ICN`) render as DOM overlays on mobile width, captured desktop/mobile screenshots, and confirmed PNG export includes the complete warm-brand map.
+
+## Passport Information Density Simplification
+
+- Remove route chips (`TPE > SIN` style) from the passport poster to reduce duplicate route detail now that airport labels are visible on the map.
+- Remove the `COUNTRIES` stats column because the country flag row already communicates visited countries.
+- Verification:
+  - `./node_modules/.bin/vitest run src/components/FlightRouteMap.test.tsx src/services/flightPassportData.test.ts`: passed.
+  - `./node_modules/.bin/tsc -b`: passed.
+  - `npm run build`: passed with the existing large chunk warning.
+  - `npm run lint`: still fails on existing repo-wide lint debt in `useRetry`, `Items`, `Luggages`, `Outfits`, `ai`, and `google`; no new lint errors from this simplification.
+  - Playwright local preview on `127.0.0.1:4177/memory`: seeded eight demo flights, confirmed route chips and `COUNTRIES` no longer appear in the passport card, confirmed `FLIGHTS`, `TOP`, MRZ, and nine airport labels remain, and confirmed PNG export still works.
