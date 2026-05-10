@@ -59,3 +59,14 @@ Simplify `旅居足跡` into a quiet MVP dashboard: fewer stats, no year timelin
   - Vercel production deploy: `https://nomadic-rust.vercel.app` aliased to deployment `nomadic-kxkovwphy-kelsidreamlands-projects.vercel.app`.
   - Production `version.json`: `a4a3713`, built at `2026-05-10T13:58:09.180Z`.
   - Playwright production smoke on `/memory`: seeded demo flights in browser IndexedDB, confirmed `va4a3713`, `flight-passport-card`, ECharts canvas, MRZ text, and PNG export download.
+
+## Brand Alignment And Complete Airport Labels
+
+- Adjust the flight passport poster from cool blue/black into the existing Nomadic palette: espresso background, terracotta route accents, stone/cream labels, and muted warm land colors.
+- Keep all unique airport labels visible for normal route sets, and render airport codes as positioned HTML labels over the ECharts canvas so dense labels can stay complete in exported PNGs.
+- Verification:
+  - `./node_modules/.bin/vitest run src/services/flightPassportData.test.ts src/components/FlightRouteMap.test.tsx`: passed.
+  - `./node_modules/.bin/tsc -b`: passed.
+  - `npm run build`: passed with the existing large chunk warning.
+  - `npm run lint`: still fails on existing repo-wide lint debt in `useRetry`, `Items`, `Luggages`, `Outfits`, `ai`, and `google`; no new lint errors from this map revision.
+  - Playwright local preview on `127.0.0.1:4177/memory`: seeded eight demo flights, confirmed nine airport labels (`TPE/SIN/IST/LHR/JFK/CDG/NRT/HND/ICN`) render as DOM overlays on mobile width, captured desktop/mobile screenshots, and confirmed PNG export includes the complete warm-brand map.

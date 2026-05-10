@@ -6,6 +6,7 @@ import {
 } from './flightMemoryGeo';
 
 type Coordinate = [number, number];
+type AirportLabelPosition = 'top' | 'right' | 'bottom' | 'left';
 
 export interface FlightPassportRoute {
   id: string;
@@ -24,6 +25,8 @@ export interface FlightPassportAirport {
   lon: number;
   lat: number;
   visits: number;
+  labelPosition: AirportLabelPosition;
+  labelOffset: [number, number];
 }
 
 export interface FlightPassportStats {
@@ -52,13 +55,40 @@ interface AirportAccumulator {
 
 const toCoordinate = (point: RouteMapPoint): Coordinate => [point.lon, point.lat];
 
-const toAirport = (accumulator: AirportAccumulator): FlightPassportAirport => ({
+const airportLabelLayout: Record<string, { position: AirportLabelPosition; offset: [number, number] }> = {
+  BKK: { position: 'left', offset: [-2, 2] },
+  CDG: { position: 'top', offset: [0, -1] },
+  HKG: { position: 'bottom', offset: [0, 3] },
+  HND: { position: 'left', offset: [-10, -10] },
+  ICN: { position: 'top', offset: [-14, -18] },
+  IST: { position: 'top', offset: [0, -2] },
+  JFK: { position: 'left', offset: [-2, 0] },
+  KIX: { position: 'bottom', offset: [0, 8] },
+  LHR: { position: 'left', offset: [-2, -1] },
+  NRT: { position: 'left', offset: [-10, 12] },
+  SIN: { position: 'bottom', offset: [0, 3] },
+  SGN: { position: 'left', offset: [-2, 0] },
+  TPE: { position: 'bottom', offset: [0, 20] },
+  TSA: { position: 'left', offset: [-2, 0] },
+};
+
+const getAirportLabelLayout = (code: string) => airportLabelLayout[code] || {
+  position: 'right' as AirportLabelPosition,
+  offset: [2, 0] as [number, number],
+};
+
+const toAirport = (accumulator: AirportAccumulator): FlightPassportAirport => {
+  const layout = getAirportLabelLayout(accumulator.point.code);
+  return {
   code: accumulator.point.code,
   label: accumulator.point.label,
   lon: accumulator.point.lon,
   lat: accumulator.point.lat,
   visits: accumulator.visits,
-});
+    labelPosition: layout.position,
+    labelOffset: layout.offset,
+  };
+};
 
 const getRouteKilometers = (from: RouteMapPoint, to: RouteMapPoint) => {
   const earthRadiusKm = 6371;
@@ -101,7 +131,13 @@ const addAirport = (
   });
 };
 
-const chooseLabelAirports = (airports: AirportAccumulator[]) => {
+const chooseLabelAirports = (airports: AirportAccumulator[], maxLabels = 18) => {
+  if (airports.length <= maxLabels) {
+    return [...airports]
+      .sort((a, b) => a.firstIndex - b.firstIndex)
+      .map(toAirport);
+  }
+
   const sorted = [...airports].sort((a, b) => {
     const scoreA = a.visits * 10000 + a.routeKilometers;
     const scoreB = b.visits * 10000 + b.routeKilometers;
@@ -109,25 +145,8 @@ const chooseLabelAirports = (airports: AirportAccumulator[]) => {
     return a.firstIndex - b.firstIndex;
   });
 
-  const selected: AirportAccumulator[] = [];
-  for (const airport of sorted) {
-    const isFarEnough = selected.every(selectedAirport => (
-      getRouteKilometers(airport.point, selectedAirport.point) >= 2500
-    ));
-    if (!isFarEnough) continue;
-    selected.push(airport);
-    if (selected.length >= 6) break;
-  }
-
-  if (selected.length < 2) {
-    for (const airport of sorted) {
-      if (selected.some(selectedAirport => selectedAirport.point.code === airport.point.code)) continue;
-      selected.push(airport);
-      if (selected.length >= Math.min(2, sorted.length)) break;
-    }
-  }
-
-  return selected
+  return sorted
+    .slice(0, maxLabels)
     .sort((a, b) => a.firstIndex - b.firstIndex)
     .map(toAirport);
 };

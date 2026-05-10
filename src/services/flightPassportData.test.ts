@@ -45,7 +45,7 @@ describe('buildFlightPassportData', () => {
     expect(data.mrzLine).toContain('NOMADIC<<TPE<SIN<ICN<LHR<JFK<CDG');
   });
 
-  it('limits airport labels so dense map areas do not stack every code', () => {
+  it('keeps all airport labels for normal route sets and assigns dense-area label positions', () => {
     const data = buildFlightPassportData([
       makeSegment({ id: 'tpe-nrt', from: 'TPE', to: 'NRT' }),
       makeSegment({ id: 'tsa-hnd', from: 'TSA', to: 'HND' }),
@@ -57,10 +57,18 @@ describe('buildFlightPassportData', () => {
       makeSegment({ id: 'jfk-cdg', from: 'JFK', to: 'CDG' }),
     ]);
 
-    expect(data.labelAirports.length).toBeLessThanOrEqual(6);
-    expect(data.labelAirports.map(airport => airport.code)).toContain('TPE');
-    expect(data.labelAirports.map(airport => airport.code)).not.toEqual(
-      expect.arrayContaining(['NRT', 'HND', 'ICN', 'TSA']),
+    const labelCodes = data.labelAirports.map(airport => airport.code);
+    expect(labelCodes).toEqual(
+      expect.arrayContaining(['TPE', 'NRT', 'TSA', 'HND', 'ICN', 'BKK', 'SGN', 'SIN', 'LHR', 'JFK', 'CDG']),
     );
+    expect(data.labelAirports).toHaveLength(data.airports.length);
+    expect(data.labelAirports.find(airport => airport.code === 'NRT')).toMatchObject({
+      labelPosition: 'left',
+      labelOffset: [-10, 12],
+    });
+    expect(data.labelAirports.find(airport => airport.code === 'HND')).toMatchObject({
+      labelPosition: 'left',
+      labelOffset: [-10, -10],
+    });
   });
 });

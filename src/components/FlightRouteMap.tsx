@@ -23,7 +23,11 @@ import type { FeatureCollection, Geometry } from 'geojson';
 import type { GeometryObject, Topology } from 'topojson-specification';
 import countries110m from 'world-atlas/countries-110m.json';
 import type { FlightMemorySegment } from '../services/flightMemory';
-import { buildFlightPassportData, type FlightPassportData } from '../services/flightPassportData';
+import {
+  buildFlightPassportData,
+  type FlightPassportAirport,
+  type FlightPassportData,
+} from '../services/flightPassportData';
 
 interface FlightRouteMapProps {
   segments: FlightMemorySegment[];
@@ -33,8 +37,25 @@ type FlightMapOption = ComposeOption<
   GeoComponentOption | TooltipComponentOption | LinesSeriesOption | EffectScatterSeriesOption
 >;
 
+interface RenderedAirportLabel {
+  code: string;
+  left: number;
+  top: number;
+  transform: string;
+}
+
 const MAP_NAME = 'nomadic-flight-passport-world';
 const PASSPORT_FONT = '"IBM Plex Mono", "SFMono-Regular", Consolas, monospace';
+const BRAND = {
+  cream: '#FCFBF9',
+  sand: '#F4EFE6',
+  espresso: '#3D332D',
+  deepEspresso: '#2F2826',
+  stone: '#E8E2D6',
+  terracotta: '#C86A4C',
+  terracottaSoft: '#E7A08C',
+  olive: '#8C9A74',
+};
 const worldTopology = countries110m as unknown as Topology<{ countries: GeometryObject }>;
 const worldCountries = feature(worldTopology, worldTopology.objects.countries) as FeatureCollection<Geometry>;
 
@@ -60,9 +81,9 @@ const buildMapOption = (passport: FlightPassportData): FlightMapOption => ({
     trigger: 'item',
     borderWidth: 0,
     padding: [8, 10],
-    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    backgroundColor: 'rgba(61, 51, 45, 0.94)',
     textStyle: {
-      color: '#F8FAFC',
+      color: BRAND.cream,
       fontFamily: PASSPORT_FONT,
       fontSize: 11,
     },
@@ -79,8 +100,8 @@ const buildMapOption = (passport: FlightPassportData): FlightMapOption => ({
     layoutCenter: ['50%', '50%'],
     layoutSize: '108%',
     itemStyle: {
-      areaColor: '#192235',
-      borderColor: 'rgba(148, 163, 184, 0.16)',
+      areaColor: '#5A4B42',
+      borderColor: 'rgba(232, 226, 214, 0.22)',
       borderWidth: 0.45,
     },
     emphasis: {
@@ -107,11 +128,11 @@ const buildMapOption = (passport: FlightPassportData): FlightMapOption => ({
         trailLength: 0.24,
         symbol: 'circle',
         symbolSize: 3,
-        color: '#FFE7DA',
+        color: BRAND.cream,
       },
       lineStyle: {
-        width: 1.7,
-        opacity: 0.82,
+        width: 1.8,
+        opacity: 0.86,
         curveness: 0.26,
         color: {
           type: 'linear',
@@ -120,9 +141,9 @@ const buildMapOption = (passport: FlightPassportData): FlightMapOption => ({
           x2: 1,
           y2: 0,
           colorStops: [
-            { offset: 0, color: '#7F1D1D' },
-            { offset: 0.45, color: '#F97365' },
-            { offset: 1, color: '#FFD0BE' },
+            { offset: 0, color: '#8A3F2E' },
+            { offset: 0.48, color: BRAND.terracotta },
+            { offset: 1, color: '#F0B29E' },
           ],
         },
       },
@@ -135,6 +156,10 @@ const buildMapOption = (passport: FlightPassportData): FlightMapOption => ({
       data: passport.labelAirports.map(airport => ({
         name: airport.code,
         value: [airport.lon, airport.lat, airport.visits],
+        label: {
+          position: airport.labelPosition,
+          offset: airport.labelOffset,
+        },
       })),
       zlevel: 3,
       symbolSize: value => {
@@ -147,28 +172,48 @@ const buildMapOption = (passport: FlightPassportData): FlightMapOption => ({
         period: 4,
       },
       itemStyle: {
-        color: '#FFE7DA',
-        shadowColor: 'rgba(249, 115, 101, 0.55)',
+        color: BRAND.cream,
+        shadowColor: 'rgba(200, 106, 76, 0.55)',
         shadowBlur: 12,
       },
       label: {
-        show: true,
-        formatter: '{b}',
-        position: 'right',
-        distance: 7,
-        color: '#FDE7DD',
-        fontFamily: PASSPORT_FONT,
-        fontSize: 11,
-        fontWeight: 700,
-        textBorderColor: '#0F172A',
-        textBorderWidth: 3,
+        show: false,
       },
       labelLayout: {
-        hideOverlap: true,
+        hideOverlap: false,
       },
     },
   ],
 });
+
+const getLabelTransform = (airport: FlightPassportAirport) => {
+  switch (airport.labelPosition) {
+    case 'top':
+      return 'translate(-50%, -100%)';
+    case 'bottom':
+      return 'translate(-50%, 0)';
+    case 'left':
+      return 'translate(-100%, -50%)';
+    case 'right':
+      return 'translate(0, -50%)';
+  }
+};
+
+const buildRenderedAirportLabels = (
+  chart: ECharts,
+  airports: FlightPassportAirport[],
+): RenderedAirportLabel[] => airports
+  .map(airport => {
+    const pixel = chart.convertToPixel({ geoIndex: 0 }, [airport.lon, airport.lat]);
+    if (!Array.isArray(pixel) || typeof pixel[0] !== 'number' || typeof pixel[1] !== 'number') return undefined;
+    return {
+      code: airport.code,
+      left: pixel[0] + airport.labelOffset[0],
+      top: pixel[1] + airport.labelOffset[1],
+      transform: getLabelTransform(airport),
+    };
+  })
+  .filter((label): label is RenderedAirportLabel => Boolean(label));
 
 export const FlightRouteMap = ({ segments }: FlightRouteMapProps) => {
   const { t } = useTranslation();
@@ -176,26 +221,43 @@ export const FlightRouteMap = ({ segments }: FlightRouteMapProps) => {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<ECharts | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [renderedAirportLabels, setRenderedAirportLabels] = useState<RenderedAirportLabel[]>([]);
   const passport = useMemo(() => buildFlightPassportData(segments), [segments]);
 
   useEffect(() => {
-    if (import.meta.env.MODE === 'test' || !mapRef.current || passport.routes.length === 0) return;
+    if (import.meta.env.MODE === 'test' || !mapRef.current || passport.routes.length === 0) {
+      setRenderedAirportLabels([]);
+      return;
+    }
 
     ensureEchartsReady();
     const chart = init(mapRef.current, undefined, { renderer: 'canvas' });
     chartRef.current = chart;
     chart.setOption(buildMapOption(passport));
 
-    const handleResize = () => chart.resize();
+    let isActive = true;
+    const updateLabels = () => {
+      if (!isActive) return;
+      setRenderedAirportLabels(buildRenderedAirportLabels(chart, passport.labelAirports));
+    };
+    const handleResize = () => {
+      chart.resize();
+      window.requestAnimationFrame(updateLabels);
+    };
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(handleResize) : undefined;
     observer?.observe(mapRef.current);
     window.addEventListener('resize', handleResize);
+    chart.on('finished', updateLabels);
+    window.requestAnimationFrame(updateLabels);
 
     return () => {
+      isActive = false;
       observer?.disconnect();
       window.removeEventListener('resize', handleResize);
+      chart.off('finished', updateLabels);
       chart.dispose();
       chartRef.current = null;
+      setRenderedAirportLabels([]);
     };
   }, [passport]);
 
@@ -233,53 +295,70 @@ export const FlightRouteMap = ({ segments }: FlightRouteMapProps) => {
           <div
             ref={cardRef}
             data-testid="flight-passport-card"
-            className="overflow-hidden rounded-2xl border border-[rgba(51,65,85,0.7)] bg-[#0F172A] text-[#F8FAFC] shadow-[0_20px_70px_rgba(15,23,42,0.28)]"
+            className="overflow-hidden rounded-2xl border border-[rgba(232,226,214,0.32)] bg-[#3D332D] text-[#FCFBF9] shadow-[0_20px_70px_rgba(61,51,45,0.24)]"
             style={{ fontFamily: PASSPORT_FONT }}
           >
-            <div className="flex items-start justify-between gap-4 border-b border-[rgba(255,255,255,0.1)] px-4 py-4 sm:px-5">
+            <div className="flex items-start justify-between gap-4 border-b border-[rgba(232,226,214,0.18)] px-4 py-4 sm:px-5">
               <div>
-                <p className="text-[10px] font-bold uppercase text-[rgba(254,202,202,0.7)]">
+                <p className="text-[10px] font-bold uppercase text-[rgba(231,160,140,0.84)]">
                   {t('flightMemory.passportKicker')}
                 </p>
-                <h4 className="mt-1 text-xl font-bold tracking-normal text-[#FFFFFF] sm:text-2xl">
+                <h4 className="mt-1 text-xl font-bold tracking-normal text-[#FCFBF9] sm:text-2xl">
                   {t('flightMemory.passportTitle')}
                 </h4>
               </div>
-              <div className="rounded-full border border-[rgba(254,202,202,0.25)] px-3 py-1 text-[10px] font-bold uppercase text-[rgba(254,226,226,0.8)]">
+              <div className="rounded-full border border-[rgba(200,106,76,0.42)] px-3 py-1 text-[10px] font-bold uppercase text-[rgba(244,239,230,0.86)]">
                 {passport.stats.yearRange || t('flightMemory.passportNoYears')}
               </div>
             </div>
 
             <div className="relative">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(248,113,113,0.16),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0)_0%,rgba(15,23,42,0.86)_100%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_22%,rgba(200,106,76,0.20),transparent_34%),linear-gradient(180deg,rgba(61,51,45,0)_0%,rgba(47,40,38,0.76)_100%)]" />
               <div
                 ref={mapRef}
                 data-testid="flight-passport-map"
-                className="relative h-[310px] w-full sm:h-[390px]"
+                className="relative h-[340px] w-full sm:h-[410px]"
                 role="img"
                 aria-label={t('flightMemory.routeMapTitle')}
               />
-              <div className="pointer-events-none absolute inset-x-4 bottom-3 flex flex-wrap gap-2">
-                {passport.routes.slice(0, 6).map(route => (
-                  <span key={route.id} className="rounded-full border border-[rgba(255,255,255,0.1)] bg-[rgba(2,6,23,0.5)] px-2.5 py-1 text-[10px] font-bold text-[rgba(254,226,226,0.75)] backdrop-blur">
-                    {route.fromCode} &gt; {route.toCode}
+              <div className="pointer-events-none absolute inset-0">
+                {renderedAirportLabels.map(label => (
+                  <span
+                    key={label.code}
+                    data-testid="flight-passport-airport-label"
+                    className="absolute rounded-[4px] border border-[rgba(244,239,230,0.24)] bg-[rgba(61,51,45,0.72)] px-1.5 py-0.5 text-[10px] font-bold leading-none text-[#FCFBF9] shadow-[0_2px_8px_rgba(47,40,38,0.34)] backdrop-blur"
+                    style={{
+                      left: `${label.left}px`,
+                      top: `${label.top}px`,
+                      transform: label.transform,
+                    }}
+                  >
+                    {label.code}
                   </span>
                 ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-3 border-y border-[rgba(255,255,255,0.1)]">
+            <div className="flex flex-wrap gap-2 border-t border-[rgba(232,226,214,0.16)] px-4 py-3 sm:px-5">
+              {passport.routes.slice(0, 8).map(route => (
+                <span key={route.id} className="rounded-full border border-[rgba(244,239,230,0.22)] bg-[rgba(244,239,230,0.08)] px-2.5 py-1 text-[10px] font-bold text-[rgba(244,239,230,0.82)]">
+                  {route.fromCode} &gt; {route.toCode}
+                </span>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-3 border-y border-[rgba(232,226,214,0.18)]">
               <div className="px-4 py-3">
-                <p className="text-[10px] font-bold uppercase text-[rgba(148,163,184,1)]">FLIGHTS</p>
-                <p className="mt-1 text-2xl font-bold text-[#FFFFFF]">{passport.stats.flights}</p>
+                <p className="text-[10px] font-bold uppercase text-[rgba(232,226,214,0.72)]">FLIGHTS</p>
+                <p className="mt-1 text-2xl font-bold text-[#FCFBF9]">{passport.stats.flights}</p>
               </div>
-              <div className="border-x border-[rgba(255,255,255,0.1)] px-4 py-3">
-                <p className="text-[10px] font-bold uppercase text-[rgba(148,163,184,1)]">COUNTRIES</p>
-                <p className="mt-1 text-2xl font-bold text-[#FFFFFF]">{passport.stats.countries}</p>
+              <div className="border-x border-[rgba(232,226,214,0.18)] px-4 py-3">
+                <p className="text-[10px] font-bold uppercase text-[rgba(232,226,214,0.72)]">COUNTRIES</p>
+                <p className="mt-1 text-2xl font-bold text-[#FCFBF9]">{passport.stats.countries}</p>
               </div>
               <div className="px-4 py-3">
-                <p className="text-[10px] font-bold uppercase text-[rgba(148,163,184,1)]">TOP</p>
-                <p className="mt-1 truncate text-sm font-bold text-[#FFFFFF]">{passport.stats.topCountry || t('flightMemory.noTopCountry')}</p>
+                <p className="text-[10px] font-bold uppercase text-[rgba(232,226,214,0.72)]">TOP</p>
+                <p className="mt-1 truncate text-sm font-bold text-[#FCFBF9]">{passport.stats.topCountry || t('flightMemory.noTopCountry')}</p>
               </div>
             </div>
 
@@ -289,10 +368,10 @@ export const FlightRouteMap = ({ segments }: FlightRouteMapProps) => {
                   <span key={`${flag}-${index}`} aria-hidden="true">{flag}</span>
                 ))}
               </div>
-              <p className="break-all text-[10px] font-bold leading-relaxed text-[rgba(148,163,184,1)]">
+              <p className="break-all text-[10px] font-bold leading-relaxed text-[rgba(232,226,214,0.74)]">
                 {passport.mrzLine}
               </p>
-              <p className="text-[9px] font-bold uppercase text-[rgba(100,116,139,1)]">
+              <p className="text-[9px] font-bold uppercase text-[rgba(232,226,214,0.52)]">
                 ECharts Apache-2.0 · html2canvas MIT · IBM Plex Mono OFL-1.1
               </p>
             </div>
