@@ -47,3 +47,18 @@ Verification:
 - `npm run build`: passed, with existing Vite chunk-size warning.
 - `npm run lint`: still blocked by existing repo-wide lint debt in `useRetry`, `Items`, `Luggages`, `Outfits`, `ai`, and `google`.
 - Playwright local mobile smoke at `390x844`: adding a quick-count item shows the item card; tapping delete opens `確認刪除` instead of deleting immediately.
+
+## 2026-05-10 Sleepwear Swimwear Outfit Exclusion
+
+- Added shared outfit eligibility rules for sleepwear and swimwear keywords in Chinese and English.
+- Outfit statistics now exclude items named like `睡衣`, `泳衣`, `bikini`, or `swimsuit`, even when their category is `衣物`.
+- New and edited detail items use the same auto-eligibility rule when saving, so AI-detected sleepwear/swimwear will not be marked for outfit planning.
+
+Verification:
+
+- `./node_modules/.bin/vitest run src/services/outfitEligibility.test.ts`: red first for missing exclusion, then green after implementation.
+- `./node_modules/.bin/vitest run src/services/outfitEligibility.test.ts src/pages/Items.test.tsx`: 2 files, 6 tests passed.
+- `./node_modules/.bin/vitest run src/services/quickInventory.test.ts src/services/outfitEligibility.test.ts src/services/packingChecklist.test.ts src/pages/Items.test.tsx src/pages/Overview.test.tsx src/services/flightMemory.test.ts src/components/Layout.test.tsx`: 7 files, 23 tests passed.
+- `./node_modules/.bin/tsc -b`: passed.
+- `npm run build`: passed after rerun; one previous build process hung without output and was terminated before rerun.
+- `npm run lint`: still blocked by existing repo-wide lint debt in `useRetry`, `Items`, `Luggages`, `Outfits`, `ai`, and `google`.

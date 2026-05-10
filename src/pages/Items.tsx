@@ -27,6 +27,7 @@ import {
   getDetailInventoryAreaLabel,
   type DetailInventoryAreaId,
 } from '../services/detailInventoryAreas';
+import { shouldAutoIncludeInOutfitPlanning } from '../services/outfitEligibility';
 
 const defaultNewItem: Partial<Item> = {
   name: '', category: '衣物', subCategory: '上衣', season: '通用', condition: '新', isDiscardable: false, luggageId: '', notes: '', image: ''
@@ -138,6 +139,14 @@ export const Items = () => {
   });
   const getAreaAiContext = (areaId: string) => {
     return buildDetailInventoryAiContext(getDetailInventoryArea(areaId), i18n.language);
+  };
+  const getAutoOutfitEligible = (item: Partial<Item>, inventoryMode: Item['inventoryMode'] = 'detail') => {
+    return shouldAutoIncludeInOutfitPlanning({
+      name: item.name || '',
+      category: item.category || '其他',
+      subCategory: item.subCategory,
+      inventoryMode,
+    });
   };
 
   const createStickerPreview = async (
@@ -351,15 +360,19 @@ export const Items = () => {
 
   const handleSaveConfirmed = async () => {
     if (!editingItem?.name) return;
+    const inventoryMode = editingItem.inventoryMode || 'detail';
+    const itemToSave = {
+      ...editingItem,
+      outfitEligible: getAutoOutfitEligible(editingItem, inventoryMode),
+    };
     if ((editingItem as Item).id) {
-      await db.items.update((editingItem as Item).id, { ...editingItem });
+      await db.items.update((editingItem as Item).id, itemToSave);
     } else {
       await db.items.add({
-        ...editingItem,
+        ...itemToSave,
         id: uuidv4(),
         createdAt: Date.now(),
         inventoryMode: 'detail',
-        outfitEligible: editingItem.category === '衣物',
       } as Item);
     }
     setEditingItem(null);
@@ -379,7 +392,7 @@ export const Items = () => {
       createdAt: Date.now(),
       luggageId: manualItem.luggageId || activeLuggage?.id || '',
       inventoryMode: 'detail',
-      outfitEligible: manualItem.category === '衣物',
+      outfitEligible: getAutoOutfitEligible(manualItem, 'detail'),
     } as Item);
     setManualItem(getAreaDraft(selectedDetailAreaId));
     setAnalysisError(null);
