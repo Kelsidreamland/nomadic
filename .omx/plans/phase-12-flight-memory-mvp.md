@@ -54,3 +54,8 @@ Simplify `旅居足跡` into a quiet MVP dashboard: fewer stats, no year timelin
   - `npm run build`: passed with the existing large chunk warning.
   - `npm run lint`: still fails on existing repo-wide lint debt in `useRetry`, `Items`, `Luggages`, `Outfits`, `ai`, and `google`; no errors remain in this flight passport slice.
   - Playwright local preview on `127.0.0.1:4177/memory`: seeded eight demo flight records, confirmed ECharts canvas renders on desktop and mobile widths, and confirmed the `匯出護照圖` button downloads a valid `nomadic-flight-passport-2026-05-10.png`.
+- Production:
+  - GitHub push: `a4a3713 feat: add flight passport map` pushed to `origin/main`.
+  - Vercel production deploy: `https://nomadic-rust.vercel.app` aliased to deployment `nomadic-kxkovwphy-kelsidreamlands-projects.vercel.app`.
+  - Production `version.json`: `a4a3713`, built at `2026-05-10T13:58:09.180Z`.
+  - Playwright production smoke on `/memory`: seeded demo flights in browser IndexedDB, confirmed `va4a3713`, `flight-passport-card`, ECharts canvas, MRZ text, and PNG export download.
