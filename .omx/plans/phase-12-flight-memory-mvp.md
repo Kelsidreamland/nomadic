@@ -43,3 +43,14 @@ Simplify `旅居足跡` into a quiet MVP dashboard: fewer stats, no year timelin
 - Vercel production deploy: `https://nomadic-rust.vercel.app` aliased to deployment `nomadic-hdgpg1l1n-kelsidreamlands-projects.vercel.app`.
 - Production `version.json`: `412e586`, built at `2026-05-06T19:13:58.016Z`.
 - Playwright production smoke on `/memory`: page showed `v412e586`; seeded demo flight records and confirmed `今年航程`, `去過國家`, `最常去`, `匯入 CSV`, `上傳 PDF`, `飛行路線圖`, and manual fallback appear in the intended order.
+
+## Flight Passport Map Revision
+
+- Replace the simple SVG route map with an ECharts flight-passport poster card: dark world map, red route flow lines, limited airport labels, passport stats, MRZ-style text, and a 2x PNG export button.
+- Add `flightPassportData` as the map data layer so route coordinates, stats, MRZ text, and label selection stay separate from rendering.
+- Verification:
+  - `./node_modules/.bin/vitest run src/services/flightPassportData.test.ts src/components/FlightRouteMap.test.tsx`: passed.
+  - `./node_modules/.bin/tsc -b`: passed.
+  - `npm run build`: passed with the existing large chunk warning.
+  - `npm run lint`: still fails on existing repo-wide lint debt in `useRetry`, `Items`, `Luggages`, `Outfits`, `ai`, and `google`; no errors remain in this flight passport slice.
+  - Playwright local preview on `127.0.0.1:4177/memory`: seeded eight demo flight records, confirmed ECharts canvas renders on desktop and mobile widths, and confirmed the `匯出護照圖` button downloads a valid `nomadic-flight-passport-2026-05-10.png`.
