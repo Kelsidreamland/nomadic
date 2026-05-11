@@ -3,6 +3,7 @@ import type { Item } from '../db';
 const nonOutfitPlanningKeywords = [
   '睡衣',
   '睡褲',
+  '睡裙',
   '睡袍',
   '家居服',
   '泳衣',
@@ -38,7 +39,7 @@ export const isOutfitEligibleItem = (
 ) => {
   if (item.category !== '衣物') return false;
   if (item.inventoryMode === 'quick') return false;
-  if (isNonOutfitPlanningItem(item)) return false;
+  if (isNonOutfitPlanningItem(item) && item.outfitEligible !== true) return false;
   return item.outfitEligible !== false;
 };
 

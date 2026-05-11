@@ -87,7 +87,7 @@ export const Items = () => {
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualItem, setManualItem] = useState<Partial<Item>>({ ...defaultNewItem });
   const [inventoryMode, setInventoryMode] = useState<'quick' | 'detail'>(() => searchParams.get('mode') === 'quick' ? 'quick' : 'detail');
-  const [selectedQuickGroupId, setSelectedQuickGroupId] = useState<QuickInventoryGroupId>('clothing');
+  const [selectedQuickGroupId, setSelectedQuickGroupId] = useState<QuickInventoryGroupId | null>(null);
   const [pendingDeleteItemId, setPendingDeleteItemId] = useState<string | null>(null);
   const [selectedDetailAreaId, setSelectedDetailAreaId] = useState<DetailInventoryAreaId>(() => {
     return getDetailInventoryArea(searchParams.get('area') || DEFAULT_DETAIL_INVENTORY_AREA_ID).id;
@@ -101,7 +101,9 @@ export const Items = () => {
   const visibleItems = activeLuggage ? items.filter((item) => item.luggageId === activeLuggage.id) : items;
   const totalVisibleItemQuantity = visibleItems.reduce((sum, item) => sum + getItemQuantity(item), 0);
   const selectedDetailArea = getDetailInventoryArea(selectedDetailAreaId);
-  const selectedQuickTemplates = quickInventoryTemplates.filter(template => template.groupId === selectedQuickGroupId);
+  const selectedQuickTemplates = selectedQuickGroupId
+    ? quickInventoryTemplates.filter(template => template.groupId === selectedQuickGroupId)
+    : [];
 
   useEffect(() => {
     if (activeLuggageId && luggages.length > 0 && !activeLuggage) {
@@ -660,8 +662,9 @@ export const Items = () => {
                 <button
                   key={group.id}
                   type="button"
-                  onClick={() => setSelectedQuickGroupId(group.id)}
+                  onClick={() => setSelectedQuickGroupId(current => current === group.id ? null : group.id)}
                   aria-pressed={selected}
+                  aria-expanded={selected}
                   className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
                     selected
                       ? 'border-[var(--color-brand-espresso)] bg-[var(--color-brand-espresso)] text-white shadow-sm'
@@ -674,45 +677,47 @@ export const Items = () => {
             })}
           </div>
 
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {selectedQuickTemplates.map(template => {
-              const quantity = quickQuantities[template.id] || template.defaultQuantity;
-              return (
-                <div key={template.id} className="flex items-center gap-3 rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)]/55 p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-[var(--color-brand-espresso)]">{template.name}</p>
-                    <p className="mt-0.5 text-[11px] text-[var(--color-brand-espresso)]/40">{template.category}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1 rounded-full bg-white px-1.5 py-1 shadow-sm">
+          {selectedQuickGroupId && (
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              {selectedQuickTemplates.map(template => {
+                const quantity = quickQuantities[template.id] || template.defaultQuantity;
+                return (
+                  <div key={template.id} className="flex items-center gap-3 rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)]/55 p-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-[var(--color-brand-espresso)]">{template.name}</p>
+                      <p className="mt-0.5 text-[11px] text-[var(--color-brand-espresso)]/40">{template.category}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1 rounded-full bg-white px-1.5 py-1 shadow-sm">
+                      <button
+                        type="button"
+                        onClick={() => updateQuickQuantity(template.id, -1)}
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-brand-espresso)]/45 hover:bg-[var(--color-brand-sand)]"
+                        aria-label={t('items.decreaseQuantity', { name: template.name })}
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="w-7 text-center text-sm font-black text-[var(--color-brand-espresso)]">{quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateQuickQuantity(template.id, 1)}
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-brand-espresso)]/60 hover:bg-[var(--color-brand-sand)]"
+                        aria-label={t('items.increaseQuantity', { name: template.name })}
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => updateQuickQuantity(template.id, -1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-brand-espresso)]/45 hover:bg-[var(--color-brand-sand)]"
-                      aria-label={t('items.decreaseQuantity', { name: template.name })}
+                      onClick={() => handleQuickAdd(template.id)}
+                      className="shrink-0 rounded-xl bg-[var(--color-brand-espresso)] px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-black"
                     >
-                      <Minus size={14} />
-                    </button>
-                    <span className="w-7 text-center text-sm font-black text-[var(--color-brand-espresso)]">{quantity}</span>
-                    <button
-                      type="button"
-                      onClick={() => updateQuickQuantity(template.id, 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-brand-espresso)]/60 hover:bg-[var(--color-brand-sand)]"
-                      aria-label={t('items.increaseQuantity', { name: template.name })}
-                    >
-                      <Plus size={14} />
+                      {t('items.quickAdd')}
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickAdd(template.id)}
-                    className="shrink-0 rounded-xl bg-[var(--color-brand-espresso)] px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-black"
-                  >
-                    {t('items.quickAdd')}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

@@ -41,4 +41,34 @@ describe('parseFlightMemoryCsv', () => {
     });
     expect(result.errors).toEqual(['第 3 列缺少出發日期、出發機場或抵達機場，已略過。']);
   });
+
+  it('imports origin and destination CSV headers as route airports', () => {
+    const result = parseFlightMemoryCsv(`Date,Origin,Destination,Airline,Flight Number
+2024-01-05,TPE,NRT,EVA Air,BR198
+2024-01-12,NRT,TPE,EVA Air,BR197`);
+
+    expect(result.errors).toEqual([]);
+    expect(result.flights.map(flight => ({
+      date: flight.departureDate,
+      from: flight.departureAirport,
+      to: flight.arrivalAirport,
+      destination: flight.destination,
+    }))).toEqual([
+      { date: '2024-01-05', from: 'TPE', to: 'NRT', destination: 'NRT' },
+      { date: '2024-01-12', from: 'NRT', to: 'TPE', destination: 'TPE' },
+    ]);
+  });
+
+  it('detects semicolon-delimited flight history exports', () => {
+    const result = parseFlightMemoryCsv(`Date;From;To;Flight
+2023-12-20;TPE;SIN;SQ879`);
+
+    expect(result.errors).toEqual([]);
+    expect(result.flights[0]).toMatchObject({
+      departureDate: '2023-12-20',
+      departureAirport: 'TPE',
+      arrivalAirport: 'SIN',
+      flightNumber: 'SQ879',
+    });
+  });
 });

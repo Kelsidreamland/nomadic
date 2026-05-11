@@ -29,17 +29,28 @@ describe('getOutfitEligibleItems', () => {
   it('excludes sleepwear and swimwear from outfit planning', () => {
     const result = getOutfitEligibleItems([
       makeItem({ id: 'shirt', name: '白色襯衫', inventoryMode: 'detail', outfitEligible: true }),
-      makeItem({ id: 'pajamas', name: '薄長袖睡衣', inventoryMode: 'detail', outfitEligible: true }),
-      makeItem({ id: 'swimsuit', name: '黑色泳衣', inventoryMode: 'detail', outfitEligible: true }),
-      makeItem({ id: 'bikini', name: 'blue bikini', inventoryMode: 'detail', outfitEligible: true }),
+      makeItem({ id: 'pajamas', name: '薄長袖睡衣', inventoryMode: 'detail', outfitEligible: undefined }),
+      makeItem({ id: 'sleep-dress', name: '棉質睡裙', inventoryMode: 'detail', outfitEligible: undefined }),
+      makeItem({ id: 'swimsuit', name: '黑色泳衣', inventoryMode: 'detail', outfitEligible: undefined }),
+      makeItem({ id: 'bikini', name: 'blue bikini', inventoryMode: 'detail', outfitEligible: undefined }),
     ]);
 
     expect(result.map(item => item.id)).toEqual(['shirt']);
   });
 
+  it('allows an explicit outfit marker to override sleepwear defaults', () => {
+    const result = getOutfitEligibleItems([
+      makeItem({ id: 'sleep-dress', name: '緞面睡裙', inventoryMode: 'detail', outfitEligible: true, notes: '特殊造型也可外穿' }),
+      makeItem({ id: 'pajamas', name: '普通睡衣', inventoryMode: 'detail', outfitEligible: false }),
+    ]);
+
+    expect(result.map(item => item.id)).toEqual(['sleep-dress']);
+  });
+
   it('uses the same rule when auto-setting detail item eligibility', () => {
     expect(shouldAutoIncludeInOutfitPlanning(makeItem({ name: '白色襯衫', inventoryMode: 'detail' }))).toBe(true);
     expect(shouldAutoIncludeInOutfitPlanning(makeItem({ name: '睡衣套裝', inventoryMode: 'detail' }))).toBe(false);
+    expect(shouldAutoIncludeInOutfitPlanning(makeItem({ name: '棉質睡裙', inventoryMode: 'detail' }))).toBe(false);
     expect(shouldAutoIncludeInOutfitPlanning(makeItem({ name: 'swimsuit', inventoryMode: 'detail' }))).toBe(false);
   });
 });

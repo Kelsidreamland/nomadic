@@ -94,6 +94,7 @@ export const FlightMemory = () => {
       checkedAllowance: 0,
       carryOnAllowance: 0,
       personalAllowance: 0,
+      passengerCount: 1,
     } as Flight);
 
     setFormState(createDefaultFormState());

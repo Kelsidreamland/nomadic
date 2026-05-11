@@ -113,27 +113,6 @@ export const Outfits = () => {
         </div>
       </div>
 
-      {clothingItems.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-[var(--color-brand-cream)] p-4 rounded-2xl border border-[var(--color-brand-stone)] text-center">
-            <div className="text-2xl font-black text-[var(--color-brand-terracotta)]">{clothingItems.length}</div>
-            <div className="text-xs text-[var(--color-brand-espresso)]/40 mt-1">{t('items.title')}</div>
-          </div>
-          <div className="bg-[var(--color-brand-cream)] p-4 rounded-2xl border border-[var(--color-brand-stone)] text-center">
-            <div className="text-2xl font-black text-[var(--color-brand-terracotta)]">{matches.length}</div>
-            <div className="text-xs text-[var(--color-brand-espresso)]/40 mt-1">{t('outfits.setsCreated')}</div>
-          </div>
-          <div className="bg-[var(--color-brand-cream)] p-4 rounded-2xl border border-[var(--color-brand-stone)] text-center">
-            <div className="text-2xl font-black text-[var(--color-brand-terracotta)]">{clothingItems.length > 0 ? (matches.length / clothingItems.length).toFixed(1) : '0'}</div>
-            <div className="text-xs text-[var(--color-brand-espresso)]/40 mt-1">{t('outfits.avgPerItem')}</div>
-          </div>
-          <div className="bg-[var(--color-brand-cream)] p-4 rounded-2xl border border-[var(--color-brand-stone)] text-center">
-            <div className="text-2xl font-black text-[var(--color-brand-olive)]">{allRankedItems.filter(r => r.count >= 3).length}</div>
-            <div className="text-xs text-[var(--color-brand-espresso)]/40 mt-1">{t('outfits.universal')}</div>
-          </div>
-        </div>
-      )}
-
       {allRankedItems.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {mostVersatile.length > 0 && (

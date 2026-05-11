@@ -10,6 +10,7 @@ import { useStore } from '../store';
 import { buildPackingChecklistSummary, getItemQuantity, getPackingChecklistProgress, togglePackedItemId } from '../services/packingChecklist';
 import { getUpcomingFlight } from '../services/flightMemory';
 import { buildQuickInventoryInsights, mergeQuickInventoryInsights } from '../services/quickInventoryAdvice';
+import { getCombinedAllowance } from '../services/flightAllowance';
 
 const joinParts = (...parts: Array<string | undefined | null>) => parts.filter(Boolean).join(' · ');
 
@@ -32,6 +33,7 @@ type SmartInsights = {
 };
 
 const PACKING_CHECKLIST_KEY = 'nomadic_packing_checklist_checked_item_ids';
+const LONG_PRESS_MOVE_CANCEL_PX = 10;
 
 const loadPackedItemIds = () => {
   if (typeof window === 'undefined') return [];
@@ -84,6 +86,8 @@ export const Overview = () => {
   const isPackingMode = searchParams.get('packing') === '1';
   const didAutoExpandPacking = useRef(false);
   const longPressTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
+  const draggedItemIdRef = useRef<string | null>(null);
   const packingSummary = buildPackingChecklistSummary(luggages, items);
   const expandableLuggageKey = packingSummary.expandableLuggageIds.join('|');
 
@@ -120,6 +124,8 @@ export const Overview = () => {
 
   const checkedWeight = luggages.filter(l => l.type === '托运').reduce((sum, l) => sum + getLatestWeight(l.id), 0);
   const carryOnWeight = luggages.filter(l => l.type === '手提').reduce((sum, l) => sum + getLatestWeight(l.id), 0);
+  const checkedAllowanceLimit = upcomingFlight ? getCombinedAllowance(upcomingFlight, 'checkedAllowance') : 0;
+  const carryOnAllowanceLimit = upcomingFlight ? getCombinedAllowance(upcomingFlight, 'carryOnAllowance') : 7;
 
   const itemsByLuggage = (luggageId: string) => items.filter(i => i.luggageId === luggageId);
   const getItemQuantityTotal = (targetItems: typeof items) => targetItems.reduce((sum, item) => sum + getItemQuantity(item), 0);
@@ -159,6 +165,8 @@ export const Overview = () => {
 
   const clearDragState = () => {
     clearLongPressTimer();
+    longPressStartRef.current = null;
+    draggedItemIdRef.current = null;
     setDraggedItemId(null);
     setDragOverLuggageId(null);
   };
@@ -182,29 +190,54 @@ export const Overview = () => {
 
   const startItemDrag = (itemId: string) => {
     clearLongPressTimer();
+    draggedItemIdRef.current = itemId;
     setDraggedItemId(itemId);
   };
 
-  const startItemLongPress = (itemId: string) => {
+  const startItemLongPress = (itemId: string, event: React.PointerEvent<HTMLDivElement>) => {
     clearLongPressTimer();
+    longPressStartRef.current = { x: event.clientX, y: event.clientY };
     longPressTimerRef.current = window.setTimeout(() => {
+      draggedItemIdRef.current = itemId;
       setDraggedItemId(itemId);
       longPressTimerRef.current = null;
     }, 420);
   };
 
+  const findLuggageDropTarget = (x: number, y: number) => {
+    return document
+      .elementFromPoint(x, y)
+      ?.closest<HTMLElement>('[data-luggage-drop-target="true"]');
+  };
+
+  const handleItemPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = longPressStartRef.current;
+    const activeDraggedItemId = draggedItemIdRef.current || draggedItemId;
+    if (!start && !activeDraggedItemId) return;
+
+    const moved = Math.hypot(event.clientX - (start?.x || event.clientX), event.clientY - (start?.y || event.clientY));
+    if (!activeDraggedItemId && moved > LONG_PRESS_MOVE_CANCEL_PX) {
+      clearLongPressTimer();
+      longPressStartRef.current = null;
+      return;
+    }
+
+    if (!activeDraggedItemId) return;
+    const luggageId = findLuggageDropTarget(event.clientX, event.clientY)?.dataset.luggageId;
+    setDragOverLuggageId(luggageId || null);
+  };
+
   const finishItemLongPress = (event: React.PointerEvent<HTMLDivElement>) => {
     clearLongPressTimer();
-    if (!draggedItemId) return;
-    const target = document
-      .elementFromPoint(event.clientX, event.clientY)
-      ?.closest<HTMLElement>('[data-luggage-drop-target="true"]');
-    const luggageId = target?.dataset.luggageId;
+    const activeDraggedItemId = draggedItemIdRef.current || draggedItemId;
+    if (!activeDraggedItemId) return;
+    const target = findLuggageDropTarget(event.clientX, event.clientY);
+    const luggageId = target?.dataset.luggageId || dragOverLuggageId;
     if (!luggageId) {
       clearDragState();
       return;
     }
-    void moveItemToLuggage(draggedItemId, luggageId);
+    void moveItemToLuggage(activeDraggedItemId, luggageId);
   };
 
   const handleLuggageDrop = (luggageId: string, droppedItemId?: string) => {
@@ -345,8 +378,8 @@ export const Overview = () => {
       {upcomingFlight && luggages.length > 0 && (
         <div className="space-y-4 rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm">
           <h3 className="text-sm font-bold text-[var(--color-brand-espresso)]/60">{t('overview.weightVsLimit')}</h3>
-          <WeightBar current={checkedWeight} limit={upcomingFlight.checkedAllowance || 0} label={t('dashboard.checked')} />
-          <WeightBar current={carryOnWeight} limit={upcomingFlight.carryOnAllowance || 7} label={t('dashboard.carryOn')} />
+          <WeightBar current={checkedWeight} limit={checkedAllowanceLimit} label={t('dashboard.checked')} />
+          <WeightBar current={carryOnWeight} limit={carryOnAllowanceLimit || 7} label={t('dashboard.carryOn')} />
         </div>
       )}
 
@@ -434,18 +467,20 @@ export const Overview = () => {
                             }}
                             onDragEnd={clearDragState}
                             onPointerDown={event => {
-                              event.currentTarget.setPointerCapture(event.pointerId);
-                              startItemLongPress(item.id);
+                              event.currentTarget.setPointerCapture?.(event.pointerId);
+                              startItemLongPress(item.id, event);
                             }}
+                            onPointerMove={handleItemPointerMove}
                             onPointerCancel={clearDragState}
                             onPointerUp={event => {
-                              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                                event.currentTarget.releasePointerCapture(event.pointerId);
+                              if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+                                event.currentTarget.releasePointerCapture?.(event.pointerId);
                               }
                               finishItemLongPress(event);
                             }}
                             className={clsx(
-                              'flex min-w-0 cursor-grab touch-none select-none items-center gap-2 rounded-xl bg-[var(--color-brand-sand)] p-2 transition-all active:cursor-grabbing',
+                              'flex min-w-0 cursor-grab select-none items-center gap-2 rounded-xl bg-[var(--color-brand-sand)] p-2 transition-all active:cursor-grabbing',
+                              draggedItemId === item.id ? 'touch-none' : 'touch-pan-y',
                               draggedItemId === item.id && 'scale-[0.98] opacity-65 ring-2 ring-[var(--color-brand-terracotta)]/30'
                             )}
                           >

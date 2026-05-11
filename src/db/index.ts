@@ -75,6 +75,7 @@ export interface Flight {
   checkedAllowance: number;
   carryOnAllowance: number;
   personalAllowance: number;
+  passengerCount?: number;
   rawEmailId?: string;
 }
 

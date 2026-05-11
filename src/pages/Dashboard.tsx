@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Onboarding } from '../components/Onboarding';
 import { getUpcomingFlight } from '../services/flightMemory';
+import { getCombinedAllowance } from '../services/flightAllowance';
 
 const defaultFlightData = (): Partial<Flight> => ({
   airline: '',
@@ -31,7 +32,8 @@ const defaultFlightData = (): Partial<Flight> => ({
   returnArrivalTerminal: '',
   checkedAllowance: 20,
   carryOnAllowance: 7,
-  personalAllowance: 0
+  personalAllowance: 0,
+  passengerCount: 1,
 });
 
 const joinParts = (...parts: Array<string | undefined | null>) => parts.filter(Boolean).join(' · ');
@@ -71,6 +73,7 @@ const normalizeFlightData = (data: Partial<Flight>): Partial<Flight> => ({
   checkedAllowance: Number(data.checkedAllowance ?? 20),
   carryOnAllowance: Number(data.carryOnAllowance ?? 7),
   personalAllowance: Number(data.personalAllowance ?? 0),
+  passengerCount: Math.min(9, Math.max(1, Math.round(Number(data.passengerCount ?? 1)))),
 });
 
 export const Dashboard = () => {
@@ -163,6 +166,8 @@ export const Dashboard = () => {
   const carryOnWeight = luggages.filter(l => l.type === '手提').reduce((sum, l) => {
     return sum + (l.weightHistory?.length > 0 ? l.weightHistory[l.weightHistory.length - 1].weight : 0);
   }, 0);
+  const checkedAllowanceLimit = upcomingFlight ? getCombinedAllowance(upcomingFlight, 'checkedAllowance') : 0;
+  const carryOnAllowanceLimit = upcomingFlight ? getCombinedAllowance(upcomingFlight, 'carryOnAllowance') : 0;
 
   useEffect(() => {
     getGeoIpLocation().then(loc => setLocation(loc));
@@ -286,7 +291,11 @@ export const Dashboard = () => {
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <div>
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.passengerCount')}</label>
+              <input type="number" min={1} max={9} className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.passengerCount ?? 1} onChange={e => setFlightData({...flightData, passengerCount: Number(e.target.value)})} />
+            </div>
             <div>
               <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.checkedAllowance')}</label>
               <input type="number" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.checkedAllowance ?? 0} onChange={e => setFlightData({...flightData, checkedAllowance: Number(e.target.value)})} />
@@ -404,13 +413,13 @@ export const Dashboard = () => {
               </div>
               <div className="text-right">
                 <p className="text-[10px] font-bold text-[var(--color-brand-espresso)]/40">{t('dashboard.limit')}</p>
-                <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{upcomingFlight.checkedAllowance || 0} kg</p>
+                <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{checkedAllowanceLimit || 0} kg</p>
               </div>
             </div>
             <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--color-brand-stone)]/60">
               <div
-                className={clsx("h-full transition-all duration-1000", checkedWeight > (upcomingFlight.checkedAllowance || 0) ? 'bg-red-500' : 'bg-[var(--color-brand-espresso)]')}
-                style={{ width: `${Math.min(100, (checkedWeight / (upcomingFlight.checkedAllowance || 1)) * 100)}%` }}
+                className={clsx("h-full transition-all duration-1000", checkedWeight > checkedAllowanceLimit ? 'bg-red-500' : 'bg-[var(--color-brand-espresso)]')}
+                style={{ width: `${Math.min(100, (checkedWeight / (checkedAllowanceLimit || 1)) * 100)}%` }}
               />
             </div>
           </div>
@@ -422,13 +431,13 @@ export const Dashboard = () => {
               </div>
               <div className="text-right">
                 <p className="text-[10px] font-bold text-[var(--color-brand-espresso)]/40">{t('dashboard.limit')}</p>
-                <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{upcomingFlight.carryOnAllowance || 0} kg</p>
+                <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{carryOnAllowanceLimit || 0} kg</p>
               </div>
             </div>
             <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--color-brand-stone)]/60">
               <div
-                className={clsx("h-full transition-all duration-1000", carryOnWeight > (upcomingFlight.carryOnAllowance || 0) ? 'bg-red-500' : 'bg-[var(--color-brand-olive)]')}
-                style={{ width: `${Math.min(100, (carryOnWeight / (upcomingFlight.carryOnAllowance || 1)) * 100)}%` }}
+                className={clsx("h-full transition-all duration-1000", carryOnWeight > carryOnAllowanceLimit ? 'bg-red-500' : 'bg-[var(--color-brand-olive)]')}
+                style={{ width: `${Math.min(100, (carryOnWeight / (carryOnAllowanceLimit || 1)) * 100)}%` }}
               />
             </div>
           </div>

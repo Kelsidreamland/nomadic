@@ -8,8 +8,8 @@ export interface FlightMemoryCsvResult {
 const columnAliases: Record<string, string[]> = {
   departureDate: ['departuredate', 'date', 'flightdate', '出發日期', '出发日期', '日期'],
   departureTime: ['departuretime', 'time', '起飛時間', '起飞时间', '出發時間', '出发时间'],
-  departureAirport: ['departureairport', 'from', 'fromairport', 'origin', '出發機場', '出发机场', '起飛機場', '起飞机场'],
-  arrivalAirport: ['arrivalairport', 'to', 'toairport', 'destinationairport', '抵達機場', '抵达机场', '降落機場', '降落机场'],
+  departureAirport: ['departureairport', 'from', 'fromairport', 'origin', 'origincode', 'departure', 'dep', '出發機場', '出发机场', '起飛機場', '起飞机场'],
+  arrivalAirport: ['arrivalairport', 'to', 'toairport', 'destinationairport', 'destination', 'dest', 'arrival', 'arr', '抵達機場', '抵达机场', '降落機場', '降落机场'],
   destination: ['destination', 'city', '目的地', '城市'],
   airline: ['airline', 'carrier', '航空公司', '航司'],
   flightNumber: ['flightnumber', 'flightno', 'flight', '航班編號', '航班编号'],
@@ -47,7 +47,16 @@ const normalizeKgValue = (value: unknown, fallback = 0) => {
   return match ? Number(match[0]) : fallback;
 };
 
+const inferCsvDelimiter = (csv: string) => {
+  const firstDataLine = csv.split(/\r?\n/).find(line => line.trim()) || '';
+  const candidates = [',', ';', '\t'];
+  return candidates
+    .map(delimiter => ({ delimiter, count: firstDataLine.split(delimiter).length }))
+    .sort((a, b) => b.count - a.count)[0]?.delimiter || ',';
+};
+
 const parseCsvRows = (csv: string) => {
+  const delimiter = inferCsvDelimiter(csv);
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
@@ -68,7 +77,7 @@ const parseCsvRows = (csv: string) => {
       continue;
     }
 
-    if (char === ',' && !inQuotes) {
+    if (char === delimiter && !inQuotes) {
       row.push(field);
       field = '';
       continue;
@@ -155,6 +164,7 @@ export const parseFlightMemoryCsv = (csv: string, idPrefix = 'csv-flight'): Flig
       checkedAllowance: 0,
       carryOnAllowance: 0,
       personalAllowance: 0,
+      passengerCount: 1,
       rawEmailId: 'csv-import',
     });
   });
@@ -219,6 +229,7 @@ export const buildFlightMemoryImportFromAnalysis = (
     checkedAllowance: normalizeKgValue(data.checkedAllowance),
     carryOnAllowance: normalizeKgValue(data.carryOnAllowance, 7),
     personalAllowance: normalizeKgValue(data.personalAllowance),
+    passengerCount: 1,
     rawEmailId: source,
   };
 };

@@ -3,7 +3,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Flight, Item, Luggage } from '../db';
 import '../i18n';
 import { Overview } from './Overview';
@@ -53,6 +53,7 @@ vi.mock('../services/ai', () => ({
 
 describe('Overview departure tools', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     localStorage.clear();
     liveQueryState.callIndex = 0;
     liveQueryState.luggages = [];
@@ -60,6 +61,11 @@ describe('Overview departure tools', () => {
     liveQueryState.flights = [];
     generateSmartInsightsMock.mockReset();
     dbItemsUpdateMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('keeps packing-related actions on Overview without duplicating the outfit tab', () => {
@@ -158,6 +164,51 @@ describe('Overview departure tools', () => {
     });
   });
 
+  it('uses combined baggage allowance for multi-passenger trips', async () => {
+    liveQueryState.luggages = [
+      {
+        id: 'checked',
+        name: '托運箱',
+        type: '托运',
+        season: '通用',
+        length: 68,
+        width: 45,
+        height: 27,
+        weightHistory: [{ date: '2026-05-01', weight: 10 }],
+        createdAt: 1,
+      },
+    ];
+    liveQueryState.flights = [
+      {
+        id: 'flight-1',
+        destination: '東京',
+        airline: 'EVA',
+        departureDate: '2026-06-01',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+        passengerCount: 2,
+      },
+    ];
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={['/overview']}>
+          <Overview />
+        </MemoryRouter>
+      );
+    });
+
+    expect(container.textContent).toContain('10.0 / 46 kg');
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
   it('moves an item to another luggage by dragging it on the overview', async () => {
     liveQueryState.luggages = [
       {
@@ -229,4 +280,5 @@ describe('Overview departure tools', () => {
       root.unmount();
     });
   });
+
 });
