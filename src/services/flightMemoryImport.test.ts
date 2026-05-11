@@ -59,6 +59,22 @@ describe('parseFlightMemoryCsv', () => {
     ]);
   });
 
+  it('imports Flighty tab-delimited exports with Start and Destination columns', () => {
+    const result = parseFlightMemoryCsv(`Date\tStart\tDestination\tAirline\tAircraft\tReason\tClass\tSeat Number\tDuration
+2024-01-05\tTaipei (TPE)\tTokyo Narita (NRT)\tEVA Air\tBoeing 787\tLeisure\tEconomy\t12A\t3h 05m`);
+
+    expect(result.errors).toEqual([]);
+    expect(result.flights[0]).toMatchObject({
+      id: 'csv-flight-1-2024-01-05-TPE-NRT',
+      departureDate: '2024-01-05',
+      departureAirport: 'TPE',
+      arrivalAirport: 'NRT',
+      destination: 'NRT',
+      airline: 'EVA Air',
+      rawEmailId: 'csv-import',
+    });
+  });
+
   it('detects semicolon-delimited flight history exports', () => {
     const result = parseFlightMemoryCsv(`Date;From;To;Flight
 2023-12-20;TPE;SIN;SQ879`);

@@ -8,7 +8,7 @@ export interface FlightMemoryCsvResult {
 const columnAliases: Record<string, string[]> = {
   departureDate: ['departuredate', 'date', 'flightdate', '出發日期', '出发日期', '日期'],
   departureTime: ['departuretime', 'time', '起飛時間', '起飞时间', '出發時間', '出发时间'],
-  departureAirport: ['departureairport', 'from', 'fromairport', 'origin', 'origincode', 'departure', 'dep', '出發機場', '出发机场', '起飛機場', '起飞机场'],
+  departureAirport: ['departureairport', 'from', 'fromairport', 'origin', 'origincode', 'start', 'departure', 'dep', '出發機場', '出发机场', '起飛機場', '起飞机场'],
   arrivalAirport: ['arrivalairport', 'to', 'toairport', 'destinationairport', 'destination', 'dest', 'arrival', 'arr', '抵達機場', '抵达机场', '降落機場', '降落机场'],
   destination: ['destination', 'city', '目的地', '城市'],
   airline: ['airline', 'carrier', '航空公司', '航司'],
@@ -30,15 +30,19 @@ const normalizeDate = (value: string) => {
   return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 };
 
-const normalizeAirport = (value: string) => value.trim().toUpperCase();
-
 const normalizeText = (value: string) => value.trim().replace(/\s+/g, ' ');
 const normalizeUnknownText = (value: unknown) => String(value ?? '').trim().replace(/\s+/g, ' ');
 
 const normalizeAirportValue = (value: unknown) => {
   const normalized = normalizeUnknownText(value).toUpperCase();
-  const iataMatches = normalized.match(/[A-Z]{3}/g);
-  return iataMatches?.[iataMatches.length - 1] || normalized;
+  const parenthesizedIata = normalized.match(/\(([A-Z]{3})\)/)?.[1];
+  if (parenthesizedIata) return parenthesizedIata;
+
+  const leadingIata = normalized.match(/^([A-Z]{3})\b/)?.[1];
+  if (leadingIata) return leadingIata;
+
+  const trailingIata = normalized.match(/\b([A-Z]{3})$/)?.[1];
+  return trailingIata || normalized;
 };
 
 const normalizeKgValue = (value: unknown, fallback = 0) => {
@@ -130,23 +134,26 @@ export const parseFlightMemoryCsv = (csv: string, idPrefix = 'csv-flight'): Flig
 
   dataRows.forEach((row, index) => {
     const departureDate = normalizeDate(getValue(row, columnMap, 'departureDate'));
-    const departureAirport = normalizeAirport(getValue(row, columnMap, 'departureAirport'));
-    const arrivalAirport = normalizeAirport(getValue(row, columnMap, 'arrivalAirport'));
+    const departureAirport = normalizeAirportValue(getValue(row, columnMap, 'departureAirport'));
+    const arrivalAirport = normalizeAirportValue(getValue(row, columnMap, 'arrivalAirport'));
 
     if (!departureDate || !departureAirport || !arrivalAirport) {
       errors.push(`第 ${index + 2} 列缺少出發日期、出發機場或抵達機場，已略過。`);
       return;
     }
 
-    const flightNumber = normalizeAirport(getValue(row, columnMap, 'flightNumber'));
+    const flightNumber = normalizeUnknownText(getValue(row, columnMap, 'flightNumber')).toUpperCase();
     const returnDepartureDate = normalizeDate(getValue(row, columnMap, 'returnDepartureDate'));
+    const destination = columnMap.get('destination') === columnMap.get('arrivalAirport')
+      ? arrivalAirport
+      : getValue(row, columnMap, 'destination') || arrivalAirport;
 
     flights.push({
       id: `${idPrefix}-${index + 1}-${departureDate}-${departureAirport}-${arrivalAirport}`,
       departureDate,
       departureTime: getValue(row, columnMap, 'departureTime'),
       arrivalTime: '',
-      destination: getValue(row, columnMap, 'destination') || arrivalAirport,
+      destination,
       airline: getValue(row, columnMap, 'airline'),
       flightNumber,
       departureAirport,
@@ -156,9 +163,9 @@ export const parseFlightMemoryCsv = (csv: string, idPrefix = 'csv-flight'): Flig
       returnDepartureDate,
       returnDepartureTime: getValue(row, columnMap, 'returnDepartureTime'),
       returnArrivalTime: '',
-      returnFlightNumber: normalizeAirport(getValue(row, columnMap, 'returnFlightNumber')),
-      returnDepartureAirport: normalizeAirport(getValue(row, columnMap, 'returnDepartureAirport')),
-      returnArrivalAirport: normalizeAirport(getValue(row, columnMap, 'returnArrivalAirport')),
+      returnFlightNumber: normalizeUnknownText(getValue(row, columnMap, 'returnFlightNumber')).toUpperCase(),
+      returnDepartureAirport: normalizeAirportValue(getValue(row, columnMap, 'returnDepartureAirport')),
+      returnArrivalAirport: normalizeAirportValue(getValue(row, columnMap, 'returnArrivalAirport')),
       returnDepartureTerminal: '',
       returnArrivalTerminal: '',
       checkedAllowance: 0,
