@@ -34,6 +34,26 @@ vi.mock('../services/ai', () => ({
   analyzeTicketWithAI: analyzeTicketWithAIMock,
 }));
 
+const waitForAssertion = async (assertion: () => void) => {
+  const deadline = Date.now() + 1000;
+  let lastError: unknown;
+
+  while (Date.now() < deadline) {
+    try {
+      assertion();
+      return;
+    } catch (error) {
+      lastError = error;
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      });
+    }
+  }
+
+  assertion();
+  if (lastError) throw lastError;
+};
+
 describe('FlightMemory MVP dashboard', () => {
   beforeEach(() => {
     liveFlights.length = 0;
@@ -116,27 +136,32 @@ describe('FlightMemory MVP dashboard', () => {
       value: [file],
     });
 
-    await act(async () => {
+    act(() => {
       pdfInput?.dispatchEvent(new Event('change', { bubbles: true }));
-      await new Promise(resolve => setTimeout(resolve, 0));
     });
 
-    expect(analyzeTicketWithAIMock).toHaveBeenCalledWith(expect.stringContaining('data:application/pdf;base64,'), 'application/pdf');
-    expect(flightsBulkPutMock).toHaveBeenCalledWith([
-      expect.objectContaining({
-        destination: '東京',
-        airline: 'EVA Air',
-        flightNumber: 'BR198',
-        departureDate: '2026-06-01',
-        departureTime: '09:00',
-        departureAirport: 'TPE',
-        arrivalAirport: 'NRT',
-        checkedAllowance: 23,
-        carryOnAllowance: 7,
-        rawEmailId: 'pdf-import',
-      }),
-    ]);
-    expect(container.textContent).toContain('已從 1 個檔案匯入 1 段航班');
+    await waitForAssertion(() => {
+      expect(analyzeTicketWithAIMock).toHaveBeenCalledWith(expect.stringContaining('data:application/pdf;base64,'), 'application/pdf');
+    });
+    await waitForAssertion(() => {
+      expect(flightsBulkPutMock).toHaveBeenCalledWith([
+        expect.objectContaining({
+          destination: '東京',
+          airline: 'EVA Air',
+          flightNumber: 'BR198',
+          departureDate: '2026-06-01',
+          departureTime: '09:00',
+          departureAirport: 'TPE',
+          arrivalAirport: 'NRT',
+          checkedAllowance: 23,
+          carryOnAllowance: 7,
+          rawEmailId: 'pdf-import',
+        }),
+      ]);
+    });
+    await waitForAssertion(() => {
+      expect(container.textContent).toContain('已從 1 個檔案匯入 1 段航班');
+    });
 
     act(() => {
       root.unmount();

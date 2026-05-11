@@ -7,6 +7,8 @@ import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { getOutfitEligibleItems } from '../services/outfitEligibility';
 
+const createOutfitCreatedAt = () => Date.now();
+
 export const Outfits = () => {
   const { t } = useTranslation();
   const items = useLiveQuery(() => db.items.toArray()) || [];
@@ -37,7 +39,7 @@ export const Outfits = () => {
         id: uuidv4(),
         topItemId: selectedTopId,
         bottomItemId: bottomId,
-        createdAt: Date.now()
+        createdAt: createOutfitCreatedAt()
       });
     }
   };

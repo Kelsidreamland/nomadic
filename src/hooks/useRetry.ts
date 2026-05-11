@@ -13,8 +13,18 @@ interface RetryState<T> {
   retryCount: number;
 }
 
-export function useRetry<T>(
-  asyncFn: (...args: any[]) => Promise<T>,
+type RetryableError = {
+  response?: {
+    status?: number;
+  };
+};
+
+const hasRetryableResponse = (value: unknown): value is RetryableError => {
+  return typeof value === 'object' && value !== null && 'response' in value;
+};
+
+export function useRetry<T, Args extends unknown[]>(
+  asyncFn: (...args: Args) => Promise<T>,
   options: RetryOptions = {}
 ) {
   const { maxRetries = 3, delayMs = 1000, backoffMultiplier = 2 } = options;
@@ -27,7 +37,7 @@ export function useRetry<T>(
   const abortRef = useRef<AbortController | null>(null);
 
   const execute = useCallback(
-    async (...args: any[]) => {
+    async (...args: Args) => {
       // Cancel any in-flight request
       if (abortRef.current) {
         abortRef.current.abort();
@@ -58,8 +68,8 @@ export function useRetry<T>(
           }
 
           // Don't retry on auth errors (401/403)
-          const axiosErr = err as any;
-          if (axiosErr?.response?.status === 401 || axiosErr?.response?.status === 403) {
+          const status = hasRetryableResponse(err) ? err.response?.status : undefined;
+          if (status === 401 || status === 403) {
             break;
           }
 

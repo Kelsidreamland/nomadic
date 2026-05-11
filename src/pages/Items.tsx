@@ -35,6 +35,8 @@ const defaultNewItem: Partial<Item> = {
 
 const MIN_CUTOUT_POINTS = 3;
 
+const createItemTimestamp = () => Date.now();
+
 const detailAreaIcons = {
   toiletries: Bath,
   makeup: Sparkles,
@@ -86,17 +88,15 @@ export const Items = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualItem, setManualItem] = useState<Partial<Item>>({ ...defaultNewItem });
-  const [inventoryMode, setInventoryMode] = useState<'quick' | 'detail'>(() => searchParams.get('mode') === 'quick' ? 'quick' : 'detail');
   const [selectedQuickGroupId, setSelectedQuickGroupId] = useState<QuickInventoryGroupId | null>(null);
   const [pendingDeleteItemId, setPendingDeleteItemId] = useState<string | null>(null);
-  const [selectedDetailAreaId, setSelectedDetailAreaId] = useState<DetailInventoryAreaId>(() => {
-    return getDetailInventoryArea(searchParams.get('area') || DEFAULT_DETAIL_INVENTORY_AREA_ID).id;
-  });
   const [quickQuantities, setQuickQuantities] = useState<Record<string, number>>(() => {
     return Object.fromEntries(quickInventoryTemplates.map(template => [template.id, template.defaultQuantity]));
   });
   const [now] = useState(() => Date.now());
   const expiringCutoff = now + 30 * 24 * 60 * 60 * 1000;
+  const inventoryMode: 'quick' | 'detail' = searchParams.get('mode') === 'quick' ? 'quick' : 'detail';
+  const selectedDetailAreaId = getDetailInventoryArea(searchParams.get('area') || DEFAULT_DETAIL_INVENTORY_AREA_ID).id;
   const activeLuggage = luggages.find((luggage) => luggage.id === activeLuggageId) || null;
   const visibleItems = activeLuggage ? items.filter((item) => item.luggageId === activeLuggage.id) : items;
   const totalVisibleItemQuantity = visibleItems.reduce((sum, item) => sum + getItemQuantity(item), 0);
@@ -110,17 +110,6 @@ export const Items = () => {
       setActiveLuggageId(null);
     }
   }, [activeLuggage, activeLuggageId, luggages.length, setActiveLuggageId]);
-
-  useEffect(() => {
-    const mode = searchParams.get('mode');
-    if (mode === 'quick' || mode === 'detail') {
-      setInventoryMode(mode);
-    }
-    const area = searchParams.get('area');
-    if (area) {
-      setSelectedDetailAreaId(getDetailInventoryArea(area).id);
-    }
-  }, [searchParams]);
 
   const getLuggageTypeLabel = (type: string) => {
     switch (type) {
@@ -373,7 +362,7 @@ export const Items = () => {
       await db.items.add({
         ...itemToSave,
         id: uuidv4(),
-        createdAt: Date.now(),
+        createdAt: createItemTimestamp(),
         inventoryMode: 'detail',
       } as Item);
     }
@@ -391,7 +380,7 @@ export const Items = () => {
     await db.items.add({
       ...manualItem,
       id: uuidv4(),
-      createdAt: Date.now(),
+      createdAt: createItemTimestamp(),
       luggageId: manualItem.luggageId || activeLuggage?.id || '',
       inventoryMode: 'detail',
       outfitEligible: getAutoOutfitEligible(manualItem, 'detail'),
@@ -402,12 +391,10 @@ export const Items = () => {
   };
 
   const selectInventoryMode = (mode: 'quick' | 'detail') => {
-    setInventoryMode(mode);
     setSearchParams(mode === 'quick' ? { mode: 'quick' } : { mode: 'detail', area: selectedDetailAreaId });
   };
 
   const selectDetailArea = (areaId: DetailInventoryAreaId) => {
-    setSelectedDetailAreaId(areaId);
     setSearchParams({ mode: 'detail', area: areaId });
     if (showManualForm && !manualItem.name && !manualItem.image) {
       setManualItem(getAreaDraft(areaId));
@@ -439,7 +426,7 @@ export const Items = () => {
     await db.items.add({
       ...createQuickInventoryItemDraft(template, quantity, luggageId),
       id: uuidv4(),
-      createdAt: Date.now(),
+      createdAt: createItemTimestamp(),
     } as Item);
   };
 
@@ -536,7 +523,7 @@ export const Items = () => {
     return items.filter(i => i.luggageId === luggageId).reduce((sum, item) => sum + getItemQuantity(item), 0);
   };
 
-  const subCategoryOptions = [
+  const subCategoryOptions: Array<{ value: NonNullable<Item['subCategory']>; label: string }> = [
     { value: '上衣', label: t('items.subTop') },
     { value: '下裝', label: t('items.subBottom') },
     { value: '外套', label: t('items.subOuterwear') },
@@ -549,14 +536,14 @@ export const Items = () => {
     { value: '內褲', label: t('items.subUnderpants') },
   ];
 
-  const categoryOptions = [
+  const categoryOptions: Array<{ value: Item['category']; label: string }> = [
     { value: '衣物', label: t('items.categoryClothes') },
     { value: '器材', label: t('items.categoryGear') },
     { value: '保養品', label: t('items.categorySkincare') },
     { value: '其他', label: t('items.categoryOther') },
   ];
 
-  const seasonOptions = [
+  const seasonOptions: Array<{ value: Item['season']; label: string }> = [
     { value: '通用', label: t('items.seasonGeneral') },
     { value: '冬季', label: t('items.seasonWinter') },
     { value: '夏季', label: t('items.seasonSummer') },
@@ -872,7 +859,7 @@ export const Items = () => {
               <div className="grid grid-cols-2 gap-2">
                 <select
                   value={editingItem.category || '衣物'}
-                  onChange={e => setEditingItem({ ...editingItem, category: e.target.value as any, subCategory: undefined })}
+                  onChange={e => setEditingItem({ ...editingItem, category: e.target.value as Item['category'], subCategory: undefined })}
                   className="px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
                 >
                   {categoryOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -880,7 +867,7 @@ export const Items = () => {
                 {editingItem.category === '衣物' && (
                   <select
                     value={editingItem.subCategory || '上衣'}
-                    onChange={e => setEditingItem({ ...editingItem, subCategory: e.target.value as any })}
+                    onChange={e => setEditingItem({ ...editingItem, subCategory: e.target.value as NonNullable<Item['subCategory']> })}
                     className="px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
                   >
                     {subCategoryOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -890,7 +877,7 @@ export const Items = () => {
               <div className="grid grid-cols-2 gap-2">
                 <select
                   value={editingItem.season || '通用'}
-                  onChange={e => setEditingItem({ ...editingItem, season: e.target.value as any })}
+                  onChange={e => setEditingItem({ ...editingItem, season: e.target.value as Item['season'] })}
                   className="px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
                 >
                   {seasonOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -1088,7 +1075,7 @@ export const Items = () => {
                     <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">{t('items.occasionLabel')}</label>
                     <select
                       value={editingItem.occasion || '其他'}
-                      onChange={e => setEditingItem({ ...editingItem, occasion: e.target.value as any })}
+                      onChange={e => setEditingItem({ ...editingItem, occasion: e.target.value as NonNullable<Item['occasion']> })}
                       className="w-full px-3 py-2 bg-white rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     >
                       <option value="商務">{t('items.occasionBusiness')}</option>
@@ -1102,7 +1089,7 @@ export const Items = () => {
                     <label className="block text-xs font-bold text-[var(--color-brand-espresso)]/60 uppercase mb-1">{t('items.wrinkleLabel')}</label>
                     <select
                       value={editingItem.wrinkleProne || '適中'}
-                      onChange={e => setEditingItem({ ...editingItem, wrinkleProne: e.target.value as any })}
+                      onChange={e => setEditingItem({ ...editingItem, wrinkleProne: e.target.value as NonNullable<Item['wrinkleProne']> })}
                       className="w-full px-3 py-2 bg-white rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)] text-sm border border-[var(--color-brand-stone)]"
                     >
                       <option value="易皺">{t('items.wrinkleHigh')}</option>
@@ -1116,7 +1103,7 @@ export const Items = () => {
               <div className="grid grid-cols-2 gap-4">
                 <select
                   value={editingItem.condition || '新'}
-                  onChange={e => setEditingItem({ ...editingItem, condition: e.target.value as any })}
+                  onChange={e => setEditingItem({ ...editingItem, condition: e.target.value as Item['condition'] })}
                   className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
                 >
                   <option value="新">{t('items.condNew')}</option>
@@ -1197,14 +1184,14 @@ export const Items = () => {
               <div className="grid grid-cols-2 gap-2">
                 <select
                   value={manualItem.category || '衣物'}
-                  onChange={e => setManualItem({ ...manualItem, category: e.target.value as any, subCategory: undefined })}
+                  onChange={e => setManualItem({ ...manualItem, category: e.target.value as Item['category'], subCategory: undefined })}
                   className="px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
                 >
                   {categoryOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
                 <select
                   value={manualItem.season || '通用'}
-                  onChange={e => setManualItem({ ...manualItem, season: e.target.value as any })}
+                  onChange={e => setManualItem({ ...manualItem, season: e.target.value as Item['season'] })}
                   className="px-3 py-2 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] text-sm"
                 >
                   {seasonOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}

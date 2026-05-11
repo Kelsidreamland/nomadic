@@ -8,7 +8,7 @@ import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { LuggageWeightChart } from '../components/LuggageWeightChart';
 import { useNavigate } from 'react-router-dom';
-import { createLuggageDraftForSeason } from '../services/luggageForm';
+import { createLuggageDraftForSeason, type SeasonFilter } from '../services/luggageForm';
 import { getItemQuantity } from '../services/packingChecklist';
 
 const luggageSizePresets = [
@@ -24,6 +24,23 @@ const isValidWeightInput = (value?: string) => {
   if (!value) return false;
   const parsedValue = Number(value);
   return Number.isFinite(parsedValue) && parsedValue >= 0;
+};
+
+const seasonFilters: Array<{ id: SeasonFilter; labelKey: 'all' | 'winter' | 'summer' }> = [
+  { id: '所有', labelKey: 'all' },
+  { id: '冬季', labelKey: 'winter' },
+  { id: '夏季', labelKey: 'summer' },
+];
+
+const luggageTypes: Luggage['type'][] = ['托运', '手提', '随身', '特殊'];
+const luggageSeasons: Array<Extract<Luggage['season'], '混合' | '冬季' | '夏季'>> = ['混合', '冬季', '夏季'];
+
+const isLuggageType = (value: string): value is Luggage['type'] => {
+  return luggageTypes.includes(value as Luggage['type']);
+};
+
+const isEditableLuggageSeason = (value: string): value is Extract<Luggage['season'], '混合' | '冬季' | '夏季'> => {
+  return luggageSeasons.includes(value as Extract<Luggage['season'], '混合' | '冬季' | '夏季'>);
 };
 
 export const Luggages = () => {
@@ -154,16 +171,16 @@ export const Luggages = () => {
       </div>
 
       <div className="flex space-x-2 p-1 bg-[var(--color-brand-cream)] rounded-2xl shadow-sm border border-[var(--color-brand-stone)] max-w-sm">
-        {[{ id: '所有', label: t('luggages.all') }, { id: '冬季', label: t('luggages.winter') }, { id: '夏季', label: t('luggages.summer') }].map(season => (
+        {seasonFilters.map(season => (
           <button
             key={season.id}
-            onClick={() => setSeasonFilter(season.id as any)}
+            onClick={() => setSeasonFilter(season.id)}
             className={clsx(
               'flex-1 py-2 text-sm font-bold rounded-xl transition-all',
               currentSeasonFilter === season.id ? 'bg-[var(--color-brand-espresso)] text-white shadow-md' : 'text-[var(--color-brand-espresso)]/40 hover:text-[var(--color-brand-espresso)]/80'
             )}
           >
-            {season.label}
+            {t(`luggages.${season.labelKey}`)}
           </button>
         ))}
       </div>
@@ -181,7 +198,10 @@ export const Luggages = () => {
           <div className="grid grid-cols-2 gap-4">
             <select 
               value={newLuggage.type} 
-              onChange={e => setNewLuggage({...newLuggage, type: e.target.value as any})}
+              onChange={e => {
+                const type = e.target.value;
+                if (isLuggageType(type)) setNewLuggage({...newLuggage, type});
+              }}
               className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
             >
               <option value="托运">{t('luggages.typeChecked')}</option>
@@ -192,7 +212,10 @@ export const Luggages = () => {
 
             <select 
               value={newLuggage.season} 
-              onChange={e => setNewLuggage({...newLuggage, season: e.target.value as any})}
+              onChange={e => {
+                const season = e.target.value;
+                if (isEditableLuggageSeason(season)) setNewLuggage({...newLuggage, season});
+              }}
               className="px-4 py-3 bg-[var(--color-brand-sand)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)]"
             >
               <option value="混合">{t('luggages.seasonMixed')}</option>

@@ -40,13 +40,14 @@ describe('generateSmartInsights', () => {
   });
 
   it('should return error when no API key is configured', async () => {
-    (db.user_configs.toArray as any).mockResolvedValue([]);
+    vi.mocked(db.user_configs.toArray).mockResolvedValue([]);
 
     try {
       await generateSmartInsights({});
       expect.fail('Should have thrown');
-    } catch (e: any) {
-      expect(e.message).toContain('未配置 Gemini API Key');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect(error instanceof Error ? error.message : '').toContain('未配置 Gemini API Key');
     }
   });
 });

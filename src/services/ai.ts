@@ -1,30 +1,137 @@
-import { db } from '../db';
+import { db, type Item, type Luggage } from '../db';
 import { AIRLINE_RULES } from '../data/airlines';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import type { QuickInventoryInsights } from './quickInventoryAdvice';
 
-export const checkLocalAIAvailability = () => {
-  return 'ai' in window && typeof (window as any).ai !== 'undefined';
+type GenerateContentPart = string | {
+  inlineData: {
+    data: string;
+    mimeType: string;
+  };
 };
 
-const getGeminiClient = async () => {
+type GenerateContentInput = string | GenerateContentPart[];
+
+interface GenerativeResult {
+  response: {
+    text: () => string;
+  };
+}
+
+interface GenerativeModelLike {
+  generateContent: (promptOrParts: GenerateContentInput) => Promise<GenerativeResult>;
+}
+
+interface GeminiClientLike {
+  getGenerativeModel: (options: {
+    model: string;
+    generationConfig?: { responseMimeType: string };
+  }) => GenerativeModelLike;
+}
+
+interface WindowWithLocalAI extends Window {
+  ai?: unknown;
+}
+
+interface SmartInsightsContext {
+  upcomingFlight?: {
+    destination?: string;
+    checkedAllowance?: number;
+    carryOnAllowance?: number;
+  };
+  location?: string;
+  items?: unknown[];
+  luggages?: Luggage[] | unknown[];
+}
+
+type ItemCategory = Item['category'];
+type ItemSubCategory = NonNullable<Item['subCategory']>;
+type ItemSeason = Item['season'];
+type ItemOccasion = NonNullable<Item['occasion']>;
+type ItemWrinkleProne = NonNullable<Item['wrinkleProne']>;
+
+interface ItemAnalysisResult {
+  name?: string;
+  category?: ItemCategory;
+  subCategory?: ItemSubCategory;
+  season?: ItemSeason;
+  color?: string;
+  occasion?: ItemOccasion;
+  wrinkleProne?: ItemWrinkleProne;
+  tempRange?: string;
+  notes?: string;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null;
+};
+
+const toRecord = (value: unknown): Record<string, unknown> => {
+  return isRecord(value) ? value : {};
+};
+
+const getStringField = (value: Record<string, unknown>, key: string) => {
+  const field = value[key];
+  return typeof field === 'string' ? field : '';
+};
+
+const getOptionalStringField = (value: Record<string, unknown>, key: string) => {
+  const field = getStringField(value, key).trim();
+  return field || undefined;
+};
+
+const getErrorMessage = (error: unknown) => {
+  return error instanceof Error ? error.message : String(error);
+};
+
+const isAllowedValue = <T extends string>(value: string, allowedValues: readonly T[]): value is T => {
+  return (allowedValues as readonly string[]).includes(value);
+};
+
+const normalizeStringArray = (value: unknown) => {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
+};
+
+const normalizeRemoveSuggestions = (value: unknown) => {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map(entry => {
+      const record = toRecord(entry);
+      const itemId = getOptionalStringField(record, 'item_id');
+      const reason = getOptionalStringField(record, 'reason');
+      return itemId && reason ? { item_id: itemId, reason } : null;
+    })
+    .filter((entry): entry is { item_id: string; reason: string } => Boolean(entry));
+};
+
+const isInlineDataPart = (value: GenerateContentPart): value is Exclude<GenerateContentPart, string> => {
+  return typeof value !== 'string' && isRecord(value) && isRecord(value.inlineData);
+};
+
+export const checkLocalAIAvailability = () => {
+  return 'ai' in window && typeof (window as WindowWithLocalAI).ai !== 'undefined';
+};
+
+const getGeminiClient = async (): Promise<GeminiClientLike> => {
   // Always prioritize the backend function in production to hide the key
   if (import.meta.env.PROD) {
     // Return a proxy object that routes generateContent to our Netlify Function
     return {
-      getGenerativeModel: ({ model: _model }: any) => ({
-        generateContent: async (promptOrParts: any) => {
-          let prompt = promptOrParts;
-          let imageBase64 = undefined;
-          
+      getGenerativeModel: () => ({
+        generateContent: async (promptOrParts: GenerateContentInput) => {
+          let prompt: GenerateContentInput = promptOrParts;
+          let imageBase64: string | undefined = undefined;
+
           // Handle array of parts (for images)
           if (Array.isArray(promptOrParts)) {
-            prompt = promptOrParts.find(p => typeof p === 'string');
-            const inlineData = promptOrParts.find(p => p.inlineData)?.inlineData;
+            prompt = promptOrParts.find((p): p is string => typeof p === 'string') ?? '';
+            const inlineData = promptOrParts.find(isInlineDataPart)?.inlineData;
             if (inlineData) {
               imageBase64 = `data:${inlineData.mimeType};base64,${inlineData.data}`;
             }
           }
-          
+
           const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -34,27 +141,27 @@ const getGeminiClient = async () => {
               text: typeof promptOrParts === 'string' && promptOrParts.includes('--- Gmail') ? promptOrParts : undefined
             })
           });
-          
+
           if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || 'Backend AI API Error');
+            const errorData = toRecord(await response.json().catch(() => ({})));
+            throw new Error(getStringField(errorData, 'error') || 'Backend AI API Error');
           }
-          
-          const data = await response.json();
+
+          const data = toRecord(await response.json());
           return {
             response: {
-              text: () => data.result
+              text: () => getStringField(data, 'result')
             }
           };
         }
       })
-    } as unknown as GoogleGenerativeAI;
+    };
   }
 
   // Local development: Try to get it from environment variables
   const envKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (envKey) {
-    return new GoogleGenerativeAI(envKey);
+    return new GoogleGenerativeAI(envKey) as unknown as GeminiClientLike;
   }
 
   // Fallback to IndexedDB config
@@ -63,13 +170,13 @@ const getGeminiClient = async () => {
   if (!config || !config.geminiApiKey) {
     throw new Error('未配置 Gemini API Key');
   }
-  return new GoogleGenerativeAI(config.geminiApiKey);
+  return new GoogleGenerativeAI(config.geminiApiKey) as unknown as GeminiClientLike;
 };
 
-const extractJson = (text: string) => {
+const extractJson = (text: string): unknown => {
   try {
     return JSON.parse(text);
-  } catch (e) {
+  } catch {
     const jsonMatch = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
@@ -78,14 +185,36 @@ const extractJson = (text: string) => {
   }
 };
 
-const normalizeItemAnalysis = (value: any) => {
-  const categoryMap: Record<string, string> = {
+const normalizeSmartInsights = (value: unknown): QuickInventoryInsights => {
+  const parsedValue = typeof value === 'string' ? extractJson(value) : value;
+  const record = toRecord(parsedValue);
+  const optimization = toRecord(record.optimization ?? record);
+  const hasOptimizationFields = ['weight_status', 'luggage_analysis', 'remove_suggestions', 'packing_advice']
+    .some(key => key in optimization);
+
+  if (!hasOptimizationFields) {
+    return {};
+  }
+
+  return {
+    optimization: {
+      weight_status: getOptionalStringField(optimization, 'weight_status'),
+      luggage_analysis: getOptionalStringField(optimization, 'luggage_analysis'),
+      remove_suggestions: normalizeRemoveSuggestions(optimization.remove_suggestions),
+      packing_advice: normalizeStringArray(optimization.packing_advice),
+    },
+  };
+};
+
+const normalizeItemAnalysis = (value: unknown): ItemAnalysisResult => {
+  const record = toRecord(value);
+  const categoryMap: Partial<Record<string, ItemCategory>> = {
     保养品: '保養品',
     盥洗: '保養品',
     電子: '器材',
     电子: '器材',
   };
-  const subCategoryMap: Record<string, string> = {
+  const subCategoryMap: Partial<Record<string, ItemSubCategory>> = {
     下装: '下裝',
     连身裙: '連身裙',
     配饰: '配飾',
@@ -94,15 +223,29 @@ const normalizeItemAnalysis = (value: any) => {
     内衣: '內衣',
     内裤: '內褲',
   };
-  const allowedCategories = ['衣物', '器材', '保養品', '其他'];
-  const allowedSubCategories = ['上衣', '下裝', '連身裙', '鞋子', '配飾', '外套', '內搭', '襪子', '內衣', '內褲'];
-  const category = categoryMap[value.category] || value.category;
-  const subCategory = subCategoryMap[value.subCategory] || value.subCategory;
+  const allowedCategories = ['衣物', '器材', '保養品', '其他'] satisfies readonly ItemCategory[];
+  const allowedSubCategories = ['上衣', '下裝', '連身裙', '鞋子', '配飾', '外套', '內搭', '襪子', '內衣', '內褲'] satisfies readonly ItemSubCategory[];
+  const allowedSeasons = ['冬季', '夏季', '通用'] satisfies readonly ItemSeason[];
+  const allowedOccasions = ['商務', '休閒', '運動', '正式', '其他'] satisfies readonly ItemOccasion[];
+  const allowedWrinkleProne = ['易皺', '適中', '抗皺'] satisfies readonly ItemWrinkleProne[];
+  const categoryValue = getStringField(record, 'category');
+  const subCategoryValue = getStringField(record, 'subCategory');
+  const category = categoryMap[categoryValue] || categoryValue;
+  const subCategory = subCategoryMap[subCategoryValue] || subCategoryValue;
+  const season = getStringField(record, 'season');
+  const occasion = getStringField(record, 'occasion');
+  const wrinkleProne = getStringField(record, 'wrinkleProne');
 
   return {
-    ...value,
-    category: allowedCategories.includes(category) ? category : '其他',
-    subCategory: allowedSubCategories.includes(subCategory) ? subCategory : undefined,
+    name: getOptionalStringField(record, 'name'),
+    category: isAllowedValue(category, allowedCategories) ? category : '其他',
+    subCategory: isAllowedValue(subCategory, allowedSubCategories) ? subCategory : undefined,
+    season: isAllowedValue(season, allowedSeasons) ? season : undefined,
+    color: getOptionalStringField(record, 'color'),
+    occasion: isAllowedValue(occasion, allowedOccasions) ? occasion : undefined,
+    wrinkleProne: isAllowedValue(wrinkleProne, allowedWrinkleProne) ? wrinkleProne : undefined,
+    tempRange: getOptionalStringField(record, 'tempRange'),
+    notes: getOptionalStringField(record, 'notes'),
   };
 };
 
@@ -119,14 +262,35 @@ const parseWeightKg = (value: unknown, fallback: number) => {
   return fallback;
 };
 
-const normalizeFlightAnalysis = (value: any) => ({
-  ...value,
-  checkedAllowance: parseWeightKg(value?.checkedAllowance, 20),
-  carryOnAllowance: parseWeightKg(value?.carryOnAllowance, 7),
-  personalAllowance: parseWeightKg(value?.personalAllowance, 0),
+const normalizeFlightAnalysis = (value: unknown) => {
+  const record = toRecord(value);
+  return {
+  ...record,
+  checkedAllowance: parseWeightKg(record.checkedAllowance, 20),
+  carryOnAllowance: parseWeightKg(record.carryOnAllowance, 7),
+  personalAllowance: parseWeightKg(record.personalAllowance, 0),
+  };
+};
+
+const isNoFlightResult = (value: unknown): value is { noFlight: true; reason?: string } => {
+  return isRecord(value) && value.noFlight === true;
+};
+
+const hasErrorField = (value: unknown): value is { error: string } => {
+  return isRecord(value) && typeof value.error === 'string';
+};
+
+const hasApiMessage = (error: unknown): error is Error => {
+  return error instanceof Error && error.message.includes('API');
+};
+
+const normalizeStageData = (value: unknown) => ({
+  flight_rules: toRecord(toRecord(value).flight_rules),
+  weather_forecast: toRecord(value).weather_forecast,
+  trip_context: toRecord(value).trip_context,
 });
 
-export const generateSmartInsights = async (contextData: any) => {
+export const generateSmartInsights = async (contextData: SmartInsightsContext): Promise<QuickInventoryInsights> => {
   // Always use the backend agent pipeline for this specific feature in production
   if (import.meta.env.PROD) {
     try {
@@ -153,16 +317,16 @@ export const generateSmartInsights = async (contextData: any) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'AI Pipeline Execution Failed');
-      }
+          const errorData = toRecord(await response.json().catch(() => ({})));
+          throw new Error(getStringField(errorData, 'error') || 'AI Pipeline Execution Failed');
+        }
 
-      const data = await response.json();
-      return data.result;
-    } catch (e: any) {
-      console.error('Failed to execute Agent Pipeline', e);
-      throw new Error('AI Pipeline Execution Failed: ' + e.message);
-    }
+        const data = toRecord(await response.json());
+        return normalizeSmartInsights(data.result);
+      } catch (error) {
+        console.error('Failed to execute Agent Pipeline', error);
+        throw new Error('AI Pipeline Execution Failed: ' + getErrorMessage(error));
+      }
   }
 
   // Local development logic
@@ -202,7 +366,7 @@ export const generateSmartInsights = async (contextData: any) => {
 - 天氣：${JSON.stringify(weatherInfo)}
     `;
     const stage1Result = await jsonModel.generateContent(stage1Prompt);
-    const stage1Data = extractJson(stage1Result.response.text());
+    const stage1Data = normalizeStageData(extractJson(stage1Result.response.text()));
 
     // Stage 2
     const stage2Prompt = `
@@ -223,7 +387,7 @@ export const generateSmartInsights = async (contextData: any) => {
 - 衣物庫存：${JSON.stringify(wardrobeItems)}
     `;
     const stage2Result = await jsonModel.generateContent(stage2Prompt);
-    const stage2Data = extractJson(stage2Result.response.text());
+    const stage2Data = toRecord(extractJson(stage2Result.response.text()));
 
     // Stage 3
     const stage3Prompt = `
@@ -248,17 +412,12 @@ export const generateSmartInsights = async (contextData: any) => {
 - 使用者備註：${userNotes || '無'}
     `;
     const stage3Result = await jsonModel.generateContent(stage3Prompt);
-    const stage3Data = extractJson(stage3Result.response.text());
+    const stage3Data = toRecord(extractJson(stage3Result.response.text()));
 
-    return {
-      context: stage1Data,
-      outfits: stage2Data.outfit_combinations || [],
-      usage: stage2Data.item_usage_counts || {},
-      optimization: stage3Data
-    };
-  } catch (e: any) {
-    console.error('Failed to execute Agent Pipeline', e);
-    throw new Error('AI Pipeline Execution Failed: ' + e.message);
+    return normalizeSmartInsights({ optimization: stage3Data });
+  } catch (error) {
+    console.error('Failed to execute Agent Pipeline', error);
+    throw new Error('AI Pipeline Execution Failed: ' + getErrorMessage(error));
   }
 };
 
@@ -361,28 +520,27 @@ ${airlinesContext}
   try {
     const result = await model.generateContent([prompt, text]);
     const resultText = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(resultText);
+    const parsed = JSON.parse(resultText) as unknown;
 
-    if (parsed.error) {
+    if (hasErrorField(parsed)) {
       throw new Error(parsed.error);
     }
 
     // Handle no-flight case gracefully
-    if (parsed.noFlight) {
+    if (isNoFlightResult(parsed)) {
       return { noFlight: true, reason: parsed.reason || '找不到航班資訊' };
     }
 
     return normalizeFlightAnalysis(parsed);
   } catch (error) {
     console.error('AI Text Analysis failed:', error);
-    const err = error as any;
-    if (err.message?.includes('API')) {
-      throw new Error(`AI API 錯誤: ${err.message}`);
+    if (hasApiMessage(error)) {
+      throw new Error(`AI API 錯誤: ${error.message}`);
     }
-    if (err instanceof SyntaxError) {
+    if (error instanceof SyntaxError) {
       throw new Error(`AI 回傳格式錯誤`);
     }
-    throw new Error(`航班文本解析失敗: ${err.message || '未知錯誤'}`);
+    throw new Error(`航班文本解析失敗: ${getErrorMessage(error) || '未知錯誤'}`);
   }
 };
 

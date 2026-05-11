@@ -1,6 +1,6 @@
 import type { Luggage } from '../db';
 
-type SeasonFilter = '所有' | '冬季' | '夏季';
+export type SeasonFilter = '所有' | '冬季' | '夏季';
 
 export const createLuggageDraftForSeason = (seasonFilter: SeasonFilter): Partial<Luggage> => ({
   name: '',
