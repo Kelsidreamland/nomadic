@@ -61,7 +61,7 @@ describe('FlightMemory MVP dashboard', () => {
     analyzeTicketWithAIMock.mockReset();
   });
 
-  it('shows import-first stats and removes the year timeline wall', () => {
+  it('shows import-first stats and removes the year timeline wall', async () => {
     liveFlights.push({
       id: 'tokyo',
       departureDate: '2026-02-01',
@@ -95,7 +95,9 @@ describe('FlightMemory MVP dashboard', () => {
     expect(container.textContent).toContain('最常去');
     expect(container.textContent).toContain('匯入 CSV');
     expect(container.textContent).toContain('上傳 PDF');
-    expect(container.textContent).toContain('飛行護照');
+    await waitForAssertion(() => {
+      expect(container.textContent).toContain('飛行護照');
+    });
     expect(container.textContent).not.toContain('飛行時間線');
 
     act(() => {

@@ -1,5 +1,5 @@
 import type { ChangeEvent, FormEvent } from 'react';
-import { useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { ArrowRight, FileText, Plus, Save, Upload } from 'lucide-react';
@@ -17,7 +17,14 @@ import {
   parseFlightMemoryCsv,
   readFlightUploadAsDataUrl,
 } from '../services/flightMemoryImport';
-import { FlightRouteMap } from '../components/FlightRouteMap';
+
+const FlightRouteMap = lazy(() => import('../components/FlightRouteMap').then(module => ({ default: module.FlightRouteMap })));
+
+const FlightRouteMapFallback = () => (
+  <div className="min-h-[560px] rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm">
+    <div className="h-full min-h-[520px] animate-pulse rounded-[24px] bg-[var(--color-brand-sand)]" />
+  </div>
+);
 
 type MemoryFlightFormState = {
   departureDate: string;
@@ -247,7 +254,9 @@ export const FlightMemory = () => {
         )}
       </div>
 
-      <FlightRouteMap segments={segments} />
+      <Suspense fallback={<FlightRouteMapFallback />}>
+        <FlightRouteMap segments={segments} />
+      </Suspense>
 
       <form onSubmit={handleAddFlight} className="rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm md:p-6">
         <div className="mb-5 flex items-center justify-between gap-4">
