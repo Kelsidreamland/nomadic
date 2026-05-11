@@ -25,6 +25,7 @@ export function PWAPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [remoteVersion, setRemoteVersion] = useState('');
+  const [hasCheckedRemoteVersion, setHasCheckedRemoteVersion] = useState(false);
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const { t } = useTranslation();
 
@@ -45,7 +46,8 @@ export function PWAPrompt() {
     },
   });
   const remoteUpdateAvailable = shouldPromptForAppUpdate(APP_VERSION, remoteVersion);
-  const hasAppUpdate = needRefresh || remoteUpdateAvailable;
+  const sameVersionRefresh = needRefresh && hasCheckedRemoteVersion && remoteVersion === APP_VERSION;
+  const hasAppUpdate = remoteUpdateAvailable || (needRefresh && !sameVersionRefresh);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -74,7 +76,8 @@ export function PWAPrompt() {
           return '';
         });
 
-        if (shouldPromptForAppUpdate(APP_VERSION, latestVersion)) {
+        setHasCheckedRemoteVersion(true);
+        if (latestVersion) {
           setRemoteVersion(latestVersion);
         }
       }
