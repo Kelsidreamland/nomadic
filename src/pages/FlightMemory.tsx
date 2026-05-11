@@ -5,12 +5,18 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, FileText, Plus, Save, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { db, type Flight } from '../db';
+import { analyzeTicketWithAI } from '../services/ai';
 import {
   getFlightMemoryEntries,
   getFlightMemorySegments,
   getFlightMemoryStats,
 } from '../services/flightMemory';
-import { parseFlightMemoryCsv } from '../services/flightMemoryImport';
+import {
+  buildFlightMemoryImportFromAnalysis,
+  getSupportedFlightUploadMimeType,
+  parseFlightMemoryCsv,
+  readFlightUploadAsDataUrl,
+} from '../services/flightMemoryImport';
 import { FlightRouteMap } from '../components/FlightRouteMap';
 
 type MemoryFlightFormState = {
@@ -52,6 +58,7 @@ export const FlightMemory = () => {
   const [now] = useState(() => Date.now());
   const [formState, setFormState] = useState(createDefaultFormState);
   const [importStatus, setImportStatus] = useState('');
+  const [isParsingPdf, setIsParsingPdf] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,11 +120,52 @@ export const FlightMemory = () => {
     }
   };
 
-  const handlePdfImport = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setImportStatus(t('flightMemory.pdfImportComingSoon', { fileName: file.name }));
+  const handlePdfImport = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
     event.target.value = '';
+    if (files.length === 0) return;
+
+    setIsParsingPdf(true);
+    setImportStatus(t('flightMemory.pdfImportParsing', { count: files.length }));
+    try {
+      const flightsToImport: Flight[] = [];
+      let skipped = 0;
+
+      for (const file of files) {
+        const mimeType = getSupportedFlightUploadMimeType(file);
+        if (!mimeType) {
+          skipped += 1;
+          continue;
+        }
+
+        try {
+          const dataUrl = await readFlightUploadAsDataUrl(file);
+          const parsed = await analyzeTicketWithAI(dataUrl, mimeType);
+          const flight = buildFlightMemoryImportFromAnalysis(parsed, crypto.randomUUID());
+          if (flight) {
+            flightsToImport.push(flight);
+          } else {
+            skipped += 1;
+          }
+        } catch {
+          skipped += 1;
+        }
+      }
+
+      if (flightsToImport.length > 0) {
+        await db.flights.bulkPut(flightsToImport);
+      }
+
+      setImportStatus(t('flightMemory.pdfImported', {
+        files: files.length,
+        count: flightsToImport.length,
+        errors: skipped,
+      }));
+    } catch {
+      setImportStatus(t('flightMemory.pdfImportFailed'));
+    } finally {
+      setIsParsingPdf(false);
+    }
   };
 
   return (
@@ -181,15 +229,16 @@ export const FlightMemory = () => {
             <button
               type="button"
               onClick={() => pdfInputRef.current?.click()}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-4 py-3 text-sm font-bold text-[var(--color-brand-espresso)]/70 transition-colors hover:bg-white"
+              disabled={isParsingPdf}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-4 py-3 text-sm font-bold text-[var(--color-brand-espresso)]/70 transition-colors hover:bg-white disabled:cursor-wait disabled:opacity-60"
             >
               <FileText size={16} />
-              <span>{t('flightMemory.importPdf')}</span>
+              <span>{isParsingPdf ? t('flightMemory.importPdfParsing') : t('flightMemory.importPdf')}</span>
             </button>
           </div>
         </div>
         <input ref={csvInputRef} type="file" accept=".csv,text/csv" onChange={handleCsvImport} className="hidden" />
-        <input ref={pdfInputRef} type="file" accept=".pdf,image/*" onChange={handlePdfImport} className="hidden" />
+        <input ref={pdfInputRef} type="file" accept=".pdf,image/*" multiple onChange={handlePdfImport} className="hidden" />
         {importStatus && (
           <p className="mt-3 rounded-2xl bg-[var(--color-brand-sand)] px-4 py-3 text-sm font-medium text-[var(--color-brand-espresso)]/60">
             {importStatus}

@@ -10,8 +10,10 @@ import { FlightMemory } from './FlightMemory';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const { liveFlights } = vi.hoisted(() => ({
+const { liveFlights, flightsBulkPutMock, analyzeTicketWithAIMock } = vi.hoisted(() => ({
   liveFlights: [] as Flight[],
+  flightsBulkPutMock: vi.fn(),
+  analyzeTicketWithAIMock: vi.fn(),
 }));
 
 vi.mock('dexie-react-hooks', () => ({
@@ -23,14 +25,20 @@ vi.mock('../db', () => ({
     flights: {
       toArray: vi.fn(),
       add: vi.fn(),
-      bulkPut: vi.fn(),
+      bulkPut: flightsBulkPutMock,
     },
   },
+}));
+
+vi.mock('../services/ai', () => ({
+  analyzeTicketWithAI: analyzeTicketWithAIMock,
 }));
 
 describe('FlightMemory MVP dashboard', () => {
   beforeEach(() => {
     liveFlights.length = 0;
+    flightsBulkPutMock.mockReset();
+    analyzeTicketWithAIMock.mockReset();
   });
 
   it('shows import-first stats and removes the year timeline wall', () => {
@@ -67,8 +75,68 @@ describe('FlightMemory MVP dashboard', () => {
     expect(container.textContent).toContain('最常去');
     expect(container.textContent).toContain('匯入 CSV');
     expect(container.textContent).toContain('上傳 PDF');
-    expect(container.textContent).toContain('飛行路線圖');
+    expect(container.textContent).toContain('飛行護照');
     expect(container.textContent).not.toContain('飛行時間線');
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it('imports a PDF itinerary into flight memory with AI parsing', async () => {
+    analyzeTicketWithAIMock.mockResolvedValue({
+      destination: '東京',
+      airline: 'EVA Air',
+      flightNumber: 'BR198',
+      departureDate: '2026-06-01',
+      departureTime: '09:00',
+      departureAirport: 'TPE 桃園',
+      arrivalAirport: 'NRT 成田',
+      checkedAllowance: '23kg',
+      carryOnAllowance: '7kg',
+    });
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/memory']}>
+          <FlightMemory />
+        </MemoryRouter>,
+      );
+    });
+
+    const pdfInput = container.querySelector('input[accept=".pdf,image/*"]') as HTMLInputElement | null;
+    expect(pdfInput).toBeTruthy();
+
+    const file = new File(['%PDF-1.4'], 'ticket.pdf', { type: 'application/pdf' });
+    Object.defineProperty(pdfInput, 'files', {
+      configurable: true,
+      value: [file],
+    });
+
+    await act(async () => {
+      pdfInput?.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    expect(analyzeTicketWithAIMock).toHaveBeenCalledWith(expect.stringContaining('data:application/pdf;base64,'), 'application/pdf');
+    expect(flightsBulkPutMock).toHaveBeenCalledWith([
+      expect.objectContaining({
+        destination: '東京',
+        airline: 'EVA Air',
+        flightNumber: 'BR198',
+        departureDate: '2026-06-01',
+        departureTime: '09:00',
+        departureAirport: 'TPE',
+        arrivalAirport: 'NRT',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        rawEmailId: 'pdf-import',
+      }),
+    ]);
+    expect(container.textContent).toContain('已從 1 個檔案匯入 1 段航班');
 
     act(() => {
       root.unmount();

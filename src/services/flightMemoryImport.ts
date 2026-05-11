@@ -33,6 +33,19 @@ const normalizeDate = (value: string) => {
 const normalizeAirport = (value: string) => value.trim().toUpperCase();
 
 const normalizeText = (value: string) => value.trim().replace(/\s+/g, ' ');
+const normalizeUnknownText = (value: unknown) => String(value ?? '').trim().replace(/\s+/g, ' ');
+
+const normalizeAirportValue = (value: unknown) => {
+  const normalized = normalizeUnknownText(value).toUpperCase();
+  const iataMatches = normalized.match(/[A-Z]{3}/g);
+  return iataMatches?.[iataMatches.length - 1] || normalized;
+};
+
+const normalizeKgValue = (value: unknown, fallback = 0) => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const match = normalizeUnknownText(value).match(/\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : fallback;
+};
 
 const parseCsvRows = (csv: string) => {
   const rows: string[][] = [];
@@ -147,4 +160,65 @@ export const parseFlightMemoryCsv = (csv: string, idPrefix = 'csv-flight'): Flig
   });
 
   return { flights, errors };
+};
+
+export const getSupportedFlightUploadMimeType = (file: Pick<File, 'name' | 'type'>) => {
+  const fileType = file.type.toLowerCase();
+  if (fileType === 'application/pdf' || fileType.startsWith('image/')) return fileType;
+
+  const fileName = file.name.toLowerCase();
+  if (fileName.endsWith('.pdf')) return 'application/pdf';
+  if (fileName.endsWith('.png')) return 'image/png';
+  if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) return 'image/jpeg';
+  if (fileName.endsWith('.webp')) return 'image/webp';
+  if (fileName.endsWith('.heic')) return 'image/heic';
+  if (fileName.endsWith('.heif')) return 'image/heif';
+  return '';
+};
+
+export const readFlightUploadAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result || ''));
+  reader.onerror = () => reject(new Error('File read failed'));
+  reader.readAsDataURL(file);
+});
+
+export const buildFlightMemoryImportFromAnalysis = (
+  data: Partial<Flight>,
+  id: string,
+  source = 'pdf-import',
+): Flight | undefined => {
+  const departureDate = normalizeDate(normalizeUnknownText(data.departureDate));
+  const departureAirport = normalizeAirportValue(data.departureAirport);
+  const arrivalAirport = normalizeAirportValue(data.arrivalAirport);
+
+  if (!departureDate || !departureAirport || !arrivalAirport) return undefined;
+
+  const returnDepartureDate = normalizeDate(normalizeUnknownText(data.returnDepartureDate));
+
+  return {
+    id,
+    departureDate,
+    departureTime: normalizeUnknownText(data.departureTime),
+    arrivalTime: normalizeUnknownText(data.arrivalTime),
+    destination: normalizeUnknownText(data.destination) || arrivalAirport,
+    airline: normalizeUnknownText(data.airline),
+    flightNumber: normalizeUnknownText(data.flightNumber).toUpperCase(),
+    departureAirport,
+    arrivalAirport,
+    departureTerminal: normalizeUnknownText(data.departureTerminal),
+    arrivalTerminal: normalizeUnknownText(data.arrivalTerminal),
+    returnDepartureDate,
+    returnDepartureTime: normalizeUnknownText(data.returnDepartureTime),
+    returnArrivalTime: normalizeUnknownText(data.returnArrivalTime),
+    returnFlightNumber: normalizeUnknownText(data.returnFlightNumber).toUpperCase(),
+    returnDepartureAirport: normalizeAirportValue(data.returnDepartureAirport),
+    returnArrivalAirport: normalizeAirportValue(data.returnArrivalAirport),
+    returnDepartureTerminal: normalizeUnknownText(data.returnDepartureTerminal),
+    returnArrivalTerminal: normalizeUnknownText(data.returnArrivalTerminal),
+    checkedAllowance: normalizeKgValue(data.checkedAllowance),
+    carryOnAllowance: normalizeKgValue(data.carryOnAllowance, 7),
+    personalAllowance: normalizeKgValue(data.personalAllowance),
+    rawEmailId: source,
+  };
 };
