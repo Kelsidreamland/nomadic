@@ -10,7 +10,7 @@ import { Overview } from './Overview';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const { liveQueryState, generateSmartInsightsMock } = vi.hoisted(() => ({
+const { liveQueryState, generateSmartInsightsMock, dbItemsUpdateMock } = vi.hoisted(() => ({
   liveQueryState: {
     callIndex: 0,
     luggages: [] as Luggage[],
@@ -18,6 +18,7 @@ const { liveQueryState, generateSmartInsightsMock } = vi.hoisted(() => ({
     flights: [] as Flight[],
   },
   generateSmartInsightsMock: vi.fn(),
+  dbItemsUpdateMock: vi.fn(),
 }));
 
 vi.mock('dexie-react-hooks', () => ({
@@ -27,6 +28,23 @@ vi.mock('dexie-react-hooks', () => ({
     liveQueryState.callIndex += 1;
     return value;
   }),
+}));
+
+vi.mock('../db', () => ({
+  db: {
+    luggages: {
+      toArray: vi.fn(),
+      get: vi.fn(),
+      update: vi.fn(),
+    },
+    items: {
+      toArray: vi.fn(),
+      update: dbItemsUpdateMock,
+    },
+    flights: {
+      toArray: vi.fn(),
+    },
+  },
 }));
 
 vi.mock('../services/ai', () => ({
@@ -41,6 +59,7 @@ describe('Overview departure tools', () => {
     liveQueryState.items = [];
     liveQueryState.flights = [];
     generateSmartInsightsMock.mockReset();
+    dbItemsUpdateMock.mockReset();
   });
 
   it('keeps packing-related actions on Overview without duplicating the outfit tab', () => {
@@ -133,6 +152,78 @@ describe('Overview departure tools', () => {
     expect(container.textContent).toContain('打包與備品建議');
     expect(container.textContent).toContain('襪子 7 件');
     expect(container.textContent).toContain('內褲 6 件');
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it('moves an item to another luggage by dragging it on the overview', async () => {
+    liveQueryState.luggages = [
+      {
+        id: 'carry-on',
+        name: '手提箱',
+        type: '手提',
+        season: '通用',
+        length: 55,
+        width: 35,
+        height: 20,
+        weightHistory: [],
+        createdAt: 1,
+      },
+      {
+        id: 'checked',
+        name: '托運箱',
+        type: '托运',
+        season: '通用',
+        length: 68,
+        width: 45,
+        height: 27,
+        weightHistory: [],
+        createdAt: 2,
+      },
+    ];
+    liveQueryState.items = [
+      {
+        id: 'shirt',
+        luggageId: 'carry-on',
+        name: '白色襯衫',
+        category: '衣物',
+        subCategory: '上衣',
+        season: '通用',
+        condition: '新',
+        isDiscardable: false,
+        createdAt: 3,
+      },
+    ];
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={['/overview?packing=1']}>
+          <Overview />
+        </MemoryRouter>
+      );
+      await Promise.resolve();
+    });
+
+    const itemCard = container.querySelector('[aria-label="拖移 白色襯衫"]');
+    const targetLuggage = container.querySelector('[aria-label="移到 托運箱"]');
+    expect(itemCard).toBeTruthy();
+    expect(targetLuggage).toBeTruthy();
+
+    await act(async () => {
+      itemCard?.dispatchEvent(new Event('dragstart', { bubbles: true }));
+    });
+
+    await act(async () => {
+      targetLuggage?.dispatchEvent(new Event('drop', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(dbItemsUpdateMock).toHaveBeenCalledWith('shirt', { luggageId: 'checked' });
 
     act(() => {
       root.unmount();

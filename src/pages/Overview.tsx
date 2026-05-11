@@ -83,6 +83,7 @@ export const Overview = () => {
   const flights = useLiveQuery(() => db.flights.toArray()) || [];
   const isPackingMode = searchParams.get('packing') === '1';
   const didAutoExpandPacking = useRef(false);
+  const longPressTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const packingSummary = buildPackingChecklistSummary(luggages, items);
   const expandableLuggageKey = packingSummary.expandableLuggageIds.join('|');
 
@@ -97,6 +98,8 @@ export const Overview = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [insights, setInsights] = useState<SmartInsights | null>(null);
   const [packedItemIds, setPackedItemIds] = useState<string[]>(loadPackedItemIds);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dragOverLuggageId, setDragOverLuggageId] = useState<string | null>(null);
   const packingProgress = getPackingChecklistProgress(items, packedItemIds);
 
   useEffect(() => {
@@ -146,6 +149,68 @@ export const Overview = () => {
 
   const togglePackedItem = (itemId: string) => {
     setPackedItemIds(prev => togglePackedItemId(prev, itemId));
+  };
+
+  const clearLongPressTimer = () => {
+    if (!longPressTimerRef.current) return;
+    window.clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  };
+
+  const clearDragState = () => {
+    clearLongPressTimer();
+    setDraggedItemId(null);
+    setDragOverLuggageId(null);
+  };
+
+  const moveItemToLuggage = async (itemId: string, luggageId: string) => {
+    const item = items.find(entry => entry.id === itemId);
+    if (!item || item.luggageId === luggageId) {
+      clearDragState();
+      return;
+    }
+
+    await db.items.update(itemId, { luggageId });
+    setExpandedLuggage(prev => {
+      const next = new Set(prev);
+      next.add(luggageId);
+      if (item.luggageId) next.add(item.luggageId);
+      return next;
+    });
+    clearDragState();
+  };
+
+  const startItemDrag = (itemId: string) => {
+    clearLongPressTimer();
+    setDraggedItemId(itemId);
+  };
+
+  const startItemLongPress = (itemId: string) => {
+    clearLongPressTimer();
+    longPressTimerRef.current = window.setTimeout(() => {
+      setDraggedItemId(itemId);
+      longPressTimerRef.current = null;
+    }, 420);
+  };
+
+  const finishItemLongPress = (event: React.PointerEvent<HTMLDivElement>) => {
+    clearLongPressTimer();
+    if (!draggedItemId) return;
+    const target = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>('[data-luggage-drop-target="true"]');
+    const luggageId = target?.dataset.luggageId;
+    if (!luggageId) {
+      clearDragState();
+      return;
+    }
+    void moveItemToLuggage(draggedItemId, luggageId);
+  };
+
+  const handleLuggageDrop = (luggageId: string, droppedItemId?: string) => {
+    const itemId = droppedItemId || draggedItemId;
+    if (!itemId) return;
+    void moveItemToLuggage(itemId, luggageId);
   };
 
   const handleRecordWeight = async (luggageId: string) => {
@@ -294,7 +359,28 @@ export const Overview = () => {
           const weight = getLatestWeight(luggage.id);
 
           return (
-            <div key={luggage.id} className="overflow-hidden rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] shadow-sm">
+            <div
+              key={luggage.id}
+              data-luggage-drop-target="true"
+              data-luggage-id={luggage.id}
+              aria-label={t('overview.moveItemToLuggage', { name: luggage.name })}
+              onDragOver={event => {
+                if (!draggedItemId) return;
+                event.preventDefault();
+                setDragOverLuggageId(luggage.id);
+              }}
+              onDragLeave={() => setDragOverLuggageId(prev => prev === luggage.id ? null : prev)}
+              onDrop={event => {
+                event.preventDefault();
+                handleLuggageDrop(luggage.id, event.dataTransfer?.getData('text/plain'));
+              }}
+              className={clsx(
+                'overflow-hidden rounded-[28px] border bg-[var(--color-brand-cream)] shadow-sm transition-all',
+                dragOverLuggageId === luggage.id
+                  ? 'border-[var(--color-brand-terracotta)] ring-2 ring-[var(--color-brand-terracotta)]/25'
+                  : 'border-[var(--color-brand-stone)]'
+              )}
+            >
               <button
                 onClick={() => toggleLuggage(luggage.id)}
                 className="w-full p-5 transition-colors hover:bg-[var(--color-brand-sand)]/50"
@@ -334,7 +420,35 @@ export const Overview = () => {
                     <>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
                         {luggageItems.map(item => (
-                          <div key={item.id} className="flex min-w-0 items-center gap-2 rounded-xl bg-[var(--color-brand-sand)] p-2">
+                          <div
+                            key={item.id}
+                            draggable
+                            aria-label={t('overview.dragItem', { name: item.name })}
+                            title={t('overview.dragItemHint')}
+                            onDragStart={event => {
+                              if (event.dataTransfer) {
+                                event.dataTransfer.effectAllowed = 'move';
+                                event.dataTransfer.setData('text/plain', item.id);
+                              }
+                              startItemDrag(item.id);
+                            }}
+                            onDragEnd={clearDragState}
+                            onPointerDown={event => {
+                              event.currentTarget.setPointerCapture(event.pointerId);
+                              startItemLongPress(item.id);
+                            }}
+                            onPointerCancel={clearDragState}
+                            onPointerUp={event => {
+                              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                              }
+                              finishItemLongPress(event);
+                            }}
+                            className={clsx(
+                              'flex min-w-0 cursor-grab touch-none select-none items-center gap-2 rounded-xl bg-[var(--color-brand-sand)] p-2 transition-all active:cursor-grabbing',
+                              draggedItemId === item.id && 'scale-[0.98] opacity-65 ring-2 ring-[var(--color-brand-terracotta)]/30'
+                            )}
+                          >
                             {item.image ? (
                               <img src={item.image} alt={item.name} className="h-9 w-9 shrink-0 rounded-lg border border-[var(--color-brand-stone)] bg-white object-contain" />
                             ) : (
