@@ -25,7 +25,6 @@ import countries110m from 'world-atlas/countries-110m.json';
 import type { FlightMemorySegment } from '../services/flightMemory';
 import {
   buildFlightPassportData,
-  type FlightPassportAirport,
   type FlightPassportData,
 } from '../services/flightPassportData';
 
@@ -36,13 +35,6 @@ interface FlightRouteMapProps {
 type FlightMapOption = ComposeOption<
   GeoComponentOption | TooltipComponentOption | LinesSeriesOption | EffectScatterSeriesOption
 >;
-
-interface RenderedAirportLabel {
-  code: string;
-  left: number;
-  top: number;
-  transform: string;
-}
 
 const MAP_NAME = 'nomadic-flight-passport-world';
 const PASSPORT_FONT = '"IBM Plex Mono", "SFMono-Regular", Consolas, monospace';
@@ -186,47 +178,16 @@ const buildMapOption = (passport: FlightPassportData): FlightMapOption => ({
   ],
 });
 
-const getLabelTransform = (airport: FlightPassportAirport) => {
-  switch (airport.labelPosition) {
-    case 'top':
-      return 'translate(-50%, -100%)';
-    case 'bottom':
-      return 'translate(-50%, 0)';
-    case 'left':
-      return 'translate(-100%, -50%)';
-    case 'right':
-      return 'translate(0, -50%)';
-  }
-};
-
-const buildRenderedAirportLabels = (
-  chart: ECharts,
-  airports: FlightPassportAirport[],
-): RenderedAirportLabel[] => airports
-  .map(airport => {
-    const pixel = chart.convertToPixel({ geoIndex: 0 }, [airport.lon, airport.lat]);
-    if (!Array.isArray(pixel) || typeof pixel[0] !== 'number' || typeof pixel[1] !== 'number') return undefined;
-    return {
-      code: airport.code,
-      left: pixel[0] + airport.labelOffset[0],
-      top: pixel[1] + airport.labelOffset[1],
-      transform: getLabelTransform(airport),
-    };
-  })
-  .filter((label): label is RenderedAirportLabel => Boolean(label));
-
 export const FlightRouteMap = ({ segments }: FlightRouteMapProps) => {
   const { t } = useTranslation();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<ECharts | null>(null);
   const [isExporting, setIsExporting] = useState(false);
-  const [renderedAirportLabels, setRenderedAirportLabels] = useState<RenderedAirportLabel[]>([]);
   const passport = useMemo(() => buildFlightPassportData(segments), [segments]);
 
   useEffect(() => {
     if (import.meta.env.MODE === 'test' || !mapRef.current || passport.routes.length === 0) {
-      setRenderedAirportLabels([]);
       return;
     }
 
@@ -235,29 +196,18 @@ export const FlightRouteMap = ({ segments }: FlightRouteMapProps) => {
     chartRef.current = chart;
     chart.setOption(buildMapOption(passport));
 
-    let isActive = true;
-    const updateLabels = () => {
-      if (!isActive) return;
-      setRenderedAirportLabels(buildRenderedAirportLabels(chart, passport.labelAirports));
-    };
     const handleResize = () => {
       chart.resize();
-      window.requestAnimationFrame(updateLabels);
     };
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(handleResize) : undefined;
     observer?.observe(mapRef.current);
     window.addEventListener('resize', handleResize);
-    chart.on('finished', updateLabels);
-    window.requestAnimationFrame(updateLabels);
 
     return () => {
-      isActive = false;
       observer?.disconnect();
       window.removeEventListener('resize', handleResize);
-      chart.off('finished', updateLabels);
       chart.dispose();
       chartRef.current = null;
-      setRenderedAirportLabels([]);
     };
   }, [passport]);
 
@@ -321,22 +271,6 @@ export const FlightRouteMap = ({ segments }: FlightRouteMapProps) => {
                 role="img"
                 aria-label={t('flightMemory.routeMapTitle')}
               />
-              <div className="pointer-events-none absolute inset-0">
-                {renderedAirportLabels.map(label => (
-                  <span
-                    key={label.code}
-                    data-testid="flight-passport-airport-label"
-                    className="absolute rounded-[4px] border border-[rgba(244,239,230,0.24)] bg-[rgba(61,51,45,0.72)] px-1.5 py-0.5 text-[10px] font-bold leading-none text-[#FCFBF9] shadow-[0_2px_8px_rgba(47,40,38,0.34)] backdrop-blur"
-                    style={{
-                      left: `${label.left}px`,
-                      top: `${label.top}px`,
-                      transform: label.transform,
-                    }}
-                  >
-                    {label.code}
-                  </span>
-                ))}
-              </div>
             </div>
 
             <div className="grid grid-cols-2 border-y border-[rgba(232,226,214,0.18)]">

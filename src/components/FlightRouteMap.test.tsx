@@ -48,6 +48,7 @@ describe('FlightRouteMap', () => {
     expect(container.textContent).not.toContain('TPE > SIN');
     expect(container.textContent).toContain('NOMADIC<<');
     expect(container.textContent).toContain('匯出護照圖');
+    expect(container.querySelector('[data-testid="flight-passport-airport-label"]')).toBeNull();
 
     act(() => {
       root.unmount();

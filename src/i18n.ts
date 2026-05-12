@@ -350,11 +350,13 @@ const resources = {
         markPacked: '確認已放入 {{name}}',
         dragItem: '拖移 {{name}}',
         dragItemHint: '拖曳到其他行李箱，手機可長按後移動',
+        moveItem: '移動',
         moveItemToLuggage: '移到 {{name}}',
         weightVsLimit: '重量 vs 限額',
         measuredWeight: '本次測量 {{weight}}kg',
         luggageAllowance: '限額 {{limit}}kg',
         editLuggageAllowance: '行李限額',
+        saveLuggageAllowance: '儲存限額',
         itemsByLuggage: '行李物品',
         items: '件物品',
         noItems: '尚無物品',
@@ -419,14 +421,15 @@ const resources = {
         emptyTitle: '還沒有飛行記憶',
         emptySubtitle: '先新增一段過去航班，Nomadic 會把它留在足跡頁，不會影響打包流程。',
         importedFlightsTitle: '已匯入航程',
-        importedFlightsSubtitle: '{{count}} 段航程，點一下展開或收起來。',
+        importedFlightsSubtitle: '{{count}} 段航程，點一下展開或收起來，左滑可刪除。',
         outboundSegment: '去程',
         returnSegment: '回程',
         unknownAirline: '未填航空公司',
         noFlightNumber: '未填航班',
         unknownDestination: '未命名目的地',
         deleteFlight: '刪除航班',
-        deleteConfirm: '確定要刪除這段飛行記憶嗎？'
+        deleteConfirm: '確定要刪除這段飛行記憶嗎？',
+        deletedFlight: '已刪除這段飛行記憶。'
       }
     }
   },
@@ -778,11 +781,13 @@ const resources = {
         markPacked: 'Mark {{name}} as packed',
         dragItem: 'Move {{name}}',
         dragItemHint: 'Drag to another luggage. On mobile, long-press then move.',
+        moveItem: 'Move',
         moveItemToLuggage: 'Move to {{name}}',
         weightVsLimit: 'Weight vs Limit',
         measuredWeight: 'Measured {{weight}}kg',
         luggageAllowance: 'Limit {{limit}}kg',
         editLuggageAllowance: 'Luggage limit',
+        saveLuggageAllowance: 'Save limit',
         itemsByLuggage: 'Items by Luggage',
         items: 'items',
         noItems: 'No items yet',
@@ -847,14 +852,15 @@ const resources = {
         emptyTitle: 'No flight memories yet',
         emptySubtitle: 'Add a past flight here. It stays in Memory and will not affect packing.',
         importedFlightsTitle: 'Imported Flights',
-        importedFlightsSubtitle: '{{count}} segments. Tap to expand or collapse.',
+        importedFlightsSubtitle: '{{count}} segments. Tap to expand or collapse. Swipe left to delete.',
         outboundSegment: 'Outbound',
         returnSegment: 'Return',
         unknownAirline: 'No airline',
         noFlightNumber: 'No flight number',
         unknownDestination: 'Untitled destination',
         deleteFlight: 'Delete flight',
-        deleteConfirm: 'Delete this flight memory?'
+        deleteConfirm: 'Delete this flight memory?',
+        deletedFlight: 'Flight memory deleted.'
       }
     }
   }

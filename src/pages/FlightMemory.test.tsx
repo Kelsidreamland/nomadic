@@ -10,9 +10,10 @@ import { FlightMemory } from './FlightMemory';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const { liveFlights, flightsBulkPutMock, analyzeTicketWithAIMock } = vi.hoisted(() => ({
+const { liveFlights, flightsBulkPutMock, flightsDeleteMock, analyzeTicketWithAIMock } = vi.hoisted(() => ({
   liveFlights: [] as Flight[],
   flightsBulkPutMock: vi.fn(),
+  flightsDeleteMock: vi.fn(),
   analyzeTicketWithAIMock: vi.fn(),
 }));
 
@@ -26,6 +27,7 @@ vi.mock('../db', () => ({
       toArray: vi.fn(),
       add: vi.fn(),
       bulkPut: flightsBulkPutMock,
+      delete: flightsDeleteMock,
     },
   },
 }));
@@ -58,6 +60,7 @@ describe('FlightMemory MVP dashboard', () => {
   beforeEach(() => {
     liveFlights.length = 0;
     flightsBulkPutMock.mockReset();
+    flightsDeleteMock.mockReset();
     analyzeTicketWithAIMock.mockReset();
   });
 
@@ -170,6 +173,51 @@ describe('FlightMemory MVP dashboard', () => {
     await waitForAssertion(() => {
       expect(container.textContent).toContain('已從 1 個檔案匯入 1 段航班');
     });
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it('deletes an imported flight memory from the expanded list', async () => {
+    liveFlights.push({
+      id: 'bad-import',
+      departureDate: '2024-01-05',
+      departureTime: '09:00',
+      destination: 'Tokyo',
+      airline: 'EVA Air',
+      flightNumber: 'BR198',
+      departureAirport: 'TPE',
+      arrivalAirport: 'NRT',
+      checkedAllowance: 23,
+      carryOnAllowance: 7,
+      personalAllowance: 0,
+    });
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/memory']}>
+          <FlightMemory />
+        </MemoryRouter>,
+      );
+    });
+
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[data-testid="flight-memory-list-toggle"]')?.click();
+    });
+
+    const deleteButton = container.querySelector<HTMLButtonElement>('[data-testid="delete-flight-memory-bad-import"]');
+    expect(deleteButton).toBeTruthy();
+
+    await act(async () => {
+      deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(flightsDeleteMock).toHaveBeenCalledWith('bad-import');
 
     act(() => {
       root.unmount();

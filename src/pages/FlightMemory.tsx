@@ -1,8 +1,8 @@
-import type { ChangeEvent, FormEvent } from 'react';
+import type { ChangeEvent, FormEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronDown, ChevronUp, FileText, Plane, Plus, Save, Upload } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, FileText, Plane, Plus, Save, Trash2, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { db, type Flight } from '../db';
 import { analyzeTicketWithAI } from '../services/ai';
@@ -58,6 +58,7 @@ const createDefaultFormState = (): MemoryFlightFormState => ({
 const normalizeText = (value: string) => value.trim().replace(/\s+/g, ' ');
 const normalizeAirport = (value: string) => normalizeText(value).toUpperCase();
 const formatSegmentRoute = (from?: string, to?: string) => [from, to].filter(Boolean).join(' → ');
+const SWIPE_DELETE_THRESHOLD_PX = 42;
 
 export const FlightMemory = () => {
   const { t } = useTranslation();
@@ -68,6 +69,8 @@ export const FlightMemory = () => {
   const [importStatus, setImportStatus] = useState('');
   const [isParsingPdf, setIsParsingPdf] = useState(false);
   const [isFlightListOpen, setIsFlightListOpen] = useState(false);
+  const [revealedDeleteSegmentId, setRevealedDeleteSegmentId] = useState<string | null>(null);
+  const swipeStartRef = useRef<{ segmentId: string; x: number; y: number } | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
@@ -176,6 +179,31 @@ export const FlightMemory = () => {
     } finally {
       setIsParsingPdf(false);
     }
+  };
+
+  const handleSegmentPointerDown = (segmentId: string, event: ReactPointerEvent<HTMLElement>) => {
+    swipeStartRef.current = { segmentId, x: event.clientX, y: event.clientY };
+  };
+
+  const handleSegmentPointerUp = (segmentId: string, event: ReactPointerEvent<HTMLElement>) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start || start.segmentId !== segmentId) return;
+
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+    if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+    if (deltaX < -SWIPE_DELETE_THRESHOLD_PX) {
+      setRevealedDeleteSegmentId(segmentId);
+    } else if (deltaX > SWIPE_DELETE_THRESHOLD_PX) {
+      setRevealedDeleteSegmentId(null);
+    }
+  };
+
+  const handleDeleteFlightMemory = async (flightId: string) => {
+    await db.flights.delete(flightId);
+    setRevealedDeleteSegmentId(null);
+    setImportStatus(t('flightMemory.deletedFlight'));
   };
 
   return (
@@ -378,24 +406,45 @@ export const FlightMemory = () => {
           {isFlightListOpen && (
             <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
               {segments.map(segment => (
-                <article
+                <div
                   key={segment.id}
-                  className="flex min-w-0 items-center gap-3 rounded-2xl border border-[var(--color-brand-stone)]/80 bg-[var(--color-brand-sand)] px-3 py-3"
+                  className="relative overflow-hidden rounded-2xl bg-[var(--color-brand-terracotta)]/10"
                 >
-                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-cream)] text-[var(--color-brand-terracotta)]">
-                    <Plane size={16} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-bold text-[var(--color-brand-espresso)]">
-                      {formatSegmentRoute(segment.from, segment.to) || segment.destination}
+                  <button
+                    type="button"
+                    data-testid={`delete-flight-memory-${segment.flightId}`}
+                    aria-label={t('flightMemory.deleteFlight')}
+                    onClick={() => void handleDeleteFlightMemory(segment.flightId)}
+                    className="absolute inset-y-0 right-0 flex w-16 items-center justify-center text-[var(--color-brand-terracotta)]"
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                  <article
+                    onPointerDown={event => handleSegmentPointerDown(segment.id, event)}
+                    onPointerUp={event => handleSegmentPointerUp(segment.id, event)}
+                    onPointerCancel={() => {
+                      swipeStartRef.current = null;
+                    }}
+                    className={[
+                      'relative flex min-w-0 touch-pan-y items-center gap-3 rounded-2xl border border-[var(--color-brand-stone)]/80 bg-[var(--color-brand-sand)] px-3 py-3 transition-transform',
+                      revealedDeleteSegmentId === segment.id ? '-translate-x-16' : 'translate-x-0',
+                    ].join(' ')}
+                  >
+                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-cream)] text-[var(--color-brand-terracotta)]">
+                      <Plane size={16} />
                     </span>
-                    <span className="mt-0.5 block truncate text-xs font-medium text-[var(--color-brand-espresso)]/45">
-                      {[segment.departureDate, segment.airline || t('flightMemory.unknownAirline'), segment.flightNumber || t('flightMemory.noFlightNumber')]
-                        .filter(Boolean)
-                        .join(' · ')}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-bold text-[var(--color-brand-espresso)]">
+                        {formatSegmentRoute(segment.from, segment.to) || segment.destination}
+                      </span>
+                      <span className="mt-0.5 block truncate text-xs font-medium text-[var(--color-brand-espresso)]/45">
+                        {[segment.departureDate, segment.airline || t('flightMemory.unknownAirline'), segment.flightNumber || t('flightMemory.noFlightNumber')]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
                     </span>
-                  </span>
-                </article>
+                  </article>
+                </div>
               ))}
             </div>
           )}

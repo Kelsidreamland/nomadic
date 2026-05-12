@@ -82,6 +82,7 @@ export const Overview = () => {
 
   const [expandedLuggage, setExpandedLuggage] = useState<Set<string>>(new Set());
   const [weightInputs, setWeightInputs] = useState<{ [key: string]: number }>({});
+  const [allowanceInputs, setAllowanceInputs] = useState<Record<string, string>>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [insights, setInsights] = useState<SmartInsights | null>(null);
   const [packedItemIds, setPackedItemIds] = useState<string[]>(loadPackedItemIds);
@@ -130,6 +131,12 @@ export const Overview = () => {
     return luggage.allowanceOverrideKg ?? getDefaultAllowanceForLuggage(luggage.type);
   };
 
+  const getLuggageAllowanceInputValue = (luggage: typeof luggages[number]) => {
+    if (allowanceInputs[luggage.id] !== undefined) return allowanceInputs[luggage.id];
+    const limit = getLuggageAllowanceLimit(luggage);
+    return limit > 0 ? String(limit) : '';
+  };
+
   const toggleLuggage = (id: string) => {
     setExpandedLuggage(prev => {
       const next = new Set(prev);
@@ -172,15 +179,20 @@ export const Overview = () => {
 
   const moveItemToLuggage = async (itemId: string, luggageId: string) => {
     const item = items.find(entry => entry.id === itemId);
-    if (!item || item.luggageId === luggageId) {
+    const nextLuggageId = luggageId === unassignedLuggageId ? '' : luggageId;
+    if (!item || item.luggageId === nextLuggageId) {
       clearDragState();
       return;
     }
 
-    await db.items.update(itemId, { luggageId });
+    await db.items.update(itemId, { luggageId: nextLuggageId });
     setExpandedLuggage(prev => {
       const next = new Set(prev);
-      next.add(luggageId);
+      if (nextLuggageId) {
+        next.add(nextLuggageId);
+      } else {
+        next.add(unassignedLuggageId);
+      }
       if (item.luggageId) next.add(item.luggageId);
       return next;
     });
@@ -255,9 +267,18 @@ export const Overview = () => {
     setWeightInputs(prev => ({ ...prev, [luggageId]: 0 }));
   };
 
-  const handleLuggageAllowanceChange = async (luggageId: string, value: number) => {
+  const handleLuggageAllowanceInputChange = (luggageId: string, value: string) => {
+    setAllowanceInputs(prev => ({ ...prev, [luggageId]: value }));
+  };
+
+  const handleSaveLuggageAllowance = async (luggageId: string) => {
+    const luggage = luggages.find(entry => entry.id === luggageId);
+    const fallbackValue = luggage ? getLuggageAllowanceInputValue(luggage) : '';
+    const rawValue = (allowanceInputs[luggageId] ?? fallbackValue).trim();
+    const value = rawValue === '' ? 0 : Number(rawValue);
     if (!Number.isFinite(value) || value < 0) return;
     await db.luggages.update(luggageId, { allowanceOverrideKg: value });
+    setAllowanceInputs(prev => ({ ...prev, [luggageId]: rawValue }));
   };
 
   const handleAiReduce = async () => {
@@ -494,6 +515,25 @@ export const Overview = () => {
                               </p>
                               <p className="text-[10px] text-[var(--color-brand-espresso)]/40">{getCategoryLabel(item.category)}</p>
                             </div>
+                            <select
+                              data-testid={`move-item-select-${item.id}`}
+                              aria-label={t('overview.moveItemToLuggage', { name: item.name })}
+                              value=""
+                              onPointerDown={event => event.stopPropagation()}
+                              onClick={event => event.stopPropagation()}
+                              onChange={event => void moveItemToLuggage(item.id, event.target.value)}
+                              className="min-h-7 w-20 shrink-0 rounded-full border border-[var(--color-brand-stone)] bg-white px-2 text-[10px] font-bold text-[var(--color-brand-espresso)]/55 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]"
+                            >
+                              <option value="" disabled>{t('overview.moveItem')}</option>
+                              {luggages
+                                .filter(target => target.id !== item.luggageId)
+                                .map(target => (
+                                  <option key={target.id} value={target.id}>
+                                    {target.name}
+                                  </option>
+                                ))}
+                              {item.luggageId && <option value={unassignedLuggageId}>{t('items.unassigned')}</option>}
+                            </select>
                             {isPackingMode && (
                               <button
                                 type="button"
@@ -543,10 +583,19 @@ export const Overview = () => {
                     <input
                       type="number"
                       min={0}
-                      value={allowanceLimit || ''}
-                      onChange={event => void handleLuggageAllowanceChange(luggage.id, Number(event.target.value))}
+                      value={getLuggageAllowanceInputValue(luggage)}
+                      onChange={event => handleLuggageAllowanceInputChange(luggage.id, event.target.value)}
+                      data-testid={`luggage-allowance-input-${luggage.id}`}
                       className="w-full rounded-xl bg-[var(--color-brand-sand)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] sm:w-32"
                     />
+                    <button
+                      type="button"
+                      data-testid={`luggage-allowance-save-${luggage.id}`}
+                      onClick={() => void handleSaveLuggageAllowance(luggage.id)}
+                      className="rounded-xl border border-[var(--color-brand-stone)] bg-white px-3 py-2 text-xs font-bold text-[var(--color-brand-espresso)]/65 transition-colors hover:bg-[var(--color-brand-sand)]"
+                    >
+                      {t('overview.saveLuggageAllowance')}
+                    </button>
                   </div>
                 </div>
               )}
@@ -615,6 +664,22 @@ export const Overview = () => {
                       </p>
                       <p className="text-[10px] text-[var(--color-brand-espresso)]/40">{getCategoryLabel(item.category)}</p>
                     </div>
+                    <select
+                      data-testid={`move-item-select-${item.id}`}
+                      aria-label={t('overview.moveItemToLuggage', { name: item.name })}
+                      value=""
+                      onPointerDown={event => event.stopPropagation()}
+                      onClick={event => event.stopPropagation()}
+                      onChange={event => void moveItemToLuggage(item.id, event.target.value)}
+                      className="min-h-7 w-20 shrink-0 rounded-full border border-[var(--color-brand-stone)] bg-white px-2 text-[10px] font-bold text-[var(--color-brand-espresso)]/55 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]"
+                    >
+                      <option value="" disabled>{t('overview.moveItem')}</option>
+                      {luggages.map(target => (
+                        <option key={target.id} value={target.id}>
+                          {target.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 ))}
               </div>
