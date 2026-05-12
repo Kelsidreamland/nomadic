@@ -95,6 +95,12 @@ describe('FlightMemory MVP dashboard', () => {
     expect(container.textContent).toContain('最常去');
     expect(container.textContent).toContain('匯入 CSV');
     expect(container.textContent).toContain('上傳 PDF');
+    expect(container.textContent).toContain('已匯入航程');
+    expect(container.textContent).not.toContain('TPE → NRT');
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[data-testid="flight-memory-list-toggle"]')?.click();
+    });
+    expect(container.textContent).toContain('TPE → NRT');
     await waitForAssertion(() => {
       expect(container.textContent).toContain('飛行護照');
     });

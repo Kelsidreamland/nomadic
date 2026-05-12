@@ -22,12 +22,79 @@ const columnAliases: Record<string, string[]> = {
 
 const normalizeHeader = (value: string) => value.trim().toLowerCase().replace(/[\s_-]/g, '');
 
+const monthNumbers: Record<string, string> = {
+  jan: '01',
+  january: '01',
+  feb: '02',
+  february: '02',
+  mar: '03',
+  march: '03',
+  apr: '04',
+  april: '04',
+  may: '05',
+  jun: '06',
+  june: '06',
+  jul: '07',
+  july: '07',
+  aug: '08',
+  august: '08',
+  sep: '09',
+  sept: '09',
+  september: '09',
+  oct: '10',
+  october: '10',
+  nov: '11',
+  november: '11',
+  dec: '12',
+  december: '12',
+};
+
+const normalizeYear = (value: string) => {
+  if (value.length === 2) return `20${value}`;
+  return value;
+};
+
+const formatDateParts = (year: string, month: string, day: string) => {
+  return `${normalizeYear(year)}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+};
+
 const normalizeDate = (value: string) => {
-  const trimmed = value.trim();
-  const match = trimmed.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
-  if (!match) return trimmed;
-  const [, year, month, day] = match;
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  const trimmed = value.trim().replace(/^[A-Za-z]{3,9},\s+/, '');
+  if (!trimmed) return '';
+
+  const isoMatch = trimmed.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    return formatDateParts(year, month, day);
+  }
+
+  const slashMatch = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/);
+  if (slashMatch) {
+    const [, month, day, year] = slashMatch;
+    return formatDateParts(year, month, day);
+  }
+
+  const monthFirstMatch = trimmed.match(/^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{2}|\d{4})$/);
+  if (monthFirstMatch) {
+    const [, monthName, day, year] = monthFirstMatch;
+    const month = monthNumbers[monthName.toLowerCase()];
+    return month ? formatDateParts(year, month, day) : '';
+  }
+
+  const dayFirstMatch = trimmed.match(/^(\d{1,2})\s+([A-Za-z]+),?\s+(\d{2}|\d{4})$/);
+  if (dayFirstMatch) {
+    const [, day, monthName, year] = dayFirstMatch;
+    const month = monthNumbers[monthName.toLowerCase()];
+    return month ? formatDateParts(year, month, day) : '';
+  }
+
+  const zhDateMatch = trimmed.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日?/);
+  if (zhDateMatch) {
+    const [, year, month, day] = zhDateMatch;
+    return formatDateParts(year, month, day);
+  }
+
+  return '';
 };
 
 const normalizeText = (value: string) => value.trim().replace(/\s+/g, ' ');

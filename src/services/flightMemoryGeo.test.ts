@@ -49,4 +49,15 @@ describe('getRouteMapPoint', () => {
       y: expect.any(Number),
     });
   });
+
+  it('covers common Flighty export airport codes for route rendering', () => {
+    expect(['LAX', 'DXB', 'SYD', 'AMS', 'FCO', 'MNL'].map(code => getRouteMapPoint(code)?.code)).toEqual([
+      'LAX',
+      'DXB',
+      'SYD',
+      'AMS',
+      'FCO',
+      'MNL',
+    ]);
+  });
 });

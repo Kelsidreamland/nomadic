@@ -2,7 +2,7 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { ArrowRight, FileText, Plus, Save, Upload } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, FileText, Plane, Plus, Save, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { db, type Flight } from '../db';
 import { analyzeTicketWithAI } from '../services/ai';
@@ -57,6 +57,7 @@ const createDefaultFormState = (): MemoryFlightFormState => ({
 
 const normalizeText = (value: string) => value.trim().replace(/\s+/g, ' ');
 const normalizeAirport = (value: string) => normalizeText(value).toUpperCase();
+const formatSegmentRoute = (from?: string, to?: string) => [from, to].filter(Boolean).join(' → ');
 
 export const FlightMemory = () => {
   const { t } = useTranslation();
@@ -66,6 +67,7 @@ export const FlightMemory = () => {
   const [formState, setFormState] = useState(createDefaultFormState);
   const [importStatus, setImportStatus] = useState('');
   const [isParsingPdf, setIsParsingPdf] = useState(false);
+  const [isFlightListOpen, setIsFlightListOpen] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
@@ -353,6 +355,52 @@ export const FlightMemory = () => {
           </button>
         </div>
       </form>
+
+      {segments.length > 0 && (
+        <section className="rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm md:p-5">
+          <button
+            type="button"
+            data-testid="flight-memory-list-toggle"
+            onClick={() => setIsFlightListOpen(prev => !prev)}
+            className="flex w-full items-center justify-between gap-4 text-left"
+          >
+            <span className="min-w-0">
+              <span className="block text-lg font-bold text-[var(--color-brand-espresso)]">{t('flightMemory.importedFlightsTitle')}</span>
+              <span className="mt-1 block text-sm font-medium text-[var(--color-brand-espresso)]/45">
+                {t('flightMemory.importedFlightsSubtitle', { count: segments.length })}
+              </span>
+            </span>
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-sand)] text-[var(--color-brand-espresso)]/60">
+              {isFlightListOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </span>
+          </button>
+
+          {isFlightListOpen && (
+            <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+              {segments.map(segment => (
+                <article
+                  key={segment.id}
+                  className="flex min-w-0 items-center gap-3 rounded-2xl border border-[var(--color-brand-stone)]/80 bg-[var(--color-brand-sand)] px-3 py-3"
+                >
+                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-cream)] text-[var(--color-brand-terracotta)]">
+                    <Plane size={16} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold text-[var(--color-brand-espresso)]">
+                      {formatSegmentRoute(segment.from, segment.to) || segment.destination}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs font-medium text-[var(--color-brand-espresso)]/45">
+                      {[segment.departureDate, segment.airline || t('flightMemory.unknownAirline'), segment.flightNumber || t('flightMemory.noFlightNumber')]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </span>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 };

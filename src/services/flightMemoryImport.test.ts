@@ -75,6 +75,25 @@ describe('parseFlightMemoryCsv', () => {
     });
   });
 
+  it('normalizes common Flighty date formats so historical routes appear in memory', () => {
+    const result = parseFlightMemoryCsv(`Date\tStart\tDestination\tAirline\tAircraft\tReason\tClass\tSeat Number\tDuration
+Fri, Jan 5, 2024\tTaipei (TPE)\tTokyo Narita (NRT)\tEVA Air\tBoeing 787\tLeisure\tEconomy\t12A\t3h 05m
+5 Feb 2024\tTokyo Haneda (HND)\tSeoul Incheon (ICN)\tKorean Air\tA321\tLeisure\tEconomy\t14C\t2h 30m
+03/12/24\tSingapore (SIN)\tBangkok (BKK)\tThai Airways\tA350\tLeisure\tEconomy\t22A\t2h 20m`);
+
+    expect(result.errors).toEqual([]);
+    expect(result.flights.map(flight => flight.departureDate)).toEqual([
+      '2024-01-05',
+      '2024-02-05',
+      '2024-03-12',
+    ]);
+    expect(result.flights.map(flight => `${flight.departureAirport}-${flight.arrivalAirport}`)).toEqual([
+      'TPE-NRT',
+      'HND-ICN',
+      'SIN-BKK',
+    ]);
+  });
+
   it('detects semicolon-delimited flight history exports', () => {
     const result = parseFlightMemoryCsv(`Date;From;To;Flight
 2023-12-20;TPE;SIN;SQ879`);
