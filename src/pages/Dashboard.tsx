@@ -4,12 +4,10 @@ import { db, type Flight } from '../db';
 import { getGeoIpLocation } from '../services/google';
 import { analyzeTicketWithAI } from '../services/ai';
 import { Plane, Plus, Save, X, FileText, Upload, Clock, MapPin, ClipboardList } from 'lucide-react';
-import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Onboarding } from '../components/Onboarding';
 import { getUpcomingFlight } from '../services/flightMemory';
-import { getCombinedAllowance } from '../services/flightAllowance';
 
 const defaultFlightData = (): Partial<Flight> => ({
   airline: '',
@@ -48,6 +46,32 @@ const formatRoute = (departure?: string, departureTerminal?: string, arrival?: s
   return from || to;
 };
 
+const toDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateKey = (value?: string) => {
+  const trimmed = value?.trim();
+  if (!trimmed) return '';
+
+  const isoMatch = trimmed.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? '' : toDateKey(parsed);
+};
+
+const isFutureOrTodayDate = (value: string | undefined, now: number) => {
+  const dateKey = parseDateKey(value);
+  return Boolean(dateKey) && dateKey >= toDateKey(new Date(now));
+};
+
 const readFileAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
   const reader = new FileReader();
   reader.onload = () => resolve(String(reader.result || ''));
@@ -80,7 +104,6 @@ const normalizeFlightData = (data: Partial<Flight>): Partial<Flight> => ({
 
 export const Dashboard = () => {
   const { t } = useTranslation();
-  const luggages = useLiveQuery(() => db.luggages.toArray()) || [];
   const flights = useLiveQuery(() => db.flights.toArray()) || [];
 
   const [isFirstTimeUser, setIsFirstTimeUser] = useState(() => {
@@ -97,8 +120,12 @@ export const Dashboard = () => {
   const [itineraryError, setItineraryError] = useState<string | null>(null);
 
   const upcomingFlight = getUpcomingFlight(flights, now);
+  const hasRequiredFlightFields = Boolean(flightData.destination?.trim() && flightData.departureDate);
+  const isFutureFlightForm = hasRequiredFlightFields && isFutureOrTodayDate(flightData.departureDate, now);
 
   const handleManualAdd = () => {
+    setItineraryError(null);
+    setItineraryMessage(null);
     setFlightData(upcomingFlight ? { ...defaultFlightData(), ...upcomingFlight } : defaultFlightData());
     setShowFlightForm(true);
     requestAnimationFrame(() => {
@@ -107,7 +134,12 @@ export const Dashboard = () => {
   };
 
   const handleSaveFlight = async () => {
-    if (!flightData.destination || !flightData.departureDate) return;
+    if (!hasRequiredFlightFields) return;
+    if (!isFutureFlightForm) {
+      setItineraryError(t('dashboard.futureFlightRequired'));
+      setItineraryMessage(null);
+      return;
+    }
     if (upcomingFlight) {
       await db.flights.update(upcomingFlight.id, normalizeFlightData(flightData));
     } else {
@@ -118,16 +150,24 @@ export const Dashboard = () => {
       } as Flight);
     }
     setShowFlightForm(false);
+    setItineraryError(null);
   };
 
   const handleSaveAdditionalTicket = async () => {
-    if (!flightData.destination || !flightData.departureDate) return;
+    if (!hasRequiredFlightFields) return;
+    if (!isFutureFlightForm) {
+      setItineraryError(t('dashboard.futureFlightRequired'));
+      setItineraryMessage(null);
+      return;
+    }
     await db.flights.add({
       ...defaultFlightData(),
       ...normalizeFlightData({ ...flightData, passengerCount: 1 }),
       id: crypto.randomUUID(),
     } as Flight);
     setShowFlightForm(false);
+    setItineraryError(null);
+    setItineraryMessage(t('dashboard.companionTicketAdded'));
   };
 
   const handleItineraryFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,16 +210,6 @@ export const Dashboard = () => {
       setIsParsingItinerary(false);
     }
   };
-
-  const checkedWeight = luggages.filter(l => l.type === '托运').reduce((sum, l) => {
-    return sum + (l.weightHistory?.length > 0 ? l.weightHistory[l.weightHistory.length - 1].weight : 0);
-  }, 0);
-
-  const carryOnWeight = luggages.filter(l => l.type === '手提').reduce((sum, l) => {
-    return sum + (l.weightHistory?.length > 0 ? l.weightHistory[l.weightHistory.length - 1].weight : 0);
-  }, 0);
-  const checkedAllowanceLimit = upcomingFlight ? getCombinedAllowance(upcomingFlight, 'checkedAllowance') : 0;
-  const carryOnAllowanceLimit = upcomingFlight ? getCombinedAllowance(upcomingFlight, 'carryOnAllowance') : 0;
 
   useEffect(() => {
     getGeoIpLocation().then(loc => setLocation(loc));
@@ -324,12 +354,20 @@ export const Dashboard = () => {
 
           <div className="mt-5 flex flex-col justify-end gap-2 sm:flex-row sm:items-center">
             <button
+              type="button"
+              data-testid="dashboard-add-companion-ticket"
               onClick={handleSaveAdditionalTicket}
-              className="rounded-xl px-4 py-3 text-xs font-bold text-[var(--color-brand-espresso)]/45 transition-colors hover:bg-[var(--color-brand-sand)] hover:text-[var(--color-brand-espresso)]/70"
+              disabled={!hasRequiredFlightFields}
+              className="rounded-xl px-4 py-3 text-xs font-bold text-[var(--color-brand-espresso)]/45 transition-colors hover:bg-[var(--color-brand-sand)] hover:text-[var(--color-brand-espresso)]/70 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent"
             >
               {t('dashboard.addCompanionTicket')}
             </button>
-            <button onClick={handleSaveFlight} className="flex items-center space-x-2 rounded-xl bg-[var(--color-brand-espresso)] px-6 py-3 font-bold text-white shadow-md transition-colors hover:bg-black">
+            <button
+              type="button"
+              onClick={handleSaveFlight}
+              disabled={!hasRequiredFlightFields}
+              className="flex items-center space-x-2 rounded-xl bg-[var(--color-brand-espresso)] px-6 py-3 font-bold text-white shadow-md transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-35"
+            >
               <Save size={16} />
               <span>{t('dashboard.saveFlight')}</span>
             </button>
@@ -417,48 +455,6 @@ export const Dashboard = () => {
               {itineraryError || itineraryMessage}
             </div>
           )}
-        </div>
-      )}
-
-      {upcomingFlight && (
-        <div className="space-y-6 rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm md:p-6">
-          <h3 className="text-sm font-bold text-[var(--color-brand-espresso)]/60">{t('overview.weightVsLimit')}</h3>
-          <div className="space-y-2">
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="mb-1 text-xs font-bold text-[var(--color-brand-espresso)]/40">{t('dashboard.checked')}</p>
-                <h4 className="text-xl font-black text-[var(--color-brand-espresso)]">{checkedWeight.toFixed(1)} <span className="text-sm text-[var(--color-brand-espresso)]/40">kg</span></h4>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold text-[var(--color-brand-espresso)]/40">{t('dashboard.limit')}</p>
-                <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{checkedAllowanceLimit || 0} kg</p>
-              </div>
-            </div>
-            <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--color-brand-stone)]/60">
-              <div
-                className={clsx("h-full transition-all duration-1000", checkedWeight > checkedAllowanceLimit ? 'bg-red-500' : 'bg-[var(--color-brand-espresso)]')}
-                style={{ width: `${Math.min(100, (checkedWeight / (checkedAllowanceLimit || 1)) * 100)}%` }}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="mb-1 text-xs font-bold text-[var(--color-brand-espresso)]/40">{t('dashboard.carryOn')}</p>
-                <h4 className="text-xl font-black text-[var(--color-brand-espresso)]">{carryOnWeight.toFixed(1)} <span className="text-sm text-[var(--color-brand-espresso)]/40">kg</span></h4>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold text-[var(--color-brand-espresso)]/40">{t('dashboard.limit')}</p>
-                <p className="text-sm font-bold text-[var(--color-brand-espresso)]">{carryOnAllowanceLimit || 0} kg</p>
-              </div>
-            </div>
-            <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--color-brand-stone)]/60">
-              <div
-                className={clsx("h-full transition-all duration-1000", carryOnWeight > carryOnAllowanceLimit ? 'bg-red-500' : 'bg-[var(--color-brand-olive)]')}
-                style={{ width: `${Math.min(100, (carryOnWeight / (carryOnAllowanceLimit || 1)) * 100)}%` }}
-              />
-            </div>
-          </div>
         </div>
       )}
 
