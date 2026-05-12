@@ -18,6 +18,7 @@ const columnAliases: Record<string, string[]> = {
   returnDepartureAirport: ['returndepartureairport', 'returnfrom', '回程出發機場', '回程出发机场'],
   returnArrivalAirport: ['returnarrivalairport', 'returnto', '回程抵達機場', '回程抵达机场'],
   returnFlightNumber: ['returnflightnumber', 'returnflight', '回程航班編號', '回程航班编号'],
+  seatNumber: ['seatnumber', 'seat', '座位', '座位號碼', '座位号码'],
 };
 
 const normalizeHeader = (value: string) => value.trim().toLowerCase().replace(/[\s_-]/g, '');
@@ -239,6 +240,7 @@ export const parseFlightMemoryCsv = (csv: string, idPrefix = 'csv-flight'): Flig
       carryOnAllowance: 0,
       personalAllowance: 0,
       passengerCount: 1,
+      seatNumber: getValue(row, columnMap, 'seatNumber'),
       rawEmailId: 'csv-import',
     });
   });
@@ -304,6 +306,7 @@ export const buildFlightMemoryImportFromAnalysis = (
     carryOnAllowance: normalizeKgValue(data.carryOnAllowance, 7),
     personalAllowance: normalizeKgValue(data.personalAllowance),
     passengerCount: 1,
+    seatNumber: normalizeUnknownText(data.seatNumber),
     rawEmailId: source,
   };
 };

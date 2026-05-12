@@ -34,6 +34,7 @@ const defaultFlightData = (): Partial<Flight> => ({
   carryOnAllowance: 7,
   personalAllowance: 0,
   passengerCount: 1,
+  seatNumber: '',
 });
 
 const joinParts = (...parts: Array<string | undefined | null>) => parts.filter(Boolean).join(' · ');
@@ -74,6 +75,7 @@ const normalizeFlightData = (data: Partial<Flight>): Partial<Flight> => ({
   carryOnAllowance: Number(data.carryOnAllowance ?? 7),
   personalAllowance: Number(data.personalAllowance ?? 0),
   passengerCount: Math.min(9, Math.max(1, Math.round(Number(data.passengerCount ?? 1)))),
+  seatNumber: data.seatNumber || '',
 });
 
 export const Dashboard = () => {
@@ -115,6 +117,16 @@ export const Dashboard = () => {
         id: crypto.randomUUID()
       } as Flight);
     }
+    setShowFlightForm(false);
+  };
+
+  const handleSaveAdditionalTicket = async () => {
+    if (!flightData.destination || !flightData.departureDate) return;
+    await db.flights.add({
+      ...defaultFlightData(),
+      ...normalizeFlightData({ ...flightData, passengerCount: 1 }),
+      id: crypto.randomUUID(),
+    } as Flight);
     setShowFlightForm(false);
   };
 
@@ -293,8 +305,8 @@ export const Dashboard = () => {
 
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-4">
             <div>
-              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.passengerCount')}</label>
-              <input type="number" min={1} max={9} className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.passengerCount ?? 1} onChange={e => setFlightData({...flightData, passengerCount: Number(e.target.value)})} />
+              <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.seatNumber')}</label>
+              <input type="text" className="w-full rounded-xl border-0 bg-[var(--color-brand-sand)] px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--color-brand-terracotta)]" value={flightData.seatNumber || ''} onChange={e => setFlightData({...flightData, seatNumber: e.target.value})} placeholder={t('dashboard.seatNumberPlaceholder')} />
             </div>
             <div>
               <label className="mb-1 block text-xs font-bold text-[var(--color-brand-espresso)]/60">{t('dashboard.checkedAllowance')}</label>
@@ -310,7 +322,13 @@ export const Dashboard = () => {
             </div>
           </div>
 
-          <div className="mt-5 flex justify-end">
+          <div className="mt-5 flex flex-col justify-end gap-2 sm:flex-row sm:items-center">
+            <button
+              onClick={handleSaveAdditionalTicket}
+              className="rounded-xl px-4 py-3 text-xs font-bold text-[var(--color-brand-espresso)]/45 transition-colors hover:bg-[var(--color-brand-sand)] hover:text-[var(--color-brand-espresso)]/70"
+            >
+              {t('dashboard.addCompanionTicket')}
+            </button>
             <button onClick={handleSaveFlight} className="flex items-center space-x-2 rounded-xl bg-[var(--color-brand-espresso)] px-6 py-3 font-bold text-white shadow-md transition-colors hover:bg-black">
               <Save size={16} />
               <span>{t('dashboard.saveFlight')}</span>

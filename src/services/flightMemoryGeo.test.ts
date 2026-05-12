@@ -60,4 +60,10 @@ describe('getRouteMapPoint', () => {
       'MNL',
     ]);
   });
+
+  it('uses city aliases when Flighty exports omit IATA codes', () => {
+    expect(getRouteMapPoint('Tokyo')?.code).toBe('NRT');
+    expect(getRouteMapPoint('Taipei')?.code).toBe('TPE');
+    expect(getRouteMapPoint('Dubai')?.code).toBe('DXB');
+  });
 });

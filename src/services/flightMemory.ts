@@ -34,7 +34,21 @@ const toDateKey = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const sortKey = (date?: string, time?: string) => `${date || '0000-00-00'}T${time || '00:00'}`;
+const parseFlightDateKey = (value?: string) => {
+  const trimmed = value?.trim();
+  if (!trimmed) return '';
+
+  const isoMatch = trimmed.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? '' : toDateKey(parsed);
+};
+
+const sortKey = (date?: string, time?: string) => `${parseFlightDateKey(date) || '0000-00-00'}T${time || '00:00'}`;
 
 const sortFlightsAscending = (a: Flight, b: Flight) => {
   return sortKey(a.departureDate, a.departureTime).localeCompare(sortKey(b.departureDate, b.departureTime));
@@ -60,14 +74,20 @@ const hasReturnSegment = (flight: Flight) => Boolean(
 export const getUpcomingFlight = (flights: Flight[], now: Date | number = new Date()) => {
   const today = toDateKey(now instanceof Date ? now : new Date(now));
   return [...flights]
-    .filter(flight => flight.departureDate >= today)
+    .filter(flight => {
+      const departureDate = parseFlightDateKey(flight.departureDate);
+      return departureDate >= today;
+    })
     .sort(sortFlightsAscending)[0];
 };
 
 export const getFlightMemoryEntries = (flights: Flight[], now: Date | number = new Date()) => {
   const today = toDateKey(now instanceof Date ? now : new Date(now));
   return [...flights]
-    .filter(flight => flight.departureDate < today)
+    .filter(flight => {
+      const departureDate = parseFlightDateKey(flight.departureDate);
+      return Boolean(departureDate) && departureDate < today;
+    })
     .sort(sortFlightsDescending);
 };
 

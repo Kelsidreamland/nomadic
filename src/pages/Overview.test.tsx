@@ -164,7 +164,48 @@ describe('Overview departure tools', () => {
     });
   });
 
-  it('uses combined baggage allowance for multi-passenger trips', async () => {
+  it('ignores historical Flighty imports when choosing overview flight details', async () => {
+    liveQueryState.flights = [
+      {
+        id: 'old-import',
+        destination: '東京',
+        airline: 'EVA',
+        departureDate: 'Fri, Jan 5, 2024',
+        checkedAllowance: 99,
+        carryOnAllowance: 99,
+        personalAllowance: 0,
+      },
+      {
+        id: 'future',
+        destination: '首爾',
+        airline: 'Korean Air',
+        departureDate: '2026-06-01',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+    ];
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={['/overview']}>
+          <Overview />
+        </MemoryRouter>
+      );
+    });
+
+    expect(container.textContent).toContain('首爾');
+    expect(container.textContent).not.toContain('東京');
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it('shows luggage allowance directly on each luggage card', async () => {
     liveQueryState.luggages = [
       {
         id: 'checked',
@@ -187,7 +228,6 @@ describe('Overview departure tools', () => {
         checkedAllowance: 23,
         carryOnAllowance: 7,
         personalAllowance: 0,
-        passengerCount: 2,
       },
     ];
 
@@ -202,7 +242,121 @@ describe('Overview departure tools', () => {
       );
     });
 
-    expect(container.textContent).toContain('10.0 / 46 kg');
+    expect(container.textContent).toContain('本次測量 10.0kg');
+    expect(container.textContent).toContain('限額 23kg');
+    expect(container.textContent).not.toContain('重量 vs 限額');
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it('adds allowance from companion tickets on the same future trip', async () => {
+    liveQueryState.luggages = [
+      {
+        id: 'checked',
+        name: 'Kevin 大行李箱',
+        type: '托运',
+        season: '通用',
+        length: 68,
+        width: 45,
+        height: 27,
+        weightHistory: [{ date: '2026-05-01', weight: 19 }],
+        createdAt: 1,
+      },
+    ];
+    liveQueryState.flights = [
+      {
+        id: 'kevin',
+        destination: '東京',
+        airline: 'EVA',
+        departureDate: '2026-06-01',
+        departureAirport: 'TPE',
+        arrivalAirport: 'NRT',
+        checkedAllowance: 20,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+      {
+        id: 'partner',
+        destination: '東京',
+        airline: 'EVA',
+        departureDate: '2026-06-01',
+        departureAirport: 'TPE',
+        arrivalAirport: 'NRT',
+        checkedAllowance: 20,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+    ];
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={['/overview']}>
+          <Overview />
+        </MemoryRouter>
+      );
+    });
+
+    expect(container.textContent).toContain('Kevin 大行李箱');
+    expect(container.textContent).toContain('本次測量 19.0kg');
+    expect(container.textContent).toContain('限額 40kg');
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it('expands unassigned items so they can be dragged into luggage', async () => {
+    liveQueryState.luggages = [
+      {
+        id: 'checked',
+        name: '托運箱',
+        type: '托运',
+        season: '通用',
+        length: 68,
+        width: 45,
+        height: 27,
+        weightHistory: [],
+        createdAt: 2,
+      },
+    ];
+    liveQueryState.items = [
+      {
+        id: 'loose-shirt',
+        luggageId: '',
+        name: '未分配襯衫',
+        category: '衣物',
+        subCategory: '上衣',
+        season: '通用',
+        condition: '新',
+        isDiscardable: false,
+        createdAt: 3,
+      },
+    ];
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={['/overview']}>
+          <Overview />
+        </MemoryRouter>
+      );
+    });
+
+    expect(container.textContent).toContain('未分配');
+    expect(container.textContent).not.toContain('未分配襯衫');
+
+    await act(async () => {
+      Array.from(container.querySelectorAll('button')).find(button => button.textContent?.includes('未分配'))?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain('未分配襯衫');
 
     act(() => {
       root.unmount();

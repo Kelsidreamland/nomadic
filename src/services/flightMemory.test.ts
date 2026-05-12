@@ -44,6 +44,16 @@ describe('getUpcomingFlight', () => {
     expect(result?.id).toBe('next');
   });
 
+  it('does not treat old non-ISO imported Flighty dates as upcoming flights', () => {
+    const today = new Date(2026, 4, 12, 10);
+    const result = getUpcomingFlight([
+      makeFlight({ id: 'old-flighty', departureDate: 'Fri, Jan 5, 2024', destination: 'Tokyo' }),
+      makeFlight({ id: 'future', departureDate: '2026-06-01', destination: 'Seoul' }),
+    ], today);
+
+    expect(result?.id).toBe('future');
+  });
+
   it('keeps same-day flights eligible and sorts them by departure time', () => {
     const today = new Date(2026, 4, 6, 10);
     const result = getUpcomingFlight([
@@ -65,6 +75,16 @@ describe('getFlightMemoryEntries', () => {
     ], today);
 
     expect(result.map(flight => flight.id)).toEqual(['newer', 'older']);
+  });
+
+  it('keeps parseable non-ISO historical imports in travel memory', () => {
+    const today = new Date(2026, 4, 12, 10);
+    const result = getFlightMemoryEntries([
+      makeFlight({ id: 'flighty-old', departureDate: 'Fri, Jan 5, 2024' }),
+      makeFlight({ id: 'future', departureDate: '2026-06-20' }),
+    ], today);
+
+    expect(result.map(flight => flight.id)).toEqual(['flighty-old']);
   });
 });
 

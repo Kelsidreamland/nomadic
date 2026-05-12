@@ -38,13 +38,15 @@ describe('getOutfitEligibleItems', () => {
     expect(result.map(item => item.id)).toEqual(['shirt']);
   });
 
-  it('allows an explicit outfit marker to override sleepwear defaults', () => {
+  it('always excludes sleepwear and swimwear from low-versatility outfit stats', () => {
     const result = getOutfitEligibleItems([
       makeItem({ id: 'sleep-dress', name: '緞面睡裙', inventoryMode: 'detail', outfitEligible: true, notes: '特殊造型也可外穿' }),
-      makeItem({ id: 'pajamas', name: '普通睡衣', inventoryMode: 'detail', outfitEligible: false }),
+      makeItem({ id: 'sleep-pants', name: 'soft sleep pants', inventoryMode: 'detail', outfitEligible: true }),
+      makeItem({ id: 'swim', name: 'swim suit', inventoryMode: 'detail', outfitEligible: true }),
+      makeItem({ id: 'shirt', name: '白色襯衫', inventoryMode: 'detail', outfitEligible: true }),
     ]);
 
-    expect(result.map(item => item.id)).toEqual(['sleep-dress']);
+    expect(result.map(item => item.id)).toEqual(['shirt']);
   });
 
   it('uses the same rule when auto-setting detail item eligibility', () => {

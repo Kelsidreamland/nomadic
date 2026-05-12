@@ -9,6 +9,7 @@ export interface Luggage {
   width: number;
   height: number;
   weightHistory: { date: string; weight: number; flightId?: string }[];
+  allowanceOverrideKg?: number;
   createdAt: number;
 }
 
@@ -76,6 +77,7 @@ export interface Flight {
   carryOnAllowance: number;
   personalAllowance: number;
   passengerCount?: number;
+  seatNumber?: string;
   rawEmailId?: string;
 }
 

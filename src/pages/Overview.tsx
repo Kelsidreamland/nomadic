@@ -47,34 +47,6 @@ const loadPackedItemIds = () => {
   }
 };
 
-const WeightBar = ({ current, limit, label }: { current: number; limit: number; label: string }) => {
-  const pct = limit > 0 ? Math.min(100, (current / limit) * 100) : 0;
-  const isOver = current > limit;
-  const remaining = limit - current;
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-end justify-between gap-3">
-        <span className="text-xs font-bold text-[var(--color-brand-espresso)]/50">{label}</span>
-        <span className="text-xs font-bold text-[var(--color-brand-espresso)]/70">
-          {current.toFixed(1)} / {limit} kg
-          {limit > 0 && (
-            <span className={clsx('ml-1', isOver ? 'text-red-500' : remaining < limit * 0.2 ? 'text-[var(--color-brand-terracotta)]' : 'text-[var(--color-brand-olive)]')}>
-              ({isOver ? `+${(current - limit).toFixed(1)}` : `-${remaining.toFixed(1)}`})
-            </span>
-          )}
-        </span>
-      </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--color-brand-stone)]/60">
-        <div
-          className={clsx('h-full rounded-full transition-all duration-500', isOver ? 'bg-red-500' : remaining < limit * 0.2 ? 'bg-[var(--color-brand-terracotta)]' : 'bg-[var(--color-brand-olive)]')}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-};
-
 export const Overview = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -93,6 +65,17 @@ export const Overview = () => {
 
   const [now] = useState(() => Date.now());
   const upcomingFlight = getUpcomingFlight(flights, now);
+  const upcomingTripFlights = upcomingFlight
+    ? flights.filter(flight => (
+      flight.id === upcomingFlight.id ||
+      (
+        flight.departureDate === upcomingFlight.departureDate &&
+        flight.destination === upcomingFlight.destination &&
+        (flight.departureAirport || '') === (upcomingFlight.departureAirport || '') &&
+        (flight.arrivalAirport || '') === (upcomingFlight.arrivalAirport || '')
+      )
+    ))
+    : [];
   const daysToFlight = upcomingFlight
     ? Math.ceil((new Date(upcomingFlight.departureDate).getTime() - now) / (1000 * 60 * 60 * 24))
     : null;
@@ -122,14 +105,30 @@ export const Overview = () => {
     return l.weightHistory[l.weightHistory.length - 1].weight;
   };
 
-  const checkedWeight = luggages.filter(l => l.type === '托运').reduce((sum, l) => sum + getLatestWeight(l.id), 0);
-  const carryOnWeight = luggages.filter(l => l.type === '手提').reduce((sum, l) => sum + getLatestWeight(l.id), 0);
-  const checkedAllowanceLimit = upcomingFlight ? getCombinedAllowance(upcomingFlight, 'checkedAllowance') : 0;
-  const carryOnAllowanceLimit = upcomingFlight ? getCombinedAllowance(upcomingFlight, 'carryOnAllowance') : 7;
+  const getUpcomingTripAllowance = (field: 'checkedAllowance' | 'carryOnAllowance' | 'personalAllowance') => {
+    if (!upcomingFlight) return 0;
+    return (upcomingTripFlights.length > 0 ? upcomingTripFlights : [upcomingFlight])
+      .reduce((sum, flight) => sum + getCombinedAllowance(flight, field), 0);
+  };
+  const checkedAllowanceLimit = getUpcomingTripAllowance('checkedAllowance');
+  const carryOnAllowanceLimit = getUpcomingTripAllowance('carryOnAllowance');
+  const personalAllowanceLimit = getUpcomingTripAllowance('personalAllowance');
 
   const itemsByLuggage = (luggageId: string) => items.filter(i => i.luggageId === luggageId);
   const getItemQuantityTotal = (targetItems: typeof items) => targetItems.reduce((sum, item) => sum + getItemQuantity(item), 0);
   const unassignedItems = items.filter(i => !i.luggageId || !luggages.find(l => l.id === i.luggageId));
+  const unassignedLuggageId = '__unassigned';
+
+  const getDefaultAllowanceForLuggage = (type: string) => {
+    if (type === '托运') return checkedAllowanceLimit;
+    if (type === '手提') return carryOnAllowanceLimit || 7;
+    if (type === '随身') return personalAllowanceLimit;
+    return 0;
+  };
+
+  const getLuggageAllowanceLimit = (luggage: typeof luggages[number]) => {
+    return luggage.allowanceOverrideKg ?? getDefaultAllowanceForLuggage(luggage.type);
+  };
 
   const toggleLuggage = (id: string) => {
     setExpandedLuggage(prev => {
@@ -256,6 +255,11 @@ export const Overview = () => {
     setWeightInputs(prev => ({ ...prev, [luggageId]: 0 }));
   };
 
+  const handleLuggageAllowanceChange = async (luggageId: string, value: number) => {
+    if (!Number.isFinite(value) || value < 0) return;
+    await db.luggages.update(luggageId, { allowanceOverrideKg: value });
+  };
+
   const handleAiReduce = async () => {
     if (items.length === 0) return;
     setIsAnalyzing(true);
@@ -375,14 +379,6 @@ export const Overview = () => {
         </div>
       )}
 
-      {upcomingFlight && luggages.length > 0 && (
-        <div className="space-y-4 rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm">
-          <h3 className="text-sm font-bold text-[var(--color-brand-espresso)]/60">{t('overview.weightVsLimit')}</h3>
-          <WeightBar current={checkedWeight} limit={checkedAllowanceLimit} label={t('dashboard.checked')} />
-          <WeightBar current={carryOnWeight} limit={carryOnAllowanceLimit || 7} label={t('dashboard.carryOn')} />
-        </div>
-      )}
-
       <div className="space-y-4">
         <h3 className="text-sm font-bold text-[var(--color-brand-espresso)]/60">{t('overview.itemsByLuggage')}</h3>
 
@@ -390,6 +386,7 @@ export const Overview = () => {
           const luggageItems = itemsByLuggage(luggage.id);
           const isExpanded = expandedLuggage.has(luggage.id);
           const weight = getLatestWeight(luggage.id);
+          const allowanceLimit = getLuggageAllowanceLimit(luggage);
 
           return (
             <div
@@ -428,7 +425,8 @@ export const Overview = () => {
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-brand-espresso)]/45">
                         <span>{getTypeLabel(luggage.type)}</span>
                         <span>{getItemQuantityTotal(luggageItems)} {t('overview.items')}</span>
-                        {weight > 0 && <span>{weight.toFixed(1)} kg</span>}
+                        {weight > 0 && <span>{t('overview.measuredWeight', { weight: weight.toFixed(1) })}</span>}
+                        {allowanceLimit > 0 && <span>{t('overview.luggageAllowance', { limit: allowanceLimit })}</span>}
                       </div>
                     </div>
                   </div>
@@ -540,6 +538,16 @@ export const Overview = () => {
                       {t('luggages.recordBtn')}
                     </button>
                   </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <label className="text-xs font-bold text-[var(--color-brand-espresso)]/45">{t('overview.editLuggageAllowance')}</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={allowanceLimit || ''}
+                      onChange={event => void handleLuggageAllowanceChange(luggage.id, Number(event.target.value))}
+                      className="w-full rounded-xl bg-[var(--color-brand-sand)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-brand-espresso)] sm:w-32"
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -548,15 +556,69 @@ export const Overview = () => {
 
         {unassignedItems.length > 0 && (
           <div className="rounded-[28px] border border-dashed border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-brand-sand)]">
-                <Scale size={18} className="text-[var(--color-brand-espresso)]/30" />
+            <button onClick={() => toggleLuggage(unassignedLuggageId)} className="flex w-full items-center justify-between gap-3 text-left">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-brand-sand)]">
+                  <Scale size={18} className="text-[var(--color-brand-espresso)]/30" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-[var(--color-brand-espresso)]/50">{t('items.unassigned')}</h4>
+                  <p className="text-xs text-[var(--color-brand-espresso)]/30">{getItemQuantityTotal(unassignedItems)} {t('overview.items')}</p>
+                </div>
               </div>
-              <div>
-                <h4 className="font-bold text-[var(--color-brand-espresso)]/50">{t('items.unassigned')}</h4>
-                <p className="text-xs text-[var(--color-brand-espresso)]/30">{getItemQuantityTotal(unassignedItems)} {t('overview.items')}</p>
+              {expandedLuggage.has(unassignedLuggageId) ? <ChevronDown size={20} className="shrink-0 text-[var(--color-brand-espresso)]/30" /> : <ChevronRight size={20} className="shrink-0 text-[var(--color-brand-espresso)]/30" />}
+            </button>
+
+            {expandedLuggage.has(unassignedLuggageId) && (
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+                {unassignedItems.map(item => (
+                  <div
+                    key={item.id}
+                    draggable
+                    aria-label={t('overview.dragItem', { name: item.name })}
+                    title={t('overview.dragItemHint')}
+                    onDragStart={event => {
+                      if (event.dataTransfer) {
+                        event.dataTransfer.effectAllowed = 'move';
+                        event.dataTransfer.setData('text/plain', item.id);
+                      }
+                      startItemDrag(item.id);
+                    }}
+                    onDragEnd={clearDragState}
+                    onPointerDown={event => {
+                      event.currentTarget.setPointerCapture?.(event.pointerId);
+                      startItemLongPress(item.id, event);
+                    }}
+                    onPointerMove={handleItemPointerMove}
+                    onPointerCancel={clearDragState}
+                    onPointerUp={event => {
+                      if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+                        event.currentTarget.releasePointerCapture?.(event.pointerId);
+                      }
+                      finishItemLongPress(event);
+                    }}
+                    className={clsx(
+                      'flex min-w-0 cursor-grab select-none items-center gap-2 rounded-xl bg-[var(--color-brand-sand)] p-2 transition-all active:cursor-grabbing',
+                      draggedItemId === item.id ? 'touch-none' : 'touch-pan-y',
+                      draggedItemId === item.id && 'scale-[0.98] opacity-65 ring-2 ring-[var(--color-brand-terracotta)]/30'
+                    )}
+                  >
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} className="h-9 w-9 shrink-0 rounded-lg border border-[var(--color-brand-stone)] bg-white object-contain" />
+                    ) : (
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-[10px] text-[var(--color-brand-espresso)]/30">{getCategoryLabel(item.category)[0]}</div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-[var(--color-brand-espresso)]">
+                        {item.name}
+                        {getItemQuantity(item) > 1 && <span className="ml-1 text-[var(--color-brand-terracotta)]">× {getItemQuantity(item)}</span>}
+                      </p>
+                      <p className="text-[10px] text-[var(--color-brand-espresso)]/40">{getCategoryLabel(item.category)}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>

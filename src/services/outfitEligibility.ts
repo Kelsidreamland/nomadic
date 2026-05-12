@@ -8,6 +8,7 @@ const nonOutfitPlanningKeywords = [
   '家居服',
   '泳衣',
   '泳裝',
+  '泳装',
   '泳裤',
   '泳褲',
   '比基尼',
@@ -16,8 +17,11 @@ const nonOutfitPlanningKeywords = [
   'pajamas',
   'pyjama',
   'pyjamas',
+  'sleep dress',
+  'sleep pants',
   'sleepwear',
   'swimsuit',
+  'swim suit',
   'swimwear',
 ];
 
@@ -39,7 +43,7 @@ export const isOutfitEligibleItem = (
 ) => {
   if (item.category !== '衣物') return false;
   if (item.inventoryMode === 'quick') return false;
-  if (isNonOutfitPlanningItem(item) && item.outfitEligible !== true) return false;
+  if (isNonOutfitPlanningItem(item)) return false;
   return item.outfitEligible !== false;
 };
 

@@ -71,6 +71,7 @@ describe('parseFlightMemoryCsv', () => {
       arrivalAirport: 'NRT',
       destination: 'NRT',
       airline: 'EVA Air',
+      seatNumber: '12A',
       rawEmailId: 'csv-import',
     });
   });

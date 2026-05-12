@@ -128,6 +128,60 @@ const airportByCode: Record<string, AirportInfo> = {
   ZRH: { code: 'ZRH', label: 'Zurich', country: countries.CH, lat: 47.4582, lon: 8.5555 },
 };
 
+const airportAliases: Array<[string, string]> = [
+  ['tokyo', 'NRT'],
+  ['東京', 'NRT'],
+  ['narita', 'NRT'],
+  ['成田', 'NRT'],
+  ['haneda', 'HND'],
+  ['羽田', 'HND'],
+  ['taipei', 'TPE'],
+  ['台北', 'TPE'],
+  ['臺北', 'TPE'],
+  ['taoyuan', 'TPE'],
+  ['桃園', 'TPE'],
+  ['seoul', 'ICN'],
+  ['incheon', 'ICN'],
+  ['首爾', 'ICN'],
+  ['仁川', 'ICN'],
+  ['singapore', 'SIN'],
+  ['新加坡', 'SIN'],
+  ['bangkok', 'BKK'],
+  ['曼谷', 'BKK'],
+  ['hong kong', 'HKG'],
+  ['香港', 'HKG'],
+  ['dubai', 'DXB'],
+  ['杜拜', 'DXB'],
+  ['sydney', 'SYD'],
+  ['雪梨', 'SYD'],
+  ['amsterdam', 'AMS'],
+  ['阿姆斯特丹', 'AMS'],
+  ['rome', 'FCO'],
+  ['羅馬', 'FCO'],
+  ['manila', 'MNL'],
+  ['馬尼拉', 'MNL'],
+  ['los angeles', 'LAX'],
+  ['la ', 'LAX'],
+  ['london', 'LHR'],
+  ['倫敦', 'LHR'],
+  ['paris', 'CDG'],
+  ['巴黎', 'CDG'],
+  ['kuala lumpur', 'KUL'],
+  ['吉隆坡', 'KUL'],
+  ['ho chi minh', 'SGN'],
+  ['胡志明', 'SGN'],
+  ['bali', 'DPS'],
+  ['峇里', 'DPS'],
+  ['osaka', 'KIX'],
+  ['大阪', 'KIX'],
+];
+
+const getAirportAliasCode = (value?: string) => {
+  const normalized = (value || '').trim().toLowerCase();
+  if (!normalized) return undefined;
+  return airportAliases.find(([alias]) => normalized.includes(alias))?.[1];
+};
+
 const countryAliases: Array<[string, CountryInfo]> = [
   ['tokyo', countries.JP],
   ['osaka', countries.JP],
@@ -171,8 +225,10 @@ export const getAirportCode = (value?: string) => {
 };
 
 export const getAirportInfo = (value?: string) => {
+  const normalized = (value || '').trim().toUpperCase();
   const code = getAirportCode(value);
-  return code ? airportByCode[code] : undefined;
+  if (normalized.length === 3 && code) return airportByCode[code];
+  return airportByCode[getAirportAliasCode(value) || ''] || (code ? airportByCode[code] : undefined);
 };
 
 export const getCountryForValue = (value?: string) => {
