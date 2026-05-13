@@ -206,6 +206,16 @@ export const FlightMemory = () => {
     setImportStatus(t('flightMemory.deletedFlight'));
   };
 
+  const handleClearFlightMemories = async () => {
+    if (memoryEntries.length === 0) return;
+    if (typeof window !== 'undefined' && !window.confirm(t('flightMemory.clearConfirm', { count: memoryEntries.length }))) return;
+
+    await db.flights.bulkDelete(memoryEntries.map(flight => flight.id));
+    setRevealedDeleteSegmentId(null);
+    setIsFlightListOpen(false);
+    setImportStatus(t('flightMemory.clearedFlights', { count: memoryEntries.length }));
+  };
+
   return (
     <div className="space-y-6 pb-20 animate-fade-in">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -386,22 +396,34 @@ export const FlightMemory = () => {
 
       {segments.length > 0 && (
         <section className="rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm md:p-5">
-          <button
-            type="button"
-            data-testid="flight-memory-list-toggle"
-            onClick={() => setIsFlightListOpen(prev => !prev)}
-            className="flex w-full items-center justify-between gap-4 text-left"
-          >
-            <span className="min-w-0">
-              <span className="block text-lg font-bold text-[var(--color-brand-espresso)]">{t('flightMemory.importedFlightsTitle')}</span>
-              <span className="mt-1 block text-sm font-medium text-[var(--color-brand-espresso)]/45">
-                {t('flightMemory.importedFlightsSubtitle', { count: segments.length })}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              data-testid="flight-memory-list-toggle"
+              onClick={() => setIsFlightListOpen(prev => !prev)}
+              className="flex min-w-0 flex-1 items-center justify-between gap-4 text-left"
+            >
+              <span className="min-w-0">
+                <span className="block text-lg font-bold text-[var(--color-brand-espresso)]">{t('flightMemory.importedFlightsTitle')}</span>
+                <span className="mt-1 block text-sm font-medium text-[var(--color-brand-espresso)]/45">
+                  {t('flightMemory.importedFlightsSubtitle', { count: segments.length })}
+                </span>
               </span>
-            </span>
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-sand)] text-[var(--color-brand-espresso)]/60">
-              {isFlightListOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-            </span>
-          </button>
+              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-sand)] text-[var(--color-brand-espresso)]/60">
+                {isFlightListOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </span>
+            </button>
+            <button
+              type="button"
+              data-testid="clear-flight-memory-entries"
+              onClick={() => void handleClearFlightMemories()}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--color-brand-stone)] text-[var(--color-brand-espresso)]/35 transition-colors hover:border-[var(--color-brand-terracotta)] hover:text-[var(--color-brand-terracotta)]"
+              aria-label={t('flightMemory.clearImportedFlights')}
+              title={t('flightMemory.clearImportedFlights')}
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
 
           {isFlightListOpen && (
             <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">

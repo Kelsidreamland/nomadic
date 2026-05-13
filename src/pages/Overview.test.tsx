@@ -16,7 +16,7 @@ const setInputValue = (input: HTMLInputElement, value: string) => {
   input.dispatchEvent(new Event('input', { bubbles: true }));
 };
 
-const { liveQueryState, generateSmartInsightsMock, dbItemsUpdateMock, dbLuggagesUpdateMock } = vi.hoisted(() => ({
+const { liveQueryState, generateSmartInsightsMock, dbItemsUpdateMock, dbLuggagesUpdateMock, dbFlightsDeleteMock } = vi.hoisted(() => ({
   liveQueryState: {
     callIndex: 0,
     luggages: [] as Luggage[],
@@ -26,6 +26,7 @@ const { liveQueryState, generateSmartInsightsMock, dbItemsUpdateMock, dbLuggages
   generateSmartInsightsMock: vi.fn(),
   dbItemsUpdateMock: vi.fn(),
   dbLuggagesUpdateMock: vi.fn(),
+  dbFlightsDeleteMock: vi.fn(),
 }));
 
 vi.mock('dexie-react-hooks', () => ({
@@ -50,6 +51,7 @@ vi.mock('../db', () => ({
     },
     flights: {
       toArray: vi.fn(),
+      delete: dbFlightsDeleteMock,
     },
   },
 }));
@@ -69,6 +71,7 @@ describe('Overview departure tools', () => {
     generateSmartInsightsMock.mockReset();
     dbItemsUpdateMock.mockReset();
     dbLuggagesUpdateMock.mockReset();
+    dbFlightsDeleteMock.mockReset();
   });
 
   afterEach(() => {
@@ -377,6 +380,70 @@ describe('Overview departure tools', () => {
     expect(container.textContent).toContain('Kevin 大行李箱');
     expect(container.textContent).toContain('本次測量 19.0kg');
     expect(container.textContent).toContain('限額 40kg');
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it('deletes the current upcoming trip and companion tickets from Overview', async () => {
+    liveQueryState.flights = [
+      {
+        id: 'kevin',
+        destination: '東京',
+        airline: 'EVA',
+        departureDate: '2026-06-01',
+        departureAirport: 'TPE',
+        arrivalAirport: 'NRT',
+        checkedAllowance: 20,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+      {
+        id: 'partner',
+        destination: '東京',
+        airline: 'EVA',
+        departureDate: '2026-06-01',
+        departureAirport: 'TPE',
+        arrivalAirport: 'NRT',
+        checkedAllowance: 20,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+      {
+        id: 'later',
+        destination: '倫敦',
+        airline: 'China Airlines',
+        departureDate: '2026-09-01',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+    ];
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={['/overview']}>
+          <Overview />
+        </MemoryRouter>
+      );
+    });
+
+    const deleteButton = container.querySelector<HTMLButtonElement>('[data-testid="overview-delete-upcoming-trip"]');
+    expect(deleteButton).toBeTruthy();
+
+    await act(async () => {
+      deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(dbFlightsDeleteMock).toHaveBeenCalledTimes(2);
+    expect(dbFlightsDeleteMock).toHaveBeenCalledWith('kevin');
+    expect(dbFlightsDeleteMock).toHaveBeenCalledWith('partner');
+    expect(dbFlightsDeleteMock).not.toHaveBeenCalledWith('later');
 
     act(() => {
       root.unmount();

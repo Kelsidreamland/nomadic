@@ -359,6 +359,7 @@ const resources = {
         luggageAllowance: '限額 {{limit}}kg',
         editLuggageAllowance: '行李限額',
         saveLuggageAllowance: '儲存限額',
+        deleteUpcomingTrip: '刪除行程',
         itemsByLuggage: '行李物品',
         items: '件物品',
         noItems: '尚無物品',
@@ -431,7 +432,10 @@ const resources = {
         unknownDestination: '未命名目的地',
         deleteFlight: '刪除航班',
         deleteConfirm: '確定要刪除這段飛行記憶嗎？',
-        deletedFlight: '已刪除這段飛行記憶。'
+        deletedFlight: '已刪除這段飛行記憶。',
+        clearImportedFlights: '清空已匯入航程',
+        clearConfirm: '確定要清空 {{count}} 筆旅居足跡航程嗎？這不會刪除未來行程。',
+        clearedFlights: '已清空 {{count}} 筆旅居足跡航程。'
       }
     }
   },
@@ -792,6 +796,7 @@ const resources = {
         luggageAllowance: 'Limit {{limit}}kg',
         editLuggageAllowance: 'Luggage limit',
         saveLuggageAllowance: 'Save limit',
+        deleteUpcomingTrip: 'Delete trip',
         itemsByLuggage: 'Items by Luggage',
         items: 'items',
         noItems: 'No items yet',
@@ -864,7 +869,10 @@ const resources = {
         unknownDestination: 'Untitled destination',
         deleteFlight: 'Delete flight',
         deleteConfirm: 'Delete this flight memory?',
-        deletedFlight: 'Flight memory deleted.'
+        deletedFlight: 'Flight memory deleted.',
+        clearImportedFlights: 'Clear imported flights',
+        clearConfirm: 'Clear {{count}} travel-memory flights? Upcoming trips will not be deleted.',
+        clearedFlights: 'Cleared {{count}} travel-memory flights.'
       }
     }
   }

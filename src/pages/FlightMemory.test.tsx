@@ -10,10 +10,11 @@ import { FlightMemory } from './FlightMemory';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const { liveFlights, flightsBulkPutMock, flightsDeleteMock, analyzeTicketWithAIMock } = vi.hoisted(() => ({
+const { liveFlights, flightsBulkPutMock, flightsDeleteMock, flightsBulkDeleteMock, analyzeTicketWithAIMock } = vi.hoisted(() => ({
   liveFlights: [] as Flight[],
   flightsBulkPutMock: vi.fn(),
   flightsDeleteMock: vi.fn(),
+  flightsBulkDeleteMock: vi.fn(),
   analyzeTicketWithAIMock: vi.fn(),
 }));
 
@@ -28,6 +29,7 @@ vi.mock('../db', () => ({
       add: vi.fn(),
       bulkPut: flightsBulkPutMock,
       delete: flightsDeleteMock,
+      bulkDelete: flightsBulkDeleteMock,
     },
   },
 }));
@@ -61,7 +63,9 @@ describe('FlightMemory MVP dashboard', () => {
     liveFlights.length = 0;
     flightsBulkPutMock.mockReset();
     flightsDeleteMock.mockReset();
+    flightsBulkDeleteMock.mockReset();
     analyzeTicketWithAIMock.mockReset();
+    vi.restoreAllMocks();
   });
 
   it('shows import-first stats and removes the year timeline wall', async () => {
@@ -218,6 +222,75 @@ describe('FlightMemory MVP dashboard', () => {
     });
 
     expect(flightsDeleteMock).toHaveBeenCalledWith('bad-import');
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it('clears historical flight memories without deleting future trips', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    liveFlights.push(
+      {
+        id: 'demo-old-one',
+        departureDate: '2024-01-05',
+        departureTime: '09:00',
+        destination: 'Tokyo',
+        airline: 'EVA Air',
+        flightNumber: 'BR198',
+        departureAirport: 'TPE',
+        arrivalAirport: 'NRT',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+      {
+        id: 'demo-old-two',
+        departureDate: '2024-02-06',
+        departureTime: '08:00',
+        destination: 'Singapore',
+        airline: 'Singapore Airlines',
+        flightNumber: 'SQ879',
+        departureAirport: 'TPE',
+        arrivalAirport: 'SIN',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+      {
+        id: 'future-trip',
+        departureDate: '2026-06-01',
+        destination: 'Seoul',
+        airline: 'Korean Air',
+        departureAirport: 'TPE',
+        arrivalAirport: 'ICN',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+    );
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/memory']}>
+          <FlightMemory />
+        </MemoryRouter>,
+      );
+    });
+
+    const clearButton = container.querySelector<HTMLButtonElement>('[data-testid="clear-flight-memory-entries"]');
+    expect(clearButton).toBeTruthy();
+
+    await act(async () => {
+      clearButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(flightsBulkDeleteMock).toHaveBeenCalledWith(['demo-old-two', 'demo-old-one']);
+    expect(flightsBulkDeleteMock).not.toHaveBeenCalledWith(expect.arrayContaining(['future-trip']));
 
     act(() => {
       root.unmount();

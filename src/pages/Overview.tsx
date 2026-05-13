@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { generateSmartInsights } from '../services/ai';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Bot, Plane, ChevronDown, ChevronRight, Scale, AlertTriangle, CheckCircle2, X, Clock, MapPin, Plus, Check, ClipboardList } from 'lucide-react';
+import { Bot, Plane, ChevronDown, ChevronRight, Scale, AlertTriangle, CheckCircle2, X, Clock, MapPin, Plus, Check, ClipboardList, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store';
@@ -157,6 +157,12 @@ export const Overview = () => {
   const startPackingChecklist = () => {
     setExpandedLuggage(new Set(packingSummary.expandableLuggageIds));
     navigate('/overview?packing=1');
+  };
+
+  const deleteUpcomingTrip = async () => {
+    if (!upcomingFlight) return;
+    const flightsToDelete = upcomingTripFlights.length > 0 ? upcomingTripFlights : [upcomingFlight];
+    await Promise.all(flightsToDelete.map(flight => db.flights.delete(flight.id)));
   };
 
   const togglePackedItem = (itemId: string) => {
@@ -387,9 +393,20 @@ export const Overview = () => {
                 </div>
               </div>
             </div>
-            <Link to="/" className="text-xs font-bold text-[var(--color-brand-espresso)]/45 transition-colors hover:text-[var(--color-brand-espresso)]">
-              {t('dashboard.editFlight')}
-            </Link>
+            <div className="flex shrink-0 flex-wrap items-center gap-3">
+              <button
+                type="button"
+                data-testid="overview-delete-upcoming-trip"
+                onClick={() => void deleteUpcomingTrip()}
+                className="inline-flex items-center gap-1 text-xs font-bold text-[var(--color-brand-espresso)]/35 transition-colors hover:text-[var(--color-brand-terracotta)]"
+              >
+                <Trash2 size={13} />
+                <span>{t('overview.deleteUpcomingTrip')}</span>
+              </button>
+              <Link to="/" className="text-xs font-bold text-[var(--color-brand-espresso)]/45 transition-colors hover:text-[var(--color-brand-espresso)]">
+                {t('dashboard.editFlight')}
+              </Link>
+            </div>
           </div>
         </div>
       ) : (
