@@ -95,6 +95,18 @@ Fri, Jan 5, 2024\tTaipei (TPE)\tTokyo Narita (NRT)\tEVA Air\tBoeing 787\tLeisure
     ]);
   });
 
+  it('normalizes day-first Flighty dates when the first number cannot be a month', () => {
+    const result = parseFlightMemoryCsv(`Date\tStart\tDestination\tAirline\tAircraft\tReason\tClass\tSeat Number\tDuration
+30/11/25\tZhengzhou\tTaoyuan (Dayuan)\tChina Airlines\tA321\tLeisure\tEconomy\t\t2h
+29-11-2025\tSanya (Tianya)\tZhengzhou\tChina Southern\tA320\tLeisure\tEconomy\t\t3h`);
+
+    expect(result.errors).toEqual([]);
+    expect(result.flights.map(flight => flight.departureDate)).toEqual([
+      '2025-11-30',
+      '2025-11-29',
+    ]);
+  });
+
   it('detects semicolon-delimited flight history exports', () => {
     const result = parseFlightMemoryCsv(`Date;From;To;Flight
 2023-12-20;TPE;SIN;SQ879`);

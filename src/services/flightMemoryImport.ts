@@ -71,8 +71,11 @@ const normalizeDate = (value: string) => {
 
   const slashMatch = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/);
   if (slashMatch) {
-    const [, month, day, year] = slashMatch;
-    return formatDateParts(year, month, day);
+    const [, first, second, year] = slashMatch;
+    const isDayFirst = Number(first) > 12 && Number(second) <= 12;
+    return isDayFirst
+      ? formatDateParts(year, second, first)
+      : formatDateParts(year, first, second);
   }
 
   const monthFirstMatch = trimmed.match(/^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{2}|\d{4})$/);

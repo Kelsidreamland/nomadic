@@ -81,4 +81,45 @@ describe('getRouteMapPoint', () => {
     expect(getRouteMapPoint('Kuala Lumpur')?.code).toBe('KUL');
     expect(getRouteMapPoint('Los Angeles')?.code).toBe('LAX');
   });
+
+  it('maps Flighty city and municipality names from imported travel history', () => {
+    const aliases = {
+      'SHANGHAI (PUDONG)': 'PVG',
+      XIAMEN: 'XMN',
+      DENPASAR: 'DPS',
+      NAHA: 'OKA',
+      'KOTA KINABALU': 'BKI',
+      MAI: 'CNX',
+      ZHENGZHOU: 'CGO',
+      'SANYA (TIANYA)': 'SYX',
+      COLOMBO: 'CMB',
+      SOFIA: 'SOF',
+      'DA NANG': 'DAD',
+      VARNA: 'VAR',
+      PRAGUE: 'PRG',
+      NEW: 'DEL',
+      'LAPU-LAPU CITY': 'CEB',
+      BUSAN: 'PUS',
+      TAWAU: 'TWU',
+      'PISEO-RI (MUAN)': 'MWX',
+      'ALOR SATAR': 'AOR',
+      BEIJING: 'PEK',
+      'XIANYANG (WEICHENG)': 'XIY',
+      'CHANGSHA (CHANGSHA)': 'CSX',
+      MACAU: 'MFM',
+      'ZHUHAI (JINWAN)': 'ZUH',
+      'GUILIN (LINGUI)': 'KWL',
+      ANTALYA: 'AYT',
+      DALAMAN: 'DLM',
+      BRATISLAVA: 'BTS',
+      'JEJU CITY': 'CJU',
+      'JEJU ISLAND': 'CJU',
+      WUYISHAN: 'WUS',
+      HANGZHOU: 'HGH',
+    };
+
+    for (const [value, code] of Object.entries(aliases)) {
+      expect(getRouteMapPoint(value)?.code).toBe(code);
+    }
+  });
 });

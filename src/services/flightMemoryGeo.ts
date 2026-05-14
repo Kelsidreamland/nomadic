@@ -33,6 +33,7 @@ const countries: Record<string, CountryInfo> = {
   AT: { code: 'AT', name: '奧地利', nameEn: 'Austria', flag: '🇦🇹' },
   AU: { code: 'AU', name: '澳洲', nameEn: 'Australia', flag: '🇦🇺' },
   BE: { code: 'BE', name: '比利時', nameEn: 'Belgium', flag: '🇧🇪' },
+  BG: { code: 'BG', name: '保加利亞', nameEn: 'Bulgaria', flag: '🇧🇬' },
   CA: { code: 'CA', name: '加拿大', nameEn: 'Canada', flag: '🇨🇦' },
   CH: { code: 'CH', name: '瑞士', nameEn: 'Switzerland', flag: '🇨🇭' },
   CN: { code: 'CN', name: '中國', nameEn: 'China', flag: '🇨🇳' },
@@ -51,6 +52,8 @@ const countries: Record<string, CountryInfo> = {
   IT: { code: 'IT', name: '義大利', nameEn: 'Italy', flag: '🇮🇹' },
   JP: { code: 'JP', name: '日本', nameEn: 'Japan', flag: '🇯🇵' },
   KR: { code: 'KR', name: '韓國', nameEn: 'South Korea', flag: '🇰🇷' },
+  LK: { code: 'LK', name: '斯里蘭卡', nameEn: 'Sri Lanka', flag: '🇱🇰' },
+  MO: { code: 'MO', name: '澳門', nameEn: 'Macau', flag: '🇲🇴' },
   MX: { code: 'MX', name: '墨西哥', nameEn: 'Mexico', flag: '🇲🇽' },
   MY: { code: 'MY', name: '馬來西亞', nameEn: 'Malaysia', flag: '🇲🇾' },
   NL: { code: 'NL', name: '荷蘭', nameEn: 'Netherlands', flag: '🇳🇱' },
@@ -62,6 +65,7 @@ const countries: Record<string, CountryInfo> = {
   QA: { code: 'QA', name: '卡達', nameEn: 'Qatar', flag: '🇶🇦' },
   SE: { code: 'SE', name: '瑞典', nameEn: 'Sweden', flag: '🇸🇪' },
   SG: { code: 'SG', name: '新加坡', nameEn: 'Singapore', flag: '🇸🇬' },
+  SK: { code: 'SK', name: '斯洛伐克', nameEn: 'Slovakia', flag: '🇸🇰' },
   TH: { code: 'TH', name: '泰國', nameEn: 'Thailand', flag: '🇹🇭' },
   TR: { code: 'TR', name: '土耳其', nameEn: 'Turkey', flag: '🇹🇷' },
   TW: { code: 'TW', name: '台灣', nameEn: 'Taiwan', flag: '🇹🇼' },
@@ -73,20 +77,31 @@ const countries: Record<string, CountryInfo> = {
 const airportByCode: Record<string, AirportInfo> = {
   AKL: { code: 'AKL', label: 'Auckland', country: countries.NZ, lat: -37.0082, lon: 174.785 },
   AMS: { code: 'AMS', label: 'Amsterdam', country: countries.NL, lat: 52.3105, lon: 4.7683 },
+  AOR: { code: 'AOR', label: 'Alor Setar', country: countries.MY, lat: 6.1897, lon: 100.398 },
   ARN: { code: 'ARN', label: 'Stockholm', country: countries.SE, lat: 59.6498, lon: 17.9238 },
   ATH: { code: 'ATH', label: 'Athens', country: countries.GR, lat: 37.9364, lon: 23.9445 },
+  AYT: { code: 'AYT', label: 'Antalya', country: countries.TR, lat: 36.8987, lon: 30.8005 },
   AUH: { code: 'AUH', label: 'Abu Dhabi', country: countries.AE, lat: 24.4539, lon: 54.3773 },
   BCN: { code: 'BCN', label: 'Barcelona', country: countries.ES, lat: 41.2974, lon: 2.0833 },
   BER: { code: 'BER', label: 'Berlin', country: countries.DE, lat: 52.3667, lon: 13.5033 },
+  BKI: { code: 'BKI', label: 'Kota Kinabalu', country: countries.MY, lat: 5.9327, lon: 116.0493 },
   BKK: { code: 'BKK', label: 'Bangkok', country: countries.TH, lat: 13.69, lon: 100.7501 },
   BOM: { code: 'BOM', label: 'Mumbai', country: countries.IN, lat: 19.0896, lon: 72.8656 },
   BRU: { code: 'BRU', label: 'Brussels', country: countries.BE, lat: 50.9014, lon: 4.4844 },
+  BTS: { code: 'BTS', label: 'Bratislava', country: countries.SK, lat: 48.1702, lon: 17.2127 },
   BUD: { code: 'BUD', label: 'Budapest', country: countries.HU, lat: 47.4298, lon: 19.2611 },
   CDG: { code: 'CDG', label: 'Paris', country: countries.FR, lat: 49.0097, lon: 2.5479 },
   CEB: { code: 'CEB', label: 'Cebu', country: countries.PH, lat: 10.3075, lon: 123.9794 },
+  CGO: { code: 'CGO', label: 'Zhengzhou', country: countries.CN, lat: 34.5265, lon: 113.8492 },
   CGK: { code: 'CGK', label: 'Jakarta', country: countries.ID, lat: -6.1275, lon: 106.6537 },
+  CJU: { code: 'CJU', label: 'Jeju', country: countries.KR, lat: 33.5121, lon: 126.4925 },
+  CMB: { code: 'CMB', label: 'Colombo', country: countries.LK, lat: 7.1808, lon: 79.8841 },
+  CNX: { code: 'CNX', label: 'Chiang Mai', country: countries.TH, lat: 18.7668, lon: 98.9626 },
   CPH: { code: 'CPH', label: 'Copenhagen', country: countries.DK, lat: 55.6181, lon: 12.6561 },
+  CSX: { code: 'CSX', label: 'Changsha', country: countries.CN, lat: 28.1892, lon: 113.22 },
+  DAD: { code: 'DAD', label: 'Da Nang', country: countries.VN, lat: 16.0439, lon: 108.199 },
   DEL: { code: 'DEL', label: 'Delhi', country: countries.IN, lat: 28.5562, lon: 77.1 },
+  DLM: { code: 'DLM', label: 'Dalaman', country: countries.TR, lat: 36.7131, lon: 28.7925 },
   DOH: { code: 'DOH', label: 'Doha', country: countries.QA, lat: 25.2731, lon: 51.6081 },
   DPS: { code: 'DPS', label: 'Bali', country: countries.ID, lat: -8.7482, lon: 115.167 },
   DUB: { code: 'DUB', label: 'Dublin', country: countries.IE, lat: 53.4213, lon: -6.2701 },
@@ -95,19 +110,23 @@ const airportByCode: Record<string, AirportInfo> = {
   FRA: { code: 'FRA', label: 'Frankfurt', country: countries.DE, lat: 50.0379, lon: 8.5622 },
   HEL: { code: 'HEL', label: 'Helsinki', country: countries.FI, lat: 60.3172, lon: 24.9633 },
   HKG: { code: 'HKG', label: 'Hong Kong', country: countries.HK, lat: 22.308, lon: 113.9185 },
+  HGH: { code: 'HGH', label: 'Hangzhou', country: countries.CN, lat: 30.2361, lon: 120.4289 },
   HND: { code: 'HND', label: 'Tokyo', country: countries.JP, lat: 35.5494, lon: 139.7798 },
   ICN: { code: 'ICN', label: 'Seoul', country: countries.KR, lat: 37.4602, lon: 126.4407 },
   IST: { code: 'IST', label: 'Istanbul', country: countries.TR, lat: 41.2613, lon: 28.7419 },
   JFK: { code: 'JFK', label: 'New York', country: countries.US, lat: 40.6413, lon: -73.7781 },
   KIX: { code: 'KIX', label: 'Osaka', country: countries.JP, lat: 34.4347, lon: 135.244 },
   KUL: { code: 'KUL', label: 'Kuala Lumpur', country: countries.MY, lat: 2.7456, lon: 101.7072 },
+  KWL: { code: 'KWL', label: 'Guilin', country: countries.CN, lat: 25.2198, lon: 110.0396 },
   LAX: { code: 'LAX', label: 'Los Angeles', country: countries.US, lat: 33.9416, lon: -118.4085 },
   LHR: { code: 'LHR', label: 'London', country: countries.UK, lat: 51.47, lon: -0.4543 },
   LIS: { code: 'LIS', label: 'Lisbon', country: countries.PT, lat: 38.7742, lon: -9.1342 },
   MAD: { code: 'MAD', label: 'Madrid', country: countries.ES, lat: 40.4983, lon: -3.5676 },
   MEL: { code: 'MEL', label: 'Melbourne', country: countries.AU, lat: -37.669, lon: 144.841 },
+  MFM: { code: 'MFM', label: 'Macau', country: countries.MO, lat: 22.1496, lon: 113.592 },
   MNL: { code: 'MNL', label: 'Manila', country: countries.PH, lat: 14.5086, lon: 121.0198 },
   MUC: { code: 'MUC', label: 'Munich', country: countries.DE, lat: 48.3538, lon: 11.7861 },
+  MWX: { code: 'MWX', label: 'Muan', country: countries.KR, lat: 34.9914, lon: 126.3828 },
   MXP: { code: 'MXP', label: 'Milan', country: countries.IT, lat: 45.6306, lon: 8.7281 },
   NRT: { code: 'NRT', label: 'Tokyo', country: countries.JP, lat: 35.7719, lon: 140.3929 },
   OKA: { code: 'OKA', label: 'Okinawa', country: countries.JP, lat: 26.1958, lon: 127.646 },
@@ -115,20 +134,64 @@ const airportByCode: Record<string, AirportInfo> = {
   PEK: { code: 'PEK', label: 'Beijing', country: countries.CN, lat: 40.0799, lon: 116.6031 },
   PRG: { code: 'PRG', label: 'Prague', country: countries.CZ, lat: 50.1008, lon: 14.26 },
   PVG: { code: 'PVG', label: 'Shanghai', country: countries.CN, lat: 31.1443, lon: 121.8083 },
+  PUS: { code: 'PUS', label: 'Busan', country: countries.KR, lat: 35.1795, lon: 128.938 },
   SFO: { code: 'SFO', label: 'San Francisco', country: countries.US, lat: 37.6213, lon: -122.379 },
   SGN: { code: 'SGN', label: 'Ho Chi Minh City', country: countries.VN, lat: 10.8188, lon: 106.6519 },
   SIN: { code: 'SIN', label: 'Singapore', country: countries.SG, lat: 1.3644, lon: 103.9915 },
+  SOF: { code: 'SOF', label: 'Sofia', country: countries.BG, lat: 42.6964, lon: 23.4177 },
   SYD: { code: 'SYD', label: 'Sydney', country: countries.AU, lat: -33.9399, lon: 151.1753 },
+  SYX: { code: 'SYX', label: 'Sanya', country: countries.CN, lat: 18.3029, lon: 109.412 },
   TPE: { code: 'TPE', label: 'Taipei', country: countries.TW, lat: 25.0797, lon: 121.2342 },
   TSA: { code: 'TSA', label: 'Taipei', country: countries.TW, lat: 25.0697, lon: 121.5525 },
+  TWU: { code: 'TWU', label: 'Tawau', country: countries.MY, lat: 4.3134, lon: 118.1215 },
+  VAR: { code: 'VAR', label: 'Varna', country: countries.BG, lat: 43.2321, lon: 27.8251 },
   VIE: { code: 'VIE', label: 'Vienna', country: countries.AT, lat: 48.1103, lon: 16.5697 },
   WAW: { code: 'WAW', label: 'Warsaw', country: countries.PL, lat: 52.1657, lon: 20.9671 },
+  WUS: { code: 'WUS', label: 'Wuyishan', country: countries.CN, lat: 27.7019, lon: 118.001 },
+  XIY: { code: 'XIY', label: "Xi'an", country: countries.CN, lat: 34.4422, lon: 108.7624 },
+  XMN: { code: 'XMN', label: 'Xiamen', country: countries.CN, lat: 24.5439, lon: 118.1275 },
   YVR: { code: 'YVR', label: 'Vancouver', country: countries.CA, lat: 49.1967, lon: -123.1815 },
   YYZ: { code: 'YYZ', label: 'Toronto', country: countries.CA, lat: 43.6777, lon: -79.6248 },
+  ZUH: { code: 'ZUH', label: 'Zhuhai', country: countries.CN, lat: 22.0064, lon: 113.376 },
   ZRH: { code: 'ZRH', label: 'Zurich', country: countries.CH, lat: 47.4582, lon: 8.5555 },
 };
 
+const airportExactAliases = new Map<string, string>([
+  ['mai', 'CNX'],
+  ['new', 'DEL'],
+]);
+
 const airportAliases: Array<[string, string]> = [
+  ['alor satar', 'AOR'],
+  ['alor setar', 'AOR'],
+  ['antalya', 'AYT'],
+  ['beijing', 'PEK'],
+  ['bratislava', 'BTS'],
+  ['busan', 'PUS'],
+  ['changsha', 'CSX'],
+  ['chiang mai', 'CNX'],
+  ['colombo', 'CMB'],
+  ['da nang', 'DAD'],
+  ['dalaman', 'DLM'],
+  ['denpasar', 'DPS'],
+  ['guilin', 'KWL'],
+  ['hangzhou', 'HGH'],
+  ['jeju city', 'CJU'],
+  ['jeju island', 'CJU'],
+  ['kota kinabalu', 'BKI'],
+  ['lapu-lapu city', 'CEB'],
+  ['macau', 'MFM'],
+  ['macao', 'MFM'],
+  ['muan', 'MWX'],
+  ['naha', 'OKA'],
+  ['new delhi', 'DEL'],
+  ['piseo-ri', 'MWX'],
+  ['prague', 'PRG'],
+  ['sanya', 'SYX'],
+  ['shanghai pudong', 'PVG'],
+  ['shanghai (pudong)', 'PVG'],
+  ['sofia', 'SOF'],
+  ['tawau', 'TWU'],
   ['tokyo', 'NRT'],
   ['東京', 'NRT'],
   ['narita', 'NRT'],
@@ -173,11 +236,19 @@ const airportAliases: Array<[string, string]> = [
   ['峇里', 'DPS'],
   ['osaka', 'KIX'],
   ['大阪', 'KIX'],
+  ['varna', 'VAR'],
+  ['wuyishan', 'WUS'],
+  ['xiamen', 'XMN'],
+  ['xianyang', 'XIY'],
+  ['zhengzhou', 'CGO'],
+  ['zhuhai', 'ZUH'],
 ];
 
 const getAirportAliasCode = (value?: string) => {
   const normalized = (value || '').trim().toLowerCase();
   if (!normalized) return undefined;
+  const exactCode = airportExactAliases.get(normalized);
+  if (exactCode) return exactCode;
   return airportAliases.find(([alias]) => normalized.includes(alias))?.[1];
 };
 
@@ -226,8 +297,9 @@ export const getAirportCode = (value?: string) => {
 export const getAirportInfo = (value?: string) => {
   const normalized = (value || '').trim().toUpperCase();
   const code = getAirportCode(value);
-  if (normalized.length === 3 && code) return airportByCode[code];
-  return airportByCode[getAirportAliasCode(value) || ''] || (code ? airportByCode[code] : undefined);
+  const alias = getAirportAliasCode(value);
+  if (normalized.length === 3 && code) return airportByCode[code] || airportByCode[alias || ''];
+  return airportByCode[alias || ''] || (code ? airportByCode[code] : undefined);
 };
 
 export const getCountryForValue = (value?: string) => {
