@@ -37,6 +37,8 @@ type MemoryFlightFormState = {
   flightNumber: string;
 };
 
+type PassportScope = 'all' | 'year';
+
 const getDefaultMemoryDate = () => {
   const date = new Date();
   date.setDate(date.getDate() - 1);
@@ -71,6 +73,7 @@ export const FlightMemory = () => {
   const [isParsingPdf, setIsParsingPdf] = useState(false);
   const [isFlightListOpen, setIsFlightListOpen] = useState(false);
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
+  const [passportScope, setPassportScope] = useState<PassportScope>('all');
   const [revealedDeleteSegmentId, setRevealedDeleteSegmentId] = useState<string | null>(null);
   const swipeStartRef = useRef<{ segmentId: string; x: number; y: number } | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +83,12 @@ export const FlightMemory = () => {
   const segments = useMemo(() => getFlightMemorySegments(memoryEntries), [memoryEntries]);
   const currentYear = useMemo(() => new Date(now).getFullYear(), [now]);
   const stats = useMemo(() => getFlightMemoryStats(segments, currentYear), [segments, currentYear]);
-  const passport = useMemo(() => buildFlightPassportData(segments), [segments]);
+  const passportSegments = useMemo(() => (
+    passportScope === 'year'
+      ? segments.filter(segment => segment.departureDate.slice(0, 4) === String(currentYear))
+      : segments
+  ), [currentYear, passportScope, segments]);
+  const passport = useMemo(() => buildFlightPassportData(passportSegments), [passportSegments]);
   const unresolvedAirportSummary = useMemo(() => (
     passport.diagnostics.unresolvedAirports
       .slice(0, 6)
@@ -360,6 +368,46 @@ export const FlightMemory = () => {
       </div>
 
       {segments.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex flex-col gap-3 rounded-[24px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase text-[var(--color-brand-olive)]">{t('flightMemory.passportScope')}</p>
+              <p className="mt-1 text-sm font-medium text-[var(--color-brand-espresso)]/50">
+                {passportScope === 'year'
+                  ? t('flightMemory.passportScopeYearHint', { year: currentYear })
+                  : t('flightMemory.passportScopeAllHint')}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-1 rounded-full bg-[var(--color-brand-sand)] p-1">
+              <button
+                type="button"
+                data-testid="flight-passport-scope-all"
+                onClick={() => setPassportScope('all')}
+                className={[
+                  'rounded-full px-4 py-2 text-xs font-bold transition-colors',
+                  passportScope === 'all'
+                    ? 'bg-[var(--color-brand-espresso)] text-white shadow-sm'
+                    : 'text-[var(--color-brand-espresso)]/55 hover:bg-white',
+                ].join(' ')}
+              >
+                {t('flightMemory.passportScopeAll')}
+              </button>
+              <button
+                type="button"
+                data-testid="flight-passport-scope-year"
+                onClick={() => setPassportScope('year')}
+                className={[
+                  'rounded-full px-4 py-2 text-xs font-bold transition-colors',
+                  passportScope === 'year'
+                    ? 'bg-[var(--color-brand-espresso)] text-white shadow-sm'
+                    : 'text-[var(--color-brand-espresso)]/55 hover:bg-white',
+                ].join(' ')}
+              >
+                {currentYear}
+              </button>
+            </div>
+          </div>
+
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm">
             <p className="text-xs font-bold text-[var(--color-brand-espresso)]/45">{t('flightMemory.drawableRoutes')}</p>
@@ -393,6 +441,7 @@ export const FlightMemory = () => {
             )}
           </div>
         </div>
+        </section>
       )}
 
       {isDiagnosticsOpen && unresolvedDiagnosticsText && (
@@ -419,7 +468,7 @@ export const FlightMemory = () => {
       )}
 
       <Suspense fallback={<FlightRouteMapFallback />}>
-        <FlightRouteMap segments={segments} />
+        <FlightRouteMap segments={passportSegments} />
       </Suspense>
 
       <form onSubmit={handleAddFlight} className="rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm md:p-6">

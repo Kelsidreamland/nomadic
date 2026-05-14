@@ -137,6 +137,69 @@ describe('FlightMemory MVP dashboard', () => {
     });
   });
 
+  it('switches the flight passport between lifetime and current-year views', async () => {
+    liveFlightMemories.push(
+      {
+        id: 'this-year',
+        departureDate: '2026-02-01',
+        departureTime: '09:00',
+        destination: 'Tokyo',
+        airline: 'EVA Air',
+        flightNumber: 'BR198',
+        departureAirport: 'TPE',
+        arrivalAirport: 'NRT',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+      {
+        id: 'last-year',
+        departureDate: '2025-02-01',
+        departureTime: '09:00',
+        destination: 'Singapore',
+        airline: 'EVA Air',
+        flightNumber: 'BR225',
+        departureAirport: 'TPE',
+        arrivalAirport: 'SIN',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+    );
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/memory']}>
+          <FlightMemory />
+        </MemoryRouter>,
+      );
+    });
+
+    await waitForAssertion(() => {
+      expect(container.textContent).toContain('2 / 2');
+      expect(container.textContent).toContain('ALL');
+      expect(container.textContent).toContain('2026');
+    });
+
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[data-testid="flight-passport-scope-year"]')?.click();
+    });
+
+    expect(container.textContent).toContain('1 / 1');
+
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[data-testid="flight-memory-list-toggle"]')?.click();
+    });
+    expect(container.textContent).toContain('TPE → SIN');
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
   it('imports a PDF itinerary into flight memory with AI parsing', async () => {
     analyzeTicketWithAIMock.mockResolvedValue({
       destination: '東京',
