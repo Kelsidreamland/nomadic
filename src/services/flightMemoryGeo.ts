@@ -161,7 +161,6 @@ const airportAliases: Array<[string, string]> = [
   ['manila', 'MNL'],
   ['馬尼拉', 'MNL'],
   ['los angeles', 'LAX'],
-  ['la ', 'LAX'],
   ['london', 'LHR'],
   ['倫敦', 'LHR'],
   ['paris', 'CDG'],

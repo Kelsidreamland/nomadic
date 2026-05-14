@@ -39,6 +39,19 @@ describe('getCountryForMemorySegment', () => {
       name: '新加坡',
     });
   });
+
+  it('does not mistake Kuala Lumpur for Los Angeles when city aliases are used', () => {
+    expect(getCountryForMemorySegment(makeSegment({ to: 'Kuala Lumpur' }))).toMatchObject({
+      code: 'MY',
+      flag: '🇲🇾',
+      name: '馬來西亞',
+    });
+    expect(getCountryForMemorySegment(makeSegment({ to: 'Los Angeles' }))).toMatchObject({
+      code: 'US',
+      flag: '🇺🇸',
+      name: '美國',
+    });
+  });
 });
 
 describe('getRouteMapPoint', () => {
@@ -65,5 +78,7 @@ describe('getRouteMapPoint', () => {
     expect(getRouteMapPoint('Tokyo')?.code).toBe('NRT');
     expect(getRouteMapPoint('Taipei')?.code).toBe('TPE');
     expect(getRouteMapPoint('Dubai')?.code).toBe('DXB');
+    expect(getRouteMapPoint('Kuala Lumpur')?.code).toBe('KUL');
+    expect(getRouteMapPoint('Los Angeles')?.code).toBe('LAX');
   });
 });

@@ -17,6 +17,7 @@ import {
   parseFlightMemoryCsv,
   readFlightUploadAsDataUrl,
 } from '../services/flightMemoryImport';
+import { buildFlightPassportData } from '../services/flightPassportData';
 
 const FlightRouteMap = lazy(() => import('../components/FlightRouteMap').then(module => ({ default: module.FlightRouteMap })));
 
@@ -78,6 +79,13 @@ export const FlightMemory = () => {
   const segments = useMemo(() => getFlightMemorySegments(memoryEntries), [memoryEntries]);
   const currentYear = useMemo(() => new Date(now).getFullYear(), [now]);
   const stats = useMemo(() => getFlightMemoryStats(segments, currentYear), [segments, currentYear]);
+  const passport = useMemo(() => buildFlightPassportData(segments), [segments]);
+  const unresolvedAirportSummary = useMemo(() => (
+    passport.diagnostics.unresolvedAirports
+      .slice(0, 6)
+      .map(airport => `${airport.value} ×${airport.count}`)
+      .join(' · ')
+  ), [passport]);
 
   const updateField = (field: keyof MemoryFlightFormState) => (event: ChangeEvent<HTMLInputElement>) => {
     setFormState(prev => ({ ...prev, [field]: event.target.value }));
@@ -210,10 +218,14 @@ export const FlightMemory = () => {
     if (memoryEntries.length === 0) return;
     if (typeof window !== 'undefined' && !window.confirm(t('flightMemory.clearConfirm', { count: memoryEntries.length }))) return;
 
-    await db.flights.bulkDelete(memoryEntries.map(flight => flight.id));
     setRevealedDeleteSegmentId(null);
     setIsFlightListOpen(false);
-    setImportStatus(t('flightMemory.clearedFlights', { count: memoryEntries.length }));
+    try {
+      await db.flights.bulkDelete(memoryEntries.map(flight => flight.id));
+      setImportStatus(t('flightMemory.clearedFlights', { count: memoryEntries.length }));
+    } catch {
+      setImportStatus(t('flightMemory.clearFailed'));
+    }
   };
 
   return (
@@ -293,6 +305,31 @@ export const FlightMemory = () => {
           </p>
         )}
       </div>
+
+      {segments.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm">
+            <p className="text-xs font-bold text-[var(--color-brand-espresso)]/45">{t('flightMemory.drawableRoutes')}</p>
+            <p className="mt-2 font-serif text-3xl font-bold text-[var(--color-brand-terracotta)]">
+              {passport.diagnostics.drawableRoutes} / {passport.diagnostics.totalSegments}
+            </p>
+            <p className="mt-1 text-xs font-medium text-[var(--color-brand-espresso)]/35">
+              {t('flightMemory.drawableRoutesHint')}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm">
+            <p className="text-xs font-bold text-[var(--color-brand-espresso)]/45">{t('flightMemory.unresolvedAirports')}</p>
+            <p className="mt-2 line-clamp-2 text-sm font-bold text-[var(--color-brand-espresso)]">
+              {unresolvedAirportSummary || t('flightMemory.allAirportsMapped')}
+            </p>
+            <p className="mt-1 text-xs font-medium text-[var(--color-brand-espresso)]/35">
+              {passport.diagnostics.unresolvedSegmentCount > 0
+                ? t('flightMemory.unresolvedRoutesHint', { count: passport.diagnostics.unresolvedSegmentCount })
+                : t('flightMemory.allRoutesMappedHint')}
+            </p>
+          </div>
+        </div>
+      )}
 
       <Suspense fallback={<FlightRouteMapFallback />}>
         <FlightRouteMap segments={segments} />

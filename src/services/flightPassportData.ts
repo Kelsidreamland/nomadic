@@ -38,11 +38,24 @@ export interface FlightPassportStats {
   countryFlags: string[];
 }
 
+export interface FlightPassportUnresolvedAirport {
+  value: string;
+  count: number;
+}
+
+export interface FlightPassportDiagnostics {
+  totalSegments: number;
+  drawableRoutes: number;
+  unresolvedSegmentCount: number;
+  unresolvedAirports: FlightPassportUnresolvedAirport[];
+}
+
 export interface FlightPassportData {
   routes: FlightPassportRoute[];
   airports: FlightPassportAirport[];
   labelAirports: FlightPassportAirport[];
   stats: FlightPassportStats;
+  diagnostics: FlightPassportDiagnostics;
   mrzLine: string;
 }
 
@@ -51,6 +64,12 @@ interface AirportAccumulator {
   visits: number;
   firstIndex: number;
   routeKilometers: number;
+}
+
+interface UnresolvedAirportAccumulator {
+  value: string;
+  count: number;
+  firstIndex: number;
 }
 
 const toCoordinate = (point: RouteMapPoint): Coordinate => [point.lon, point.lat];
@@ -131,6 +150,24 @@ const addAirport = (
   });
 };
 
+const normalizeUnresolvedAirport = (value?: string) => value?.trim().replace(/\s+/g, ' ').toUpperCase() || '';
+
+const addUnresolvedAirport = (
+  unresolvedAirports: Map<string, UnresolvedAirportAccumulator>,
+  value: string | undefined,
+  index: number,
+) => {
+  const normalized = normalizeUnresolvedAirport(value);
+  if (!normalized) return;
+
+  const current = unresolvedAirports.get(normalized);
+  unresolvedAirports.set(normalized, {
+    value: normalized,
+    count: (current?.count || 0) + 1,
+    firstIndex: current?.firstIndex ?? index,
+  });
+};
+
 const chooseLabelAirports = (airports: AirportAccumulator[], maxLabels = 18) => {
   if (airports.length <= maxLabels) {
     return [...airports]
@@ -160,12 +197,19 @@ export const buildFlightPassportData = (segments: FlightMemorySegment[]): Flight
   const airportCodes: string[] = [];
   const airportCodeSet = new Set<string>();
   const airportAccumulators = new Map<string, AirportAccumulator>();
+  const unresolvedAirports = new Map<string, UnresolvedAirportAccumulator>();
+  let unresolvedSegmentCount = 0;
 
   const routes = segments
     .map((segment, index): FlightPassportRoute | undefined => {
       const from = getRouteMapPoint(segment.from);
       const to = getRouteMapPoint(segment.to);
-      if (!from || !to) return undefined;
+      if (!from || !to) {
+        unresolvedSegmentCount += 1;
+        if (!from) addUnresolvedAirport(unresolvedAirports, segment.from, index);
+        if (!to) addUnresolvedAirport(unresolvedAirports, segment.to, index);
+        return undefined;
+      }
 
       const routeKilometers = getRouteKilometers(from, to);
       addAirport(airportAccumulators, from, routeKilometers, index);
@@ -207,6 +251,17 @@ export const buildFlightPassportData = (segments: FlightMemorySegment[]): Flight
       topCountry: topCountry ? `${topCountry.flag} ${topCountry.name}` : '',
       yearRange: getYearRange(segments),
       countryFlags: countryStats.map(country => country.flag),
+    },
+    diagnostics: {
+      totalSegments: segments.length,
+      drawableRoutes: routes.length,
+      unresolvedSegmentCount,
+      unresolvedAirports: Array.from(unresolvedAirports.values())
+        .sort((a, b) => {
+          if (b.count !== a.count) return b.count - a.count;
+          return a.firstIndex - b.firstIndex;
+        })
+        .map(({ value, count }) => ({ value, count })),
     },
     mrzLine: buildMrzLine(airportCodes),
   };

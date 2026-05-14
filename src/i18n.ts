@@ -391,6 +391,12 @@ const resources = {
         importPdfParsing: '解析中',
         csvImported: '已匯入 {{count}} 段航班。{{errors}} 列略過。',
         csvImportFailed: 'CSV 匯入失敗，請確認欄位包含出發日期、出發機場與抵達機場。',
+        drawableRoutes: '可繪製航線',
+        drawableRoutesHint: '如果這裡少於匯入航程，通常是機場代碼尚未被辨識。',
+        unresolvedAirports: '未辨識機場',
+        unresolvedRoutesHint: '{{count}} 段航程暫時無法畫在護照地圖上。',
+        allAirportsMapped: '全部機場已辨識',
+        allRoutesMappedHint: '目前匯入資料都可以生成護照地圖。',
         pdfImportParsing: '正在解析 {{count}} 個航班檔案...',
         pdfImported: '已從 {{files}} 個檔案匯入 {{count}} 段航班。{{errors}} 個檔案略過。',
         pdfImportFailed: 'PDF 匯入失敗，請稍後再試或改用 CSV。',
@@ -435,7 +441,8 @@ const resources = {
         deletedFlight: '已刪除這段飛行記憶。',
         clearImportedFlights: '清空已匯入航程',
         clearConfirm: '確定要清空 {{count}} 筆旅居足跡航程嗎？這不會刪除未來行程。',
-        clearedFlights: '已清空 {{count}} 筆旅居足跡航程。'
+        clearedFlights: '已清空 {{count}} 筆旅居足跡航程。',
+        clearFailed: '清空航程失敗，請重新整理後再試。'
       }
     }
   },
@@ -828,6 +835,12 @@ const resources = {
         importPdfParsing: 'Parsing',
         csvImported: 'Imported {{count}} flights. {{errors}} rows skipped.',
         csvImportFailed: 'CSV import failed. Please include departure date, from airport, and to airport.',
+        drawableRoutes: 'Drawable Routes',
+        drawableRoutesHint: 'If this is lower than imported flights, some airport codes are not mapped yet.',
+        unresolvedAirports: 'Unmapped Airports',
+        unresolvedRoutesHint: '{{count}} routes cannot be drawn on the passport map yet.',
+        allAirportsMapped: 'All airports mapped',
+        allRoutesMappedHint: 'Imported records can currently generate the passport map.',
         pdfImportParsing: 'Parsing {{count}} flight files...',
         pdfImported: 'Imported {{count}} flights from {{files}} files. {{errors}} files skipped.',
         pdfImportFailed: 'PDF import failed. Try again later or use CSV.',
@@ -872,7 +885,8 @@ const resources = {
         deletedFlight: 'Flight memory deleted.',
         clearImportedFlights: 'Clear imported flights',
         clearConfirm: 'Clear {{count}} travel-memory flights? Upcoming trips will not be deleted.',
-        clearedFlights: 'Cleared {{count}} travel-memory flights.'
+        clearedFlights: 'Cleared {{count}} travel-memory flights.',
+        clearFailed: 'Could not clear flights. Refresh and try again.'
       }
     }
   }

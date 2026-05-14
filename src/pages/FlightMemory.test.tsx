@@ -296,4 +296,117 @@ describe('FlightMemory MVP dashboard', () => {
       root.unmount();
     });
   });
+
+  it('shows route diagnostics when imported airports cannot be mapped', async () => {
+    liveFlights.push(
+      {
+        id: 'known-route',
+        departureDate: '2024-01-05',
+        departureTime: '09:00',
+        destination: 'Singapore',
+        airline: 'EVA Air',
+        flightNumber: 'BR225',
+        departureAirport: 'TPE',
+        arrivalAirport: 'SIN',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+      {
+        id: 'unknown-arrival',
+        departureDate: '2024-01-06',
+        departureTime: '09:00',
+        destination: 'Unknown',
+        airline: 'EVA Air',
+        flightNumber: 'BR999',
+        departureAirport: 'TPE',
+        arrivalAirport: 'ZZZ',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+      {
+        id: 'unknown-departure',
+        departureDate: '2024-01-07',
+        departureTime: '09:00',
+        destination: 'Kuala Lumpur',
+        airline: 'EVA Air',
+        flightNumber: 'BR998',
+        departureAirport: 'AAA',
+        arrivalAirport: 'KUL',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+    );
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/memory']}>
+          <FlightMemory />
+        </MemoryRouter>,
+      );
+    });
+
+    await waitForAssertion(() => {
+      expect(container.textContent).toContain('可繪製航線');
+      expect(container.textContent).toContain('1 / 3');
+      expect(container.textContent).toContain('未辨識機場');
+      expect(container.textContent).toContain('ZZZ');
+      expect(container.textContent).toContain('AAA');
+    });
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it('keeps the page usable if clearing imported flight memories fails', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    flightsBulkDeleteMock.mockRejectedValue(new Error('delete failed'));
+    liveFlights.push({
+      id: 'old-flight',
+      departureDate: '2024-01-05',
+      departureTime: '09:00',
+      destination: 'Tokyo',
+      airline: 'EVA Air',
+      flightNumber: 'BR198',
+      departureAirport: 'TPE',
+      arrivalAirport: 'NRT',
+      checkedAllowance: 23,
+      carryOnAllowance: 7,
+      personalAllowance: 0,
+    });
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/memory']}>
+          <FlightMemory />
+        </MemoryRouter>,
+      );
+    });
+
+    const clearButton = container.querySelector<HTMLButtonElement>('[data-testid="clear-flight-memory-entries"]');
+    expect(clearButton).toBeTruthy();
+
+    await act(async () => {
+      clearButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    await waitForAssertion(() => {
+      expect(container.textContent).toContain('清空航程失敗，請重新整理後再試。');
+      expect(container.textContent).toContain('已匯入航程');
+    });
+
+    act(() => {
+      root.unmount();
+    });
+  });
 });

@@ -71,4 +71,24 @@ describe('buildFlightPassportData', () => {
       labelOffset: [-10, -10],
     });
   });
+
+  it('reports unknown airports so imported CSV issues are diagnosable', () => {
+    const data = buildFlightPassportData([
+      makeSegment({ id: 'known', from: 'TPE', to: 'SIN' }),
+      makeSegment({ id: 'unknown-arrival', from: 'TPE', to: 'ZZZ' }),
+      makeSegment({ id: 'unknown-departure', from: 'AAA', to: 'KUL' }),
+      makeSegment({ id: 'same-unknown-twice', from: 'AAA', to: 'ZZZ' }),
+    ]);
+
+    expect(data.routes).toHaveLength(1);
+    expect(data.diagnostics).toMatchObject({
+      totalSegments: 4,
+      drawableRoutes: 1,
+      unresolvedSegmentCount: 3,
+    });
+    expect(data.diagnostics.unresolvedAirports).toEqual([
+      { value: 'ZZZ', count: 2 },
+      { value: 'AAA', count: 2 },
+    ]);
+  });
 });
