@@ -10,16 +10,26 @@ import { FlightMemory } from './FlightMemory';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const { liveFlights, flightsBulkPutMock, flightsDeleteMock, flightsBulkDeleteMock, analyzeTicketWithAIMock } = vi.hoisted(() => ({
-  liveFlights: [] as Flight[],
+const {
+  liveFlightMemories,
+  flightsBulkPutMock,
+  flightMemoriesAddMock,
+  flightMemoriesBulkPutMock,
+  flightMemoriesDeleteMock,
+  flightMemoriesBulkDeleteMock,
+  analyzeTicketWithAIMock,
+} = vi.hoisted(() => ({
+  liveFlightMemories: [] as Flight[],
   flightsBulkPutMock: vi.fn(),
-  flightsDeleteMock: vi.fn(),
-  flightsBulkDeleteMock: vi.fn(),
+  flightMemoriesAddMock: vi.fn(),
+  flightMemoriesBulkPutMock: vi.fn(),
+  flightMemoriesDeleteMock: vi.fn(),
+  flightMemoriesBulkDeleteMock: vi.fn(),
   analyzeTicketWithAIMock: vi.fn(),
 }));
 
 vi.mock('dexie-react-hooks', () => ({
-  useLiveQuery: vi.fn(() => liveFlights),
+  useLiveQuery: vi.fn(() => liveFlightMemories),
 }));
 
 vi.mock('../db', () => ({
@@ -28,8 +38,15 @@ vi.mock('../db', () => ({
       toArray: vi.fn(),
       add: vi.fn(),
       bulkPut: flightsBulkPutMock,
-      delete: flightsDeleteMock,
-      bulkDelete: flightsBulkDeleteMock,
+      delete: vi.fn(),
+      bulkDelete: vi.fn(),
+    },
+    flight_memories: {
+      toArray: vi.fn(),
+      add: flightMemoriesAddMock,
+      bulkPut: flightMemoriesBulkPutMock,
+      delete: flightMemoriesDeleteMock,
+      bulkDelete: flightMemoriesBulkDeleteMock,
     },
   },
 }));
@@ -60,16 +77,18 @@ const waitForAssertion = async (assertion: () => void) => {
 
 describe('FlightMemory MVP dashboard', () => {
   beforeEach(() => {
-    liveFlights.length = 0;
+    liveFlightMemories.length = 0;
     flightsBulkPutMock.mockReset();
-    flightsDeleteMock.mockReset();
-    flightsBulkDeleteMock.mockReset();
+    flightMemoriesAddMock.mockReset();
+    flightMemoriesBulkPutMock.mockReset();
+    flightMemoriesDeleteMock.mockReset();
+    flightMemoriesBulkDeleteMock.mockReset();
     analyzeTicketWithAIMock.mockReset();
     vi.restoreAllMocks();
   });
 
   it('shows import-first stats and removes the year timeline wall', async () => {
-    liveFlights.push({
+    liveFlightMemories.push({
       id: 'tokyo',
       departureDate: '2026-02-01',
       departureTime: '09:00',
@@ -159,7 +178,7 @@ describe('FlightMemory MVP dashboard', () => {
       expect(analyzeTicketWithAIMock).toHaveBeenCalledWith(expect.stringContaining('data:application/pdf;base64,'), 'application/pdf');
     });
     await waitForAssertion(() => {
-      expect(flightsBulkPutMock).toHaveBeenCalledWith([
+      expect(flightMemoriesBulkPutMock).toHaveBeenCalledWith([
         expect.objectContaining({
           destination: '東京',
           airline: 'EVA Air',
@@ -173,6 +192,7 @@ describe('FlightMemory MVP dashboard', () => {
           rawEmailId: 'pdf-import',
         }),
       ]);
+      expect(flightsBulkPutMock).not.toHaveBeenCalled();
     });
     await waitForAssertion(() => {
       expect(container.textContent).toContain('已從 1 個檔案匯入 1 段航班');
@@ -183,8 +203,54 @@ describe('FlightMemory MVP dashboard', () => {
     });
   });
 
+  it('imports CSV rows into the flight memory store only', async () => {
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/memory']}>
+          <FlightMemory />
+        </MemoryRouter>,
+      );
+    });
+
+    const csvInput = container.querySelector('input[accept=".csv,text/csv"]') as HTMLInputElement | null;
+    expect(csvInput).toBeTruthy();
+
+    const file = new File([
+      'Date\tStart\tDestination\tAirline\tAircraft\tReason\tClass\tSeat Number\tDuration\n'
+      + '30/11/25\tZhengzhou\tTaoyuan (Dayuan)\tChina Airlines\tA321\tLeisure\tEconomy\t\t2h',
+    ], 'flighty.csv', { type: 'text/csv' });
+    Object.defineProperty(csvInput, 'files', {
+      configurable: true,
+      value: [file],
+    });
+
+    act(() => {
+      csvInput?.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await waitForAssertion(() => {
+      expect(flightMemoriesBulkPutMock).toHaveBeenCalledWith([
+        expect.objectContaining({
+          id: 'csv-flight-1-2025-11-30-ZHENGZHOU-TAOYUAN (DAYUAN)',
+          departureDate: '2025-11-30',
+          departureAirport: 'ZHENGZHOU',
+          arrivalAirport: 'TAOYUAN (DAYUAN)',
+          rawEmailId: 'csv-import',
+        }),
+      ]);
+      expect(flightsBulkPutMock).not.toHaveBeenCalled();
+    });
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
   it('deletes an imported flight memory from the expanded list', async () => {
-    liveFlights.push({
+    liveFlightMemories.push({
       id: 'bad-import',
       departureDate: '2024-01-05',
       departureTime: '09:00',
@@ -221,7 +287,7 @@ describe('FlightMemory MVP dashboard', () => {
       await Promise.resolve();
     });
 
-    expect(flightsDeleteMock).toHaveBeenCalledWith('bad-import');
+    expect(flightMemoriesDeleteMock).toHaveBeenCalledWith('bad-import');
 
     act(() => {
       root.unmount();
@@ -230,7 +296,7 @@ describe('FlightMemory MVP dashboard', () => {
 
   it('clears historical flight memories without deleting future trips', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    liveFlights.push(
+    liveFlightMemories.push(
       {
         id: 'demo-old-one',
         departureDate: '2024-01-05',
@@ -289,8 +355,8 @@ describe('FlightMemory MVP dashboard', () => {
       await Promise.resolve();
     });
 
-    expect(flightsBulkDeleteMock).toHaveBeenCalledWith(['demo-old-two', 'demo-old-one']);
-    expect(flightsBulkDeleteMock).not.toHaveBeenCalledWith(expect.arrayContaining(['future-trip']));
+    expect(flightMemoriesBulkDeleteMock).toHaveBeenCalledWith(['demo-old-two', 'demo-old-one']);
+    expect(flightMemoriesBulkDeleteMock).not.toHaveBeenCalledWith(expect.arrayContaining(['future-trip']));
 
     act(() => {
       root.unmount();
@@ -304,7 +370,7 @@ describe('FlightMemory MVP dashboard', () => {
       value: { writeText: writeTextMock },
     });
 
-    liveFlights.push(
+    liveFlightMemories.push(
       {
         id: 'known-route',
         departureDate: '2024-01-05',
@@ -390,8 +456,8 @@ describe('FlightMemory MVP dashboard', () => {
 
   it('keeps the page usable if clearing imported flight memories fails', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    flightsBulkDeleteMock.mockRejectedValue(new Error('delete failed'));
-    liveFlights.push({
+    flightMemoriesBulkDeleteMock.mockRejectedValue(new Error('delete failed'));
+    liveFlightMemories.push({
       id: 'old-flight',
       departureDate: '2024-01-05',
       departureTime: '09:00',

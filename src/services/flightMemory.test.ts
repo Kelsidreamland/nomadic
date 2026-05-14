@@ -30,6 +30,7 @@ const makeFlight = (overrides: Partial<Flight>): Flight => ({
   checkedAllowance: overrides.checkedAllowance ?? 20,
   carryOnAllowance: overrides.carryOnAllowance ?? 7,
   personalAllowance: overrides.personalAllowance ?? 0,
+  rawEmailId: overrides.rawEmailId,
 });
 
 describe('getUpcomingFlight', () => {
@@ -62,6 +63,17 @@ describe('getUpcomingFlight', () => {
     ], today);
 
     expect(result?.id).toBe('morning');
+  });
+
+  it('ignores legacy memory imports even when their date is in the future', () => {
+    const today = new Date(2026, 4, 6, 10);
+    const result = getUpcomingFlight([
+      makeFlight({ id: 'csv-future', departureDate: '2026-05-07', destination: 'Shanghai', rawEmailId: 'csv-import' }),
+      makeFlight({ id: 'pdf-future', departureDate: '2026-05-08', destination: 'Tokyo', rawEmailId: 'pdf-import' }),
+      makeFlight({ id: 'real-trip', departureDate: '2026-05-09', destination: 'Seoul' }),
+    ], today);
+
+    expect(result?.id).toBe('real-trip');
   });
 });
 

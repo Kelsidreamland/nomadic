@@ -81,12 +81,19 @@ export interface Flight {
   rawEmailId?: string;
 }
 
+export const flightMemoryImportSources = ['csv-import', 'pdf-import'] as const;
+
+export const isFlightMemoryImportSource = (source?: string) => (
+  flightMemoryImportSources.includes(source as typeof flightMemoryImportSources[number])
+);
+
 export class NomadicDB extends Dexie {
   luggages!: Table<Luggage, string>;
   items!: Table<Item, string>;
   outfit_matches!: Table<OutfitMatch, string>;
   user_configs!: Table<UserConfig, string>;
   flights!: Table<Flight, string>;
+  flight_memories!: Table<Flight, string>;
 
   constructor() {
     super('NomadicLuggageDB');
@@ -99,6 +106,17 @@ export class NomadicDB extends Dexie {
     });
     this.version(2).stores({
       items: 'id, luggageId, category, subCategory, season, expirationDate, occasion, wrinkleProne',
+    });
+    this.version(3).stores({
+      flight_memories: 'id, departureDate, rawEmailId',
+    }).upgrade(async transaction => {
+      const flights = transaction.table<Flight, string>('flights');
+      const flightMemories = transaction.table<Flight, string>('flight_memories');
+      const importedMemories = (await flights.toArray()).filter(flight => isFlightMemoryImportSource(flight.rawEmailId));
+      if (importedMemories.length === 0) return;
+
+      await flightMemories.bulkPut(importedMemories);
+      await flights.bulkDelete(importedMemories.map(flight => flight.id));
     });
   }
 }

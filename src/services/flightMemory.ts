@@ -71,10 +71,13 @@ const hasReturnSegment = (flight: Flight) => Boolean(
   flight.returnArrivalAirport
 );
 
+const isMemoryImportSource = (source?: string) => source === 'csv-import' || source === 'pdf-import';
+
 export const getUpcomingFlight = (flights: Flight[], now: Date | number = new Date()) => {
   const today = toDateKey(now instanceof Date ? now : new Date(now));
   return [...flights]
     .filter(flight => {
+      if (isMemoryImportSource(flight.rawEmailId)) return false;
       const departureDate = parseFlightDateKey(flight.departureDate);
       return departureDate >= today;
     })

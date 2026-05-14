@@ -63,8 +63,8 @@ const SWIPE_DELETE_THRESHOLD_PX = 42;
 
 export const FlightMemory = () => {
   const { t } = useTranslation();
-  const liveFlights = useLiveQuery(() => db.flights.toArray());
-  const flights = useMemo(() => liveFlights || [], [liveFlights]);
+  const liveFlightMemories = useLiveQuery(() => db.flight_memories.toArray());
+  const flightMemories = useMemo(() => liveFlightMemories || [], [liveFlightMemories]);
   const [now] = useState(() => Date.now());
   const [formState, setFormState] = useState(createDefaultFormState);
   const [importStatus, setImportStatus] = useState('');
@@ -76,7 +76,7 @@ export const FlightMemory = () => {
   const csvInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
-  const memoryEntries = useMemo(() => getFlightMemoryEntries(flights, now), [flights, now]);
+  const memoryEntries = useMemo(() => getFlightMemoryEntries(flightMemories, now), [flightMemories, now]);
   const segments = useMemo(() => getFlightMemorySegments(memoryEntries), [memoryEntries]);
   const currentYear = useMemo(() => new Date(now).getFullYear(), [now]);
   const stats = useMemo(() => getFlightMemoryStats(segments, currentYear), [segments, currentYear]);
@@ -128,7 +128,7 @@ export const FlightMemory = () => {
 
     if (!formState.departureDate || !departureAirport || !arrivalAirport) return;
 
-    await db.flights.add({
+    await db.flight_memories.add({
       id: crypto.randomUUID(),
       departureDate: formState.departureDate,
       departureTime: formState.departureTime,
@@ -157,7 +157,7 @@ export const FlightMemory = () => {
       const text = await file.text();
       const result = parseFlightMemoryCsv(text);
       if (result.flights.length > 0) {
-        await db.flights.bulkPut(result.flights);
+        await db.flight_memories.bulkPut(result.flights);
       }
       setImportStatus(t('flightMemory.csvImported', {
         count: result.flights.length,
@@ -203,7 +203,7 @@ export const FlightMemory = () => {
       }
 
       if (flightsToImport.length > 0) {
-        await db.flights.bulkPut(flightsToImport);
+        await db.flight_memories.bulkPut(flightsToImport);
       }
 
       setImportStatus(t('flightMemory.pdfImported', {
@@ -238,7 +238,7 @@ export const FlightMemory = () => {
   };
 
   const handleDeleteFlightMemory = async (flightId: string) => {
-    await db.flights.delete(flightId);
+    await db.flight_memories.delete(flightId);
     setRevealedDeleteSegmentId(null);
     setImportStatus(t('flightMemory.deletedFlight'));
   };
@@ -250,7 +250,7 @@ export const FlightMemory = () => {
     setRevealedDeleteSegmentId(null);
     setIsFlightListOpen(false);
     try {
-      await db.flights.bulkDelete(memoryEntries.map(flight => flight.id));
+      await db.flight_memories.bulkDelete(memoryEntries.map(flight => flight.id));
       setImportStatus(t('flightMemory.clearedFlights', { count: memoryEntries.length }));
     } catch {
       setImportStatus(t('flightMemory.clearFailed'));
