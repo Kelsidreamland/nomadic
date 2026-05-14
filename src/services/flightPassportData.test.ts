@@ -90,5 +90,31 @@ describe('buildFlightPassportData', () => {
       { value: 'ZZZ', count: 2 },
       { value: 'AAA', count: 2 },
     ]);
+    expect(data.diagnostics.unresolvedSegments).toEqual([
+      {
+        id: 'unknown-arrival',
+        departureDate: '2026-01-01',
+        route: 'TPE → ZZZ',
+        unresolvedAirports: ['ZZZ'],
+        airline: 'EVA Air',
+        flightNumber: 'BR225',
+      },
+      {
+        id: 'unknown-departure',
+        departureDate: '2026-01-01',
+        route: 'AAA → KUL',
+        unresolvedAirports: ['AAA'],
+        airline: 'EVA Air',
+        flightNumber: 'BR225',
+      },
+      {
+        id: 'same-unknown-twice',
+        departureDate: '2026-01-01',
+        route: 'AAA → ZZZ',
+        unresolvedAirports: ['AAA', 'ZZZ'],
+        airline: 'EVA Air',
+        flightNumber: 'BR225',
+      },
+    ]);
   });
 });

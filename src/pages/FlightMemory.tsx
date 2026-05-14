@@ -2,7 +2,7 @@ import type { ChangeEvent, FormEvent, PointerEvent as ReactPointerEvent } from '
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronDown, ChevronUp, FileText, Plane, Plus, Save, Trash2, Upload } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, Copy, FileText, Plane, Plus, Save, Trash2, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { db, type Flight } from '../db';
 import { analyzeTicketWithAI } from '../services/ai';
@@ -70,6 +70,7 @@ export const FlightMemory = () => {
   const [importStatus, setImportStatus] = useState('');
   const [isParsingPdf, setIsParsingPdf] = useState(false);
   const [isFlightListOpen, setIsFlightListOpen] = useState(false);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const [revealedDeleteSegmentId, setRevealedDeleteSegmentId] = useState<string | null>(null);
   const swipeStartRef = useRef<{ segmentId: string; x: number; y: number } | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
@@ -86,6 +87,34 @@ export const FlightMemory = () => {
       .map(airport => `${airport.value} ×${airport.count}`)
       .join(' · ')
   ), [passport]);
+  const unresolvedSegmentById = useMemo(() => new Map(
+    passport.diagnostics.unresolvedSegments.map(segment => [segment.id, segment]),
+  ), [passport]);
+  const unresolvedDiagnosticsText = useMemo(() => {
+    if (passport.diagnostics.unresolvedSegmentCount === 0) return '';
+
+    const airportLines = passport.diagnostics.unresolvedAirports.map(airport => `${airport.value} ×${airport.count}`);
+    const segmentLines = passport.diagnostics.unresolvedSegments.map(segment => (
+      `${segment.departureDate} ${segment.flightNumber || t('flightMemory.noFlightNumber')}：${segment.route}，${t('flightMemory.segmentUnresolved', {
+        airports: segment.unresolvedAirports.join(', ') || '—',
+      })}`
+    ));
+
+    return [
+      t('flightMemory.copyDiagnosticsTitle'),
+      t('flightMemory.copyDiagnosticsSummary', {
+        drawable: passport.diagnostics.drawableRoutes,
+        total: passport.diagnostics.totalSegments,
+        unresolved: passport.diagnostics.unresolvedSegmentCount,
+      }),
+      '',
+      t('flightMemory.copyDiagnosticsAirports'),
+      ...airportLines,
+      '',
+      t('flightMemory.copyDiagnosticsSegments'),
+      ...segmentLines,
+    ].join('\n');
+  }, [passport, t]);
 
   const updateField = (field: keyof MemoryFlightFormState) => (event: ChangeEvent<HTMLInputElement>) => {
     setFormState(prev => ({ ...prev, [field]: event.target.value }));
@@ -228,6 +257,30 @@ export const FlightMemory = () => {
     }
   };
 
+  const handleCopyDiagnostics = async () => {
+    if (!unresolvedDiagnosticsText) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(unresolvedDiagnosticsText);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = unresolvedDiagnosticsText;
+        textArea.setAttribute('readonly', '');
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        const copied = document.execCommand?.('copy') || false;
+        document.body.removeChild(textArea);
+        if (!copied) throw new Error('Copy failed');
+      }
+      setImportStatus(t('flightMemory.unresolvedCopied'));
+    } catch {
+      setImportStatus(t('flightMemory.unresolvedCopyFailed'));
+    }
+  };
+
   return (
     <div className="space-y-6 pb-20 animate-fade-in">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -327,8 +380,42 @@ export const FlightMemory = () => {
                 ? t('flightMemory.unresolvedRoutesHint', { count: passport.diagnostics.unresolvedSegmentCount })
                 : t('flightMemory.allRoutesMappedHint')}
             </p>
+            {passport.diagnostics.unresolvedSegmentCount > 0 && (
+              <button
+                type="button"
+                data-testid="flight-memory-diagnostics-toggle"
+                onClick={() => setIsDiagnosticsOpen(prev => !prev)}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--color-brand-stone)] bg-[var(--color-brand-sand)] px-3 py-1.5 text-xs font-bold text-[var(--color-brand-espresso)]/60 transition-colors hover:bg-white"
+              >
+                {isDiagnosticsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                <span>{isDiagnosticsOpen ? t('flightMemory.collapseDiagnostics') : t('flightMemory.expandDiagnostics')}</span>
+              </button>
+            )}
           </div>
         </div>
+      )}
+
+      {isDiagnosticsOpen && unresolvedDiagnosticsText && (
+        <section className="rounded-[24px] border border-[var(--color-brand-terracotta)]/25 bg-[var(--color-brand-cream)] p-4 shadow-sm">
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-[var(--color-brand-espresso)]">{t('flightMemory.copyDiagnosticsTitle')}</h3>
+              <p className="mt-1 text-xs font-medium text-[var(--color-brand-espresso)]/45">{t('flightMemory.copyDiagnosticsHint')}</p>
+            </div>
+            <button
+              type="button"
+              data-testid="copy-flight-memory-diagnostics"
+              onClick={() => void handleCopyDiagnostics()}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-brand-espresso)] px-4 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-black"
+            >
+              <Copy size={14} />
+              <span>{t('flightMemory.copyDiagnostics')}</span>
+            </button>
+          </div>
+          <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-2xl bg-[var(--color-brand-sand)] p-3 text-xs font-medium leading-relaxed text-[var(--color-brand-espresso)]/70">
+            {unresolvedDiagnosticsText}
+          </pre>
+        </section>
       )}
 
       <Suspense fallback={<FlightRouteMapFallback />}>
@@ -464,10 +551,15 @@ export const FlightMemory = () => {
 
           {isFlightListOpen && (
             <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
-              {segments.map(segment => (
+              {segments.map(segment => {
+                const unresolvedSegment = unresolvedSegmentById.get(segment.id);
+                return (
                 <div
                   key={segment.id}
-                  className="relative overflow-hidden rounded-2xl bg-[var(--color-brand-terracotta)]/10"
+                  className={[
+                    'relative overflow-hidden rounded-2xl',
+                    unresolvedSegment ? 'bg-[var(--color-brand-terracotta)]/18' : 'bg-[var(--color-brand-terracotta)]/10',
+                  ].join(' ')}
                 >
                   <button
                     type="button"
@@ -486,6 +578,7 @@ export const FlightMemory = () => {
                     }}
                     className={[
                       'relative flex min-w-0 touch-pan-y items-center gap-3 rounded-2xl border border-[var(--color-brand-stone)]/80 bg-[var(--color-brand-sand)] px-3 py-3 transition-transform',
+                      unresolvedSegment ? 'border-[var(--color-brand-terracotta)]/45 bg-[#FBF1EC]' : '',
                       revealedDeleteSegmentId === segment.id ? '-translate-x-16' : 'translate-x-0',
                     ].join(' ')}
                   >
@@ -501,10 +594,16 @@ export const FlightMemory = () => {
                           .filter(Boolean)
                           .join(' · ')}
                       </span>
+                      {unresolvedSegment && (
+                        <span className="mt-1 block truncate text-xs font-bold text-[var(--color-brand-terracotta)]">
+                          {t('flightMemory.segmentUnresolved', { airports: unresolvedSegment.unresolvedAirports.join(', ') || '—' })}
+                        </span>
+                      )}
                     </span>
                   </article>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

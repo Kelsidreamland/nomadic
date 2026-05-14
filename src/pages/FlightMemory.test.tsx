@@ -298,6 +298,12 @@ describe('FlightMemory MVP dashboard', () => {
   });
 
   it('shows route diagnostics when imported airports cannot be mapped', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+
     liveFlights.push(
       {
         id: 'known-route',
@@ -358,6 +364,24 @@ describe('FlightMemory MVP dashboard', () => {
       expect(container.textContent).toContain('ZZZ');
       expect(container.textContent).toContain('AAA');
     });
+
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[data-testid="flight-memory-diagnostics-toggle"]')?.click();
+    });
+    expect(container.textContent).toContain('2024-01-07 BR998：AAA → KUL，未辨識：AAA');
+    expect(container.textContent).toContain('2024-01-06 BR999：TPE → ZZZ，未辨識：ZZZ');
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="copy-flight-memory-diagnostics"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringContaining('2024-01-07 BR998：AAA → KUL，未辨識：AAA'));
+
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[data-testid="flight-memory-list-toggle"]')?.click();
+    });
+    expect(container.textContent).toContain('未辨識：AAA');
+    expect(container.textContent).toContain('未辨識：ZZZ');
 
     act(() => {
       root.unmount();

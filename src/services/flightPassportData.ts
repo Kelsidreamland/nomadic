@@ -43,11 +43,21 @@ export interface FlightPassportUnresolvedAirport {
   count: number;
 }
 
+export interface FlightPassportUnresolvedSegment {
+  id: string;
+  departureDate: string;
+  route: string;
+  unresolvedAirports: string[];
+  airline: string;
+  flightNumber?: string;
+}
+
 export interface FlightPassportDiagnostics {
   totalSegments: number;
   drawableRoutes: number;
   unresolvedSegmentCount: number;
   unresolvedAirports: FlightPassportUnresolvedAirport[];
+  unresolvedSegments: FlightPassportUnresolvedSegment[];
 }
 
 export interface FlightPassportData {
@@ -152,6 +162,13 @@ const addAirport = (
 
 const normalizeUnresolvedAirport = (value?: string) => value?.trim().replace(/\s+/g, ' ').toUpperCase() || '';
 
+const formatRoute = (from?: string, to?: string) => (
+  [from, to]
+    .map(value => value?.trim().replace(/\s+/g, ' '))
+    .filter(Boolean)
+    .join(' → ') || '—'
+);
+
 const addUnresolvedAirport = (
   unresolvedAirports: Map<string, UnresolvedAirportAccumulator>,
   value: string | undefined,
@@ -198,6 +215,7 @@ export const buildFlightPassportData = (segments: FlightMemorySegment[]): Flight
   const airportCodeSet = new Set<string>();
   const airportAccumulators = new Map<string, AirportAccumulator>();
   const unresolvedAirports = new Map<string, UnresolvedAirportAccumulator>();
+  const unresolvedSegments: FlightPassportUnresolvedSegment[] = [];
   let unresolvedSegmentCount = 0;
 
   const routes = segments
@@ -205,9 +223,21 @@ export const buildFlightPassportData = (segments: FlightMemorySegment[]): Flight
       const from = getRouteMapPoint(segment.from);
       const to = getRouteMapPoint(segment.to);
       if (!from || !to) {
+        const segmentUnresolvedAirports = [
+          !from ? normalizeUnresolvedAirport(segment.from) : '',
+          !to ? normalizeUnresolvedAirport(segment.to) : '',
+        ].filter(Boolean);
         unresolvedSegmentCount += 1;
         if (!from) addUnresolvedAirport(unresolvedAirports, segment.from, index);
         if (!to) addUnresolvedAirport(unresolvedAirports, segment.to, index);
+        unresolvedSegments.push({
+          id: segment.id,
+          departureDate: segment.departureDate,
+          route: formatRoute(segment.from, segment.to),
+          unresolvedAirports: segmentUnresolvedAirports,
+          airline: segment.airline,
+          flightNumber: segment.flightNumber,
+        });
         return undefined;
       }
 
@@ -262,6 +292,7 @@ export const buildFlightPassportData = (segments: FlightMemorySegment[]): Flight
           return a.firstIndex - b.firstIndex;
         })
         .map(({ value, count }) => ({ value, count })),
+      unresolvedSegments,
     },
     mrzLine: buildMrzLine(airportCodes),
   };
