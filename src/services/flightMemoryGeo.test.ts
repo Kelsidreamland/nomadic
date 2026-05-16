@@ -116,6 +116,8 @@ describe('getRouteMapPoint', () => {
       'JEJU ISLAND': 'CJU',
       WUYISHAN: 'WUS',
       HANGZHOU: 'HGH',
+      OITA: 'OIT',
+      大分: 'OIT',
     };
 
     for (const [value, code] of Object.entries(aliases)) {
