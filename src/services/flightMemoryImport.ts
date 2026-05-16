@@ -204,12 +204,24 @@ export const parseFlightMemoryCsv = (csv: string, idPrefix = 'csv-flight'): Flig
   const errors: string[] = [];
 
   dataRows.forEach((row, index) => {
-    const departureDate = normalizeDate(getValue(row, columnMap, 'departureDate'));
-    const departureAirport = normalizeAirportValue(getValue(row, columnMap, 'departureAirport'));
-    const arrivalAirport = normalizeAirportValue(getValue(row, columnMap, 'arrivalAirport'));
+    const rawDepartureDate = getValue(row, columnMap, 'departureDate');
+    const rawDepartureAirport = getValue(row, columnMap, 'departureAirport');
+    const rawArrivalAirport = getValue(row, columnMap, 'arrivalAirport');
+    const departureDate = normalizeDate(rawDepartureDate);
+    const departureAirport = normalizeAirportValue(rawDepartureAirport);
+    const arrivalAirport = normalizeAirportValue(rawArrivalAirport);
 
     if (!departureDate || !departureAirport || !arrivalAirport) {
-      errors.push(`第 ${index + 2} 列缺少出發日期、出發機場或抵達機場，已略過。`);
+      const route = [
+        rawDepartureAirport || '未填出發',
+        rawArrivalAirport || '未填抵達',
+      ].join(' → ');
+      const missingFields = [
+        !departureDate ? '出發日期' : '',
+        !departureAirport ? '出發機場' : '',
+        !arrivalAirport ? '抵達機場' : '',
+      ].filter(Boolean).join('、');
+      errors.push(`第 ${index + 2} 列已略過：${rawDepartureDate || '未填日期'} ${route}，無法辨識 ${missingFields}。`);
       return;
     }
 

@@ -4,10 +4,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronDown, ChevronUp, Copy, FileText, Plane, Plus, Save, Trash2, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { db, type Flight } from '../db';
 import { analyzeTicketWithAI } from '../services/ai';
 import {
-  getFlightMemoryEntries,
+  getFlightMemoryPassportEntries,
   getFlightMemorySegments,
   getFlightMemoryStats,
 } from '../services/flightMemory';
@@ -63,6 +64,24 @@ const normalizeAirport = (value: string) => normalizeText(value).toUpperCase();
 const formatSegmentRoute = (from?: string, to?: string) => [from, to].filter(Boolean).join(' → ');
 const SWIPE_DELETE_THRESHOLD_PX = 42;
 
+const copyTextToClipboard = async (text: string) => {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.setAttribute('readonly', '');
+  textArea.style.position = 'fixed';
+  textArea.style.opacity = '0';
+  document.body.appendChild(textArea);
+  textArea.select();
+  const copied = document.execCommand?.('copy') || false;
+  document.body.removeChild(textArea);
+  if (!copied) throw new Error('Copy failed');
+};
+
 export const FlightMemory = () => {
   const { t } = useTranslation();
   const liveFlightMemories = useLiveQuery(() => db.flight_memories.toArray());
@@ -70,6 +89,7 @@ export const FlightMemory = () => {
   const [now] = useState(() => Date.now());
   const [formState, setFormState] = useState(createDefaultFormState);
   const [importStatus, setImportStatus] = useState('');
+  const [csvImportIssues, setCsvImportIssues] = useState<string[]>([]);
   const [isParsingPdf, setIsParsingPdf] = useState(false);
   const [isFlightListOpen, setIsFlightListOpen] = useState(false);
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
@@ -79,7 +99,7 @@ export const FlightMemory = () => {
   const csvInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
-  const memoryEntries = useMemo(() => getFlightMemoryEntries(flightMemories, now), [flightMemories, now]);
+  const memoryEntries = useMemo(() => getFlightMemoryPassportEntries(flightMemories), [flightMemories]);
   const segments = useMemo(() => getFlightMemorySegments(memoryEntries), [memoryEntries]);
   const currentYear = useMemo(() => new Date(now).getFullYear(), [now]);
   const stats = useMemo(() => getFlightMemoryStats(segments, currentYear), [segments, currentYear]);
@@ -167,11 +187,13 @@ export const FlightMemory = () => {
       if (result.flights.length > 0) {
         await db.flight_memories.bulkPut(result.flights);
       }
+      setCsvImportIssues(result.errors);
       setImportStatus(t('flightMemory.csvImported', {
         count: result.flights.length,
         errors: result.errors.length,
       }));
     } catch {
+      setCsvImportIssues([]);
       setImportStatus(t('flightMemory.csvImportFailed'));
     } finally {
       event.target.value = '';
@@ -184,6 +206,7 @@ export const FlightMemory = () => {
     if (files.length === 0) return;
 
     setIsParsingPdf(true);
+    setCsvImportIssues([]);
     setImportStatus(t('flightMemory.pdfImportParsing', { count: files.length }));
     try {
       const flightsToImport: Flight[] = [];
@@ -255,11 +278,14 @@ export const FlightMemory = () => {
     if (memoryEntries.length === 0) return;
     if (typeof window !== 'undefined' && !window.confirm(t('flightMemory.clearConfirm', { count: memoryEntries.length }))) return;
 
+    const memoryIds = memoryEntries.map(flight => flight.id);
     setRevealedDeleteSegmentId(null);
     setIsFlightListOpen(false);
+    setIsDiagnosticsOpen(false);
+    setCsvImportIssues([]);
     try {
-      await db.flight_memories.bulkDelete(memoryEntries.map(flight => flight.id));
-      setImportStatus(t('flightMemory.clearedFlights', { count: memoryEntries.length }));
+      await db.flight_memories.bulkDelete(memoryIds);
+      setImportStatus(t('flightMemory.clearedFlights', { count: memoryIds.length }));
     } catch {
       setImportStatus(t('flightMemory.clearFailed'));
     }
@@ -269,25 +295,67 @@ export const FlightMemory = () => {
     if (!unresolvedDiagnosticsText) return;
 
     try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(unresolvedDiagnosticsText);
-      } else {
-        const textArea = document.createElement('textarea');
-        textArea.value = unresolvedDiagnosticsText;
-        textArea.setAttribute('readonly', '');
-        textArea.style.position = 'fixed';
-        textArea.style.opacity = '0';
-        document.body.appendChild(textArea);
-        textArea.select();
-        const copied = document.execCommand?.('copy') || false;
-        document.body.removeChild(textArea);
-        if (!copied) throw new Error('Copy failed');
-      }
+      await copyTextToClipboard(unresolvedDiagnosticsText);
       setImportStatus(t('flightMemory.unresolvedCopied'));
     } catch {
       setImportStatus(t('flightMemory.unresolvedCopyFailed'));
     }
   };
+
+  const handleCopyCsvImportIssues = async () => {
+    if (csvImportIssues.length === 0) return;
+
+    try {
+      await copyTextToClipboard([
+        t('flightMemory.csvImportIssuesTitle'),
+        ...csvImportIssues,
+      ].join('\n'));
+      setImportStatus(t('flightMemory.importIssuesCopied'));
+    } catch {
+      setImportStatus(t('flightMemory.importIssuesCopyFailed'));
+    }
+  };
+
+  const passportScopeControl = segments.length > 0 ? (
+    <div className="flex flex-col gap-3 rounded-2xl border border-[rgba(232,226,214,0.18)] bg-[rgba(244,239,230,0.08)] p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-[10px] font-bold uppercase text-[rgba(231,160,140,0.84)]">{t('flightMemory.passportScope')}</p>
+        <p className="mt-1 text-xs font-bold text-[rgba(252,251,249,0.58)]">
+          {passportScope === 'year'
+            ? t('flightMemory.passportScopeYearHint', { year: currentYear })
+            : t('flightMemory.passportScopeAllHint')}
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-1 rounded-full bg-[rgba(244,239,230,0.12)] p-1">
+        <button
+          type="button"
+          data-testid="flight-passport-scope-all"
+          onClick={() => setPassportScope('all')}
+          className={[
+            'rounded-full px-4 py-2 text-xs font-bold transition-colors',
+            passportScope === 'all'
+              ? 'bg-[var(--color-brand-cream)] text-[var(--color-brand-espresso)] shadow-sm'
+              : 'text-[rgba(252,251,249,0.62)] hover:bg-[rgba(252,251,249,0.10)]',
+          ].join(' ')}
+        >
+          {t('flightMemory.passportScopeAll')}
+        </button>
+        <button
+          type="button"
+          data-testid="flight-passport-scope-year"
+          onClick={() => setPassportScope('year')}
+          className={[
+            'rounded-full px-4 py-2 text-xs font-bold transition-colors',
+            passportScope === 'year'
+              ? 'bg-[var(--color-brand-cream)] text-[var(--color-brand-espresso)] shadow-sm'
+              : 'text-[rgba(252,251,249,0.62)] hover:bg-[rgba(252,251,249,0.10)]',
+          ].join(' ')}
+        >
+          {currentYear}
+        </button>
+      </div>
+    </div>
+  ) : undefined;
 
   return (
     <div className="space-y-6 pb-20 animate-fade-in">
@@ -365,49 +433,37 @@ export const FlightMemory = () => {
             {importStatus}
           </p>
         )}
+        {csvImportIssues.length > 0 && (
+          <div
+            data-testid="flight-memory-csv-issues"
+            className="mt-3 rounded-2xl border border-[var(--color-brand-terracotta)]/25 bg-[#FBF1EC] p-4"
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-[var(--color-brand-espresso)]">{t('flightMemory.csvImportIssuesTitle')}</h4>
+                <p className="mt-1 text-xs font-medium text-[var(--color-brand-espresso)]/50">{t('flightMemory.csvImportIssuesHint')}</p>
+              </div>
+              <button
+                type="button"
+                data-testid="copy-flight-memory-csv-issues"
+                onClick={() => void handleCopyCsvImportIssues()}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-brand-espresso)] px-4 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-black"
+              >
+                <Copy size={14} />
+                <span>{t('flightMemory.copyDiagnostics')}</span>
+              </button>
+            </div>
+            <ul className="mt-3 max-h-48 space-y-2 overflow-auto rounded-xl bg-[var(--color-brand-cream)] p-3 text-xs font-medium leading-relaxed text-[var(--color-brand-espresso)]/70">
+              {csvImportIssues.map(issue => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {segments.length > 0 && (
         <section className="space-y-3">
-          <div className="flex flex-col gap-3 rounded-[24px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase text-[var(--color-brand-olive)]">{t('flightMemory.passportScope')}</p>
-              <p className="mt-1 text-sm font-medium text-[var(--color-brand-espresso)]/50">
-                {passportScope === 'year'
-                  ? t('flightMemory.passportScopeYearHint', { year: currentYear })
-                  : t('flightMemory.passportScopeAllHint')}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-1 rounded-full bg-[var(--color-brand-sand)] p-1">
-              <button
-                type="button"
-                data-testid="flight-passport-scope-all"
-                onClick={() => setPassportScope('all')}
-                className={[
-                  'rounded-full px-4 py-2 text-xs font-bold transition-colors',
-                  passportScope === 'all'
-                    ? 'bg-[var(--color-brand-espresso)] text-white shadow-sm'
-                    : 'text-[var(--color-brand-espresso)]/55 hover:bg-white',
-                ].join(' ')}
-              >
-                {t('flightMemory.passportScopeAll')}
-              </button>
-              <button
-                type="button"
-                data-testid="flight-passport-scope-year"
-                onClick={() => setPassportScope('year')}
-                className={[
-                  'rounded-full px-4 py-2 text-xs font-bold transition-colors',
-                  passportScope === 'year'
-                    ? 'bg-[var(--color-brand-espresso)] text-white shadow-sm'
-                    : 'text-[var(--color-brand-espresso)]/55 hover:bg-white',
-                ].join(' ')}
-              >
-                {currentYear}
-              </button>
-            </div>
-          </div>
-
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="rounded-2xl border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-4 shadow-sm">
             <p className="text-xs font-bold text-[var(--color-brand-espresso)]/45">{t('flightMemory.drawableRoutes')}</p>
@@ -467,9 +523,11 @@ export const FlightMemory = () => {
         </section>
       )}
 
-      <Suspense fallback={<FlightRouteMapFallback />}>
-        <FlightRouteMap segments={passportSegments} />
-      </Suspense>
+      <ErrorBoundary fallback={<FlightRouteMapFallback />}>
+        <Suspense fallback={<FlightRouteMapFallback />}>
+          <FlightRouteMap segments={passportSegments} scopeControl={passportScopeControl} />
+        </Suspense>
+      </ErrorBoundary>
 
       <form onSubmit={handleAddFlight} className="rounded-[28px] border border-[var(--color-brand-stone)] bg-[var(--color-brand-cream)] p-5 shadow-sm md:p-6">
         <div className="mb-5 flex items-center justify-between gap-4">

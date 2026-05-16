@@ -2,7 +2,7 @@ import '@fontsource/ibm-plex-mono/500.css';
 import '@fontsource/ibm-plex-mono/700.css';
 
 import { Download, Plane } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { init, registerMap, use as registerEchartsModules, type ComposeOption, type ECharts } from 'echarts/core';
 import {
@@ -30,6 +30,7 @@ import {
 
 interface FlightRouteMapProps {
   segments: FlightMemorySegment[];
+  scopeControl?: ReactNode;
 }
 
 type FlightMapOption = ComposeOption<
@@ -63,6 +64,16 @@ const ensureEchartsReady = () => {
   if (!isMapRegistered) {
     registerMap(MAP_NAME, worldCountries as Parameters<typeof registerMap>[1]);
     isMapRegistered = true;
+  }
+};
+
+const safelyDisposeChart = (chart: ECharts | null) => {
+  if (!chart || chart.isDisposed()) return;
+
+  try {
+    chart.dispose();
+  } catch {
+    // ECharts can throw while disposing a canvas that has just collapsed to 0px.
   }
 };
 
@@ -117,14 +128,14 @@ const buildMapOption = (passport: FlightPassportData): FlightMapOption => ({
       effect: {
         show: true,
         period: 4.8,
-        trailLength: 0.24,
+        trailLength: 0.18,
         symbol: 'circle',
-        symbolSize: 3,
+        symbolSize: 1.7,
         color: BRAND.cream,
       },
       lineStyle: {
-        width: 1.8,
-        opacity: 0.86,
+        width: 0.9,
+        opacity: 0.72,
         curveness: 0.26,
         color: {
           type: 'linear',
@@ -156,17 +167,17 @@ const buildMapOption = (passport: FlightPassportData): FlightMapOption => ({
       zlevel: 3,
       symbolSize: value => {
         const visits = Array.isArray(value) && typeof value[2] === 'number' ? value[2] : 1;
-        return Math.min(13, 7 + visits);
+        return Math.min(7, 3.2 + Math.log2(visits + 1) * 1.15);
       },
       rippleEffect: {
         brushType: 'stroke',
-        scale: 2.2,
-        period: 4,
+        scale: 1.55,
+        period: 4.8,
       },
       itemStyle: {
         color: BRAND.cream,
-        shadowColor: 'rgba(200, 106, 76, 0.55)',
-        shadowBlur: 12,
+        shadowColor: 'rgba(200, 106, 76, 0.38)',
+        shadowBlur: 5,
       },
       label: {
         show: false,
@@ -178,7 +189,7 @@ const buildMapOption = (passport: FlightPassportData): FlightMapOption => ({
   ],
 });
 
-export const FlightRouteMap = ({ segments }: FlightRouteMapProps) => {
+export const FlightRouteMap = ({ segments, scopeControl }: FlightRouteMapProps) => {
   const { t } = useTranslation();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -188,6 +199,8 @@ export const FlightRouteMap = ({ segments }: FlightRouteMapProps) => {
 
   useEffect(() => {
     if (import.meta.env.MODE === 'test' || !mapRef.current || passport.routes.length === 0) {
+      safelyDisposeChart(chartRef.current);
+      chartRef.current = null;
       return;
     }
 
@@ -197,7 +210,15 @@ export const FlightRouteMap = ({ segments }: FlightRouteMapProps) => {
     chart.setOption(buildMapOption(passport));
 
     const handleResize = () => {
-      chart.resize();
+      if (chart.isDisposed() || !mapRef.current) return;
+      const { width, height } = mapRef.current.getBoundingClientRect();
+      if (width <= 0 || height <= 0) return;
+
+      try {
+        chart.resize();
+      } catch {
+        // Ignore resize races while the passport is being cleared or unmounted.
+      }
     };
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(handleResize) : undefined;
     observer?.observe(mapRef.current);
@@ -206,7 +227,7 @@ export const FlightRouteMap = ({ segments }: FlightRouteMapProps) => {
     return () => {
       observer?.disconnect();
       window.removeEventListener('resize', handleResize);
-      chart.dispose();
+      safelyDisposeChart(chart);
       chartRef.current = null;
     };
   }, [passport]);
@@ -261,6 +282,11 @@ export const FlightRouteMap = ({ segments }: FlightRouteMapProps) => {
                 {passport.stats.yearRange || t('flightMemory.passportNoYears')}
               </div>
             </div>
+            {scopeControl && (
+              <div className="border-b border-[rgba(232,226,214,0.18)] px-4 py-4 sm:px-5">
+                {scopeControl}
+              </div>
+            )}
 
             <div className="relative">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_22%,rgba(200,106,76,0.20),transparent_34%),linear-gradient(180deg,rgba(61,51,45,0)_0%,rgba(47,40,38,0.76)_100%)]" />

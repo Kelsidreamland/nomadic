@@ -312,6 +312,113 @@ describe('FlightMemory MVP dashboard', () => {
     });
   });
 
+  it('keeps future-dated CSV memory records visible in the passport store', async () => {
+    liveFlightMemories.push(
+      {
+        id: 'future-memory',
+        departureDate: '2099-06-20',
+        departureTime: '09:00',
+        destination: 'Tokyo',
+        airline: 'EVA Air',
+        flightNumber: 'BR198',
+        departureAirport: 'TPE',
+        arrivalAirport: 'NRT',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+      {
+        id: 'past-memory',
+        departureDate: '2024-02-06',
+        departureTime: '08:00',
+        destination: 'Singapore',
+        airline: 'Singapore Airlines',
+        flightNumber: 'SQ879',
+        departureAirport: 'TPE',
+        arrivalAirport: 'SIN',
+        checkedAllowance: 23,
+        carryOnAllowance: 7,
+        personalAllowance: 0,
+      },
+    );
+
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/memory']}>
+          <FlightMemory />
+        </MemoryRouter>,
+      );
+    });
+
+    await waitForAssertion(() => {
+      expect(container.textContent).toContain('2 / 2');
+      expect(container.textContent).toContain('2 段航程');
+    });
+
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[data-testid="flight-memory-list-toggle"]')?.click();
+    });
+    expect(container.textContent).toContain('2099-06-20');
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it('surfaces skipped CSV rows so import failures are not hidden behind successful drawable counts', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/memory']}>
+          <FlightMemory />
+        </MemoryRouter>,
+      );
+    });
+
+    const csvInput = container.querySelector('input[accept=".csv,text/csv"]') as HTMLInputElement | null;
+    expect(csvInput).toBeTruthy();
+
+    const file = new File([
+      'Date\tStart\tDestination\tAirline\tAircraft\tReason\tClass\tSeat Number\tDuration\n'
+      + '30/11/25\tZhengzhou\tTaoyuan (Dayuan)\tChina Airlines\tA321\tLeisure\tEconomy\t\t2h\n'
+      + '\tMystery Airport\tTokyo Narita (NRT)\tUnknown\tA320\tLeisure\tEconomy\t\t2h',
+    ], 'flighty.csv', { type: 'text/csv' });
+    Object.defineProperty(csvInput, 'files', {
+      configurable: true,
+      value: [file],
+    });
+
+    act(() => {
+      csvInput?.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await waitForAssertion(() => {
+      expect(container.textContent).toContain('已匯入 1 段航班。1 列略過。');
+      expect(container.textContent).toContain('CSV 略過清單');
+      expect(container.textContent).toContain('第 3 列已略過：未填日期 Mystery Airport → Tokyo Narita (NRT)');
+    });
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="copy-flight-memory-csv-issues"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringContaining('第 3 列已略過'));
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
   it('deletes an imported flight memory from the expanded list', async () => {
     liveFlightMemories.push({
       id: 'bad-import',
@@ -357,7 +464,7 @@ describe('FlightMemory MVP dashboard', () => {
     });
   });
 
-  it('clears historical flight memories without deleting future trips', async () => {
+  it('clears all dedicated travel-memory flights without touching the trip store', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     liveFlightMemories.push(
       {
@@ -418,8 +525,8 @@ describe('FlightMemory MVP dashboard', () => {
       await Promise.resolve();
     });
 
-    expect(flightMemoriesBulkDeleteMock).toHaveBeenCalledWith(['demo-old-two', 'demo-old-one']);
-    expect(flightMemoriesBulkDeleteMock).not.toHaveBeenCalledWith(expect.arrayContaining(['future-trip']));
+    expect(flightMemoriesBulkDeleteMock).toHaveBeenCalledWith(['future-trip', 'demo-old-two', 'demo-old-one']);
+    expect(flightsBulkPutMock).not.toHaveBeenCalled();
 
     act(() => {
       root.unmount();

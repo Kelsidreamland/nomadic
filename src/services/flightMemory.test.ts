@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Flight } from '../db';
 import {
   getFlightMemoryEntries,
+  getFlightMemoryPassportEntries,
   getFlightMemorySegments,
   getFlightMemoryStats,
   getUpcomingFlight,
@@ -97,6 +98,19 @@ describe('getFlightMemoryEntries', () => {
     ], today);
 
     expect(result.map(flight => flight.id)).toEqual(['flighty-old']);
+  });
+});
+
+describe('getFlightMemoryPassportEntries', () => {
+  it('keeps every parseable memory-store flight because the store is separate from upcoming trips', () => {
+    const result = getFlightMemoryPassportEntries([
+      makeFlight({ id: 'future-memory', departureDate: '2099-06-20' }),
+      makeFlight({ id: 'older-memory', departureDate: '2023-03-12' }),
+      makeFlight({ id: 'newer-memory', departureDate: '2025-11-02' }),
+      makeFlight({ id: 'bad-date', departureDate: 'not a date' }),
+    ]);
+
+    expect(result.map(flight => flight.id)).toEqual(['future-memory', 'newer-memory', 'older-memory']);
   });
 });
 

@@ -94,6 +94,12 @@ export const getFlightMemoryEntries = (flights: Flight[], now: Date | number = n
     .sort(sortFlightsDescending);
 };
 
+export const getFlightMemoryPassportEntries = (flights: Flight[]) => {
+  return [...flights]
+    .filter(flight => Boolean(parseFlightDateKey(flight.departureDate)))
+    .sort(sortFlightsDescending);
+};
+
 export const getFlightMemorySegments = (flights: Flight[]): FlightMemorySegment[] => {
   const segments = flights.flatMap((flight): FlightMemorySegment[] => {
     const outbound: FlightMemorySegment = {

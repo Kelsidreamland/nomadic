@@ -39,7 +39,7 @@ describe('parseFlightMemoryCsv', () => {
       departureAirport: 'TPE',
       arrivalAirport: 'LHR',
     });
-    expect(result.errors).toEqual(['第 3 列缺少出發日期、出發機場或抵達機場，已略過。']);
+    expect(result.errors).toEqual(['第 3 列已略過：未填日期 TPE → NRT，無法辨識 出發日期。']);
   });
 
   it('imports origin and destination CSV headers as route airports', () => {
