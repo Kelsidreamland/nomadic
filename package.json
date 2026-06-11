@@ -1,7 +1,17 @@
 {
-  "name": "temp-app",
+  "name": "nomadic",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Offline-first luggage, wardrobe, and packing planner for digital nomads.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kelsidreamland/nomadic.git"
+  },
+  "homepage": "https://nomadicmyluggage.vercel.app",
+  "bugs": {
+    "url": "https://github.com/Kelsidreamland/nomadic/issues"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -11,6 +11,19 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+
+# Agent/workspace metadata
+.omx/
+.codex/
+.trae/
+
+# Deployment archives
+*.zip
+*.tar
+*.tar.gz
 
 # Editor directories and files
 .vscode/*
